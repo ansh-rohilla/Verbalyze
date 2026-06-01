@@ -30,8 +30,16 @@ You can generate data for any of the following languages by specifying their lan
 ├── generate_dataset.py               # Unified dataset generator (supports 10 languages)
 ├── generate_gujarati_dataset.py      # Standalone Gujarati generator script
 ├── generate_english_dataset.py       # Standalone English generator script
-├── dataset_Gu.json                   # Pre-generated example Gujarati dataset (276 dialogues)
-└── dataset_En.json                   # Pre-generated example English dataset (276 dialogues)
+├── dataset_En.json                   # Pre-generated English dataset (1,000 dialogues)
+├── dataset_Gu.json                   # Pre-generated Gujarati dataset (1,000 dialogues)
+├── dataset_Hi.json                   # Pre-generated Hindi dataset (1,000 dialogues)
+├── dataset_Kn.json                   # Pre-generated Kannada dataset (1,000 dialogues)
+├── dataset_Ml.json                   # Pre-generated Malayalam dataset (1,000 dialogues)
+├── dataset_Mr.json                   # Pre-generated Marathi dataset (1,000 dialogues)
+├── dataset_Or.json                   # Pre-generated Odia dataset (1,000 dialogues)
+├── dataset_Pa.json                   # Pre-generated Punjabi dataset (1,000 dialogues)
+├── dataset_Ta.json                   # Pre-generated Tamil dataset (1,000 dialogues)
+└── dataset_Te.json                   # Pre-generated Telugu dataset (1,000 dialogues)
 ```
 
 ---
