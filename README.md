@@ -27,7 +27,11 @@ You can generate data for any of the following languages by specifying their lan
 ```
 ├── .gitignore
 ├── README.md
-└── generate_dataset.py       # Unified dataset generator script
+├── generate_dataset.py               # Unified dataset generator (supports 10 languages)
+├── generate_gujarati_dataset.py      # Standalone Gujarati generator script
+├── generate_english_dataset.py       # Standalone English generator script
+├── dataset_Gu.json                   # Pre-generated example Gujarati dataset (276 dialogues)
+└── dataset_En.json                   # Pre-generated example English dataset (276 dialogues)
 ```
 
 ---
@@ -42,28 +46,46 @@ Each generated dataset outputs a JSON array matching the target **276-dialogue d
 
 ## Usage
 
-The script is completely self-contained and uses standard libraries. It connects directly via REST requests to the Google Gemini and OpenAI APIs.
+All scripts are completely self-contained, use Python's standard libraries, and connect directly via REST requests to the Google Gemini and OpenAI APIs (no external client package dependencies).
 
 ### 1. Offline Test (Mock Mode)
 Run a fast, local generation without using API credits (useful for checking output format):
-```bash
-python3 generate_dataset.py --lang gu --run-mock --output dataset_Gu.json
-python3 generate_dataset.py --lang en --run-mock --output dataset_En.json
-```
+* **Using the Unified Generator**:
+  ```bash
+  python3 generate_dataset.py --lang gu --run-mock --output dataset_Gu.json
+  python3 generate_dataset.py --lang en --run-mock --output dataset_En.json
+  ```
+* **Using the Standalone Scripts**:
+  ```bash
+  python3 generate_gujarati_dataset.py --run-mock --output dataset_Gu.json
+  python3 generate_english_dataset.py --run-mock --output dataset_En.json
+  ```
 
 ### 2. Generating with Gemini API
 Set your key and select the target language code:
-```bash
-export GEMINI_API_KEY="your-gemini-api-key"
-python3 generate_dataset.py --lang hi --provider gemini --model gemini-1.5-flash --output dataset_Hi.json
-```
+* **Unified**:
+  ```bash
+  export GEMINI_API_KEY="your-gemini-api-key"
+  python3 generate_dataset.py --lang hi --provider gemini --model gemini-1.5-flash --output dataset_Hi.json
+  ```
+* **Standalone Gujarati**:
+  ```bash
+  export GEMINI_API_KEY="your-gemini-api-key"
+  python3 generate_gujarati_dataset.py --provider gemini --model gemini-1.5-flash --output dataset_Gu.json
+  ```
 
 ### 3. Generating with OpenAI API
 Set your key and select the target language code:
-```bash
-export OPENAI_API_KEY="your-openai-api-key"
-python3 generate_dataset.py --lang ta --provider openai --model gpt-4o-mini --output dataset_Ta.json
-```
+* **Unified**:
+  ```bash
+  export OPENAI_API_KEY="your-openai-api-key"
+  python3 generate_dataset.py --lang ta --provider openai --model gpt-4o-mini --output dataset_Ta.json
+  ```
+* **Standalone English**:
+  ```bash
+  export OPENAI_API_KEY="your-openai-api-key"
+  python3 generate_english_dataset.py --provider openai --model gpt-4o-mini --output dataset_En.json
+  ```
 
 ---
 
