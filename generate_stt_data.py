@@ -12,6 +12,7 @@ synthesizes corresponding audio clips using Google Text-to-Speech (gTTS).
 """
 
 import os
+import re
 import csv
 import json
 import random
@@ -19,7 +20,7 @@ import time
 import argparse
 import logging
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 
 # Setup Logging
 logging.basicConfig(
@@ -94,92 +95,14 @@ SLOTS = {
     "acronyms": ["OTP", "UPI", "ATM", "PDF", "SMS", "VPN", "WiFi", "URL", "PIN", "PAN"],
     "units": ["km", "cm", "GB", "GHz", "%", "kg", "ml", "mg", "TB", "mbps"],
     "companies": ["Amazon", "Google", "Verbalyze", "Netflix", "Reliance", "Zomato", "Uber", "Swiggy"],
-    "spoken_nums": {
-        "en": [
-            ("double two triple one", "22111"),
-            ("seven nine double six", "7966"),
-            ("nine eight double zero", "9800"),
-            ("triple five double zero", "55500"),
-            ("double nine triple seven", "99777")
-        ],
-        "gu": [
-            ("ડબલ બે ટ્રિપલ એક", "22111"),
-            ("સાત નવ ડબલ છ", "7966"),
-            ("નવ આઠ ડબલ ઝીરો", "9800"),
-            ("ટ્રિપલ પાંચ ડબલ શૂન્ય", "55500"),
-            ("ડબલ નવ ટ્રિપલ સાત", "99777")
-        ],
-        "hi": [
-            ("डबल दो ट्रिपल एक", "22111"),
-            ("सात नौ डबल छह", "7966"),
-            ("नौ आठ डबल जीरो", "9800"),
-            ("ट्रिपल पांच डबल शून्य", "55500"),
-            ("डबल नौ ट्रिपल सात", "99777")
-        ],
-        "kn": [
-            ("ಡಬಲ್ ಎರಡು ಟ್ರಿಪಲ್ ಒಂದು", "22111"),
-            ("ಏಳು ಒಂಬತ್ತು ಡಬಲ್ ಆರು", "7966"),
-            ("ಒಂಬತ್ತು ಎಂಟು ಡಬಲ್ ಜೀರೋ", "9800"),
-            ("ಟ್ರಿಪಲ್ ಐದು ಡಬಲ್ ಶೂನ್ಯ", "55500"),
-            ("ಡಬಲ್ ಒಂಬತ್ತು ಟ್ರಿಪಲ್ ಏಳು", "99777")
-        ],
-        "ml": [
-            ("ഡബിൾ രണ്ട് ട്രിപ്പിൾ ഒന്ന്", "22111"),
-            ("ഏഴ് ഒൻപത് ഡബിൾ ആറ്", "7966"),
-            ("ഒൻപത് എട്ട് ഡബിൾ പൂജ്യം", "9800"),
-            ("ട്രിപ്പിൾ അഞ്ച് ഡബിൾ പൂജ്യം", "55500"),
-            ("ഡബിൾ ഒൻപത് ട്രിപ്പിൾ ഏഴ്", "99777")
-        ],
-        "mr": [
-            ("डबल दोन ट्रिपल एक", "22111"),
-            ("सात नऊ डबल सहा", "7966"),
-            ("नऊ आठ डबल शून्य", "9800"),
-            ("ट्रिपल पाच डबल शून्य", "55500"),
-            ("डबल नऊ ट्रिपल सात", "99777")
-        ],
-        "or": [
-            ("ଡବଲ ଦୁଇ ଟ୍ରିପଲ ଏକ", "22111"),
-            ("ସାତ ନଅ ଡବଲ ଛଅ", "7966"),
-            ("ନଅ ଆଠ ଡବଲ ଶୂନ", "9800"),
-            ("ଟ୍ରିପଲ ପାଞ୍ଚ ଡବଲ ଶୂନ", "55500"),
-            ("ଡବଲ ନଅ ଟ୍ରିପଲ ସାତ", "99777")
-        ],
-        "pa": [
-            ("ਡਬਲ ਦੋ ਟ੍ਰਿਪਲ ਇੱਕ", "22111"),
-            ("ਸੱਤ ਨੌਂ ਡਬਲ ਛੇ", "7966"),
-            ("ਨੌਂ ਅੱਠ ਡਬਲ ਜ਼ੀਰੋ", "9800"),
-            ("ਟ੍ਰਿਪਲ ਪੰਜ ਡਬਲ ਜ਼ੀਰੋ", "55500"),
-            ("ਡਬਲ ਨੌਂ ਟ੍ਰਿਪਲ ਸੱਤ", "99777")
-        ],
-        "ta": [
-            ("டபுள் இரண்டு டிரிபிள் ஒன்று", "22111"),
-            ("ஏழு ஒன்பது டபுள் ஆறு", "7966"),
-            ("ஒன்பது எட்டு டபுள் ஜீரோ", "9800"),
-            ("டிரிபிள் ஐந்து டபுள் பூஜ்யம்", "55500"),
-            ("டபுள் ஒன்பது டிரிபிள் ஏழு", "99777")
-        ],
-        "te": [
-            ("డబల్ రెండు ట్రిపుల్ ఒకటి", "22111"),
-            ("ఏడు తొమ్మిది డబల్ ఆరు", "7966"),
-            ("తొమ్మిది ఎనిమిది డబల్ జీరో", "9800"),
-            ("ట్రిపుల్ ఐదు డబల్ సున్నా", "55500"),
-            ("డబల్ తొమ్మిది ట్రిపుల్ ఏడు", "99777")
-        ],
-        "bn": [
-            ("ডবল দুই ট্রিপল এক", "22111"),
-            ("সাত নয় ডবল ছয়", "7966"),
-            ("নয় আট ডবল জিরো", "9800"),
-            ("ট্রিপল পাঁচ ডবল শূন্য", "55500"),
-            ("ডবল নয় ট্রিপল সাত", "99777")
-        ],
-        "as": [
-            ("ডবল দুই ট্রিপল এক", "22111"),
-            ("সাত ন ডবল ছয়", "7966"),
-            ("ন আঠ ডবল শূন্য", "9800"),
-            ("ট্ৰিপল পাঁচ ডবল শূন্য", "55500"),
-            ("ডবল ন ট্ৰিপল সাত", "99777")
-        ]
-    }
+        "spoken_nums": [
+        ("double two triple one", "22111"),
+        ("seven nine double six", "7966"),
+        ("nine eight double zero", "9800"),
+        ("triple five double zero", "55500"),
+        ("double nine triple seven", "99777"),
+        ("five six triple four", "56444")
+    ]
 }
 
 # Base Scenario templates for combinatorics expansion
@@ -341,131 +264,212 @@ TEMPLATES = {
 }
 
 
-def build_augmented_sentence(lang: str, scenario: str) -> str:
-    """Uses templates and local slots to dynamically generate a unique sentence."""
-    lang_templates = TEMPLATES.get(scenario, TEMPLATES["normal_native_speech"]).get(lang, TEMPLATES["normal_native_speech"]["en"])
-    template = random.choice(lang_templates)
-    
-    # Fill dynamic elements based on markers
-    res = template
-    if "{name}" in res:
-        res = res.replace("{name}", random.choice(SLOTS["names"].get(lang, SLOTS["names"]["en"])))
-    if "{city}" in res:
-        res = res.replace("{city}", random.choice(SLOTS["cities"].get(lang, SLOTS["cities"]["en"])))
-    if "{app}" in res:
-        res = res.replace("{app}", random.choice(SLOTS["apps"]))
-    if "{acronym}" in res:
-        res = res.replace("{acronym}", random.choice(SLOTS["acronyms"]))
-    if "{company}" in res:
-        res = res.replace("{company}", random.choice(SLOTS["companies"]))
-    if "{unit}" in res:
-        res = res.replace("{unit}", random.choice(SLOTS["units"]))
-        
-    return res
 
+BRAHMIC_MAP = {
+    0x01: 'n', 0x02: 'n', 0x03: 'h', 0x05: 'a', 0x06: 'aa', 0x07: 'i', 0x08: 'ee', 0x09: 'u', 0x0a: 'oo',
+    0x0b: 'ri', 0x0f: 'e', 0x10: 'ai', 0x13: 'o', 0x14: 'au',
+    0x15: 'k', 0x16: 'kh', 0x17: 'g', 0x18: 'gh', 0x19: 'n',
+    0x1a: 'ch', 0x1b: 'chh', 0x1c: 'j', 0x1d: 'jh', 0x1e: 'n',
+    0x1f: 't', 0x20: 'th', 0x21: 'd', 0x22: 'dh', 0x23: 'n',
+    0x24: 't', 0x25: 'th', 0x26: 'd', 0x27: 'dh', 0x28: 'n',
+    0x2a: 'p', 0x2b: 'ph', 0x2c: 'b', 0x2d: 'bh', 0x2e: 'm',
+    0x2f: 'y', 0x30: 'r', 0x32: 'l', 0x35: 'v',
+    0x36: 'sh', 0x37: 'sh', 0x38: 's', 0x39: 'h',
+    # Matras
+    0x3e: 'aa', 0x3f: 'i', 0x40: 'ee', 0x41: 'u', 0x42: 'oo',
+    0x43: 'ri', 0x45: 'e', 0x46: 'e', 0x47: 'e', 0x48: 'ai',
+    0x49: 'o', 0x4a: 'o', 0x4b: 'o', 0x4c: 'au',
+    0x4d: ''
+}
 
-def generate_scenario_sentence(lang: str, scenario: str) -> str:
-    """Generates a text sentence matching the target scenario rules."""
+def transliterate_to_roman(text: str, lang: str) -> str:
+    if lang == "en":
+        return text
+    res = []
+    for i, c in enumerate(text):
+        val = ord(c)
+        if 0x0900 <= val <= 0x0d7f:
+            base = val & ~0x7f
+            offset = val - base
+            if 0x15 <= offset <= 0x39:
+                has_matra = False
+                if i + 1 < len(text):
+                    next_val = ord(text[i+1])
+                    next_offset = next_val - (next_val & ~0x7f)
+                    if 0x3e <= next_offset <= 0x4d:
+                        has_matra = True
+                char_str = BRAHMIC_MAP.get(offset, '')
+                if not has_matra and char_str:
+                    res.append(char_str + 'a')
+                else:
+                    res.append(char_str)
+            else:
+                res.append(BRAHMIC_MAP.get(offset, ''))
+        else:
+            res.append(c)
+    # Basic post-processing for double spaces and punctuation cleanup
+    result = "".join(res)
+    result = re.sub(r'\s+', ' ', result).strip()
+    # Strip trailing punctuation for cleaner romanized representation
+    result = re.sub(r'[।|.]', '', result).strip()
+    return result
+
+def generate_scenario_sentence_parallel(lang: str, scenario: str) -> Tuple[str, str, str, str]:
+    """Generates parallel representations (transcript, native, romanized, code_mixed) for target scenarios."""
     
-    # Specific Rule-Based Scenarios
     if scenario == "spoken_number_patterns":
-        # Get localized number pattern
-        patterns = SLOTS["spoken_nums"].get(lang, SLOTS["spoken_nums"]["en"])
-        pattern_str, digits = random.choice(patterns)
-        
-        # Localized context phrasing
+        pattern_str, digits = random.choice(SLOTS["spoken_nums"])
         phrases = {
-            "en": f"My phone number is {pattern_str}.",
-            "gu": f"મારો ફોન નંબર {pattern_str} છે.",
-            "hi": f"मेरा फोन नंबर {pattern_str} है।",
-            "kn": f"ನನ್ನ ಫೋನ್ ಸಂಖ್ಯೆ {pattern_str} ಆಗಿದೆ.",
-            "ml": f"എന്റെ ഫോൺ നമ്പർ {pattern_str} ആണ്.",
-            "mr": f"माझा फोन नंबर {pattern_str} आहे.",
-            "or": f"ମୋର ଫୋନ୍ ନମ୍ବର ହେଉଛି {pattern_str} ।",
-            "pa": f"ਮੇਰਾ ਫ਼ੋਨ ਨੰਬਰ {pattern_str} ਹੈ।",
-            "ta": f"எனது தொலைபேசி எண் {pattern_str} ஆகும்.",
-            "te": f"నా ఫోన్ నంబర్ {pattern_str}.",
-            "bn": f"আমার ফোন নম্বর হলো {pattern_str}।",
-            "as": f"মোৰ ফোন নম্বৰটো হ’ল {pattern_str}।"
+            "en": "My phone number is {num}.",
+            "gu": "મારો ફોન નંબર {num} છે.",
+            "hi": "मेरा फोन नंबर {num} है।",
+            "kn": "ನನ್ನ ಫೋನ್ ಸಂಖ್ಯೆ {num} ಆಗಿದೆ.",
+            "ml": "എന്റെ ഫോൺ നമ്പർ {num} ആണ്.",
+            "mr": "माझा फोन नंबर {num} आहे.",
+            "or": "ମୋର ଫୋନ୍ ନମ୍ବର ହେଉଛି {num} ।",
+            "pa": "ਮੇਰਾ ਫ਼ੋਨ ਨੰਬਰ {num} ਹੈ।",
+            "ta": "எனது தொலைபேசி எண் {num} ஆகும்.",
+            "te": "నా ఫోన్ నంబర్ {num}.",
+            "bn": "আমার ফোন নম্বর হলো {num}।",
+            "as": "মোৰ ফোন নম্বৰটো হ’ল {num}।"
         }
-        return phrases.get(lang, phrases["en"])
+        phrase = phrases.get(lang, phrases["en"])
+        transcript = phrase.format(num=pattern_str)
+        native = phrase.format(num=digits)
+        roman = transliterate_to_roman(transcript, lang)
+        code_mixed = transcript
+        return transcript, native, roman, code_mixed
         
     elif scenario == "numeric_normalization":
-        # Generate random numeric patterns (OTPs, dates, amounts)
         val_type = random.choice(["phone", "otp", "amount", "date"])
         if val_type == "phone":
             num = "".join(random.choices("0123456789", k=10))
+            num_words = " ".join([{"0":"zero","1":"one","2":"two","3":"three","4":"four","5":"five","6":"six","7":"seven","8":"eight","9":"nine"}[d] for d in num])
             phrases = {
-                "en": f"Call me at {num}.",
-                "gu": f"મને {num} પર ફોન કરો.",
-                "hi": f"मुझे {num} पर कॉल करें।",
-                "kn": f"ನನ್ನನ್ನು {num} ಸಂಖ್ಯೆಗೆ ಕರೆ ಮಾಡಿ.",
-                "ml": f"എന്നെ {num} നമ്പറിൽ വിളിക്കുക.",
-                "mr": f"मला {num} वर कॉल करा.",
-                "or": f"ମୋତે {num} ରେ କଲ୍ କରନ୍ତୁ ।",
-                "pa": f"ਮੈਨੂੰ {num} 'ਤੇ ਕਾਲ ਕਰੋ।",
-                "ta": f"என்னை {num} எண்ணில் அழைக்கவும்.",
-                "te": f"నాకు {num} నంబర్‌కు కాల్ చేయండి.",
-                "bn": f"আমাকে {num} নম্বরে কল করুন।",
-                "as": f"মোক {num} নম্বৰত কল কৰক।"
+                "en": "Call me at {num}.",
+                "gu": "મને {num} પર ફોન કરો.",
+                "hi": "मुझे {num} पर कॉल करें।",
+                "kn": "ನನ್ನನ್ನು {num} ಸಂಖ್ಯೆಗೆ ಕರೆ ಮಾಡಿ.",
+                "ml": "എന്നെ {num} നമ്പറിൽ വിളിക്കുക.",
+                "mr": "मला {num} वर कॉल करा.",
+                "or": "ମୋତେ {num} ରେ କଲ୍ କରନ୍ତୁ ।",
+                "pa": "ਮੈਨੂੰ {num} 'ਤੇ ਕਾਲ ਕਰੋ।",
+                "ta": "என்னை {num} எண்ணில் அழைக்கவும்.",
+                "te": "నాకు {num} నంబర్‌కు కాల్ చేయండి.",
+                "bn": "আমাকে {num} নম্বরে কল করুন।",
+                "as": "মোক {num} নম্বৰত কল কৰক।"
             }
-            return phrases.get(lang, phrases["en"])
+            phrase = phrases.get(lang, phrases["en"])
+            transcript = phrase.format(num=num_words)
+            native = phrase.format(num=num)
+            roman = transliterate_to_roman(transcript, lang)
+            code_mixed = transcript
+            return transcript, native, roman, code_mixed
+            
         elif val_type == "otp":
             otp = "".join(random.choices("0123456789", k=6))
+            otp_words = " ".join([{"0":"zero","1":"one","2":"two","3":"three","4":"four","5":"five","6":"six","7":"seven","8":"eight","9":"nine"}[d] for d in otp])
             phrases = {
-                "en": f"Do not share your OTP {otp} with anyone.",
-                "gu": f"તમારો OTP {otp} કોઈની સાથે શેર કરશો નહીં.",
-                "hi": f"अपना OTP {otp} किसी के साथ साझा न करें।",
-                "kn": f"ನಿಮ್ಮ OTP {otp} ಅನ್ನು ಯಾರೊಂದಿಗೂ ಹಂಚಿಕೊಳ್ಳಬೇಡಿ.",
-                "ml": f"നിങ്ങളുടെ OTP {otp} ആരുമായും പങ്കിടരുത്.",
-                "mr": f"तुमचा OTP {otp} कोणाशीही शेअर करू नका.",
-                "or": f"ଆପଣଙ୍କର OTP {otp} କାହା ସହିତ ସେୟାର କରନ୍ତୁ ନାହିଁ ।",
-                "pa": f"ਆਪਣਾ OTP {otp} ਕਿਸੇ ਨਾਲ ਸਾਂਝਾ ਨਾ ਕਰੋ।",
-                "ta": f"உங்கள் OTP {otp}-ஐ யாருடனும் பகிர வேண்டாம்.",
-                "te": f"మీ OTP {otp}ని ఎవరితోనూ పంచుకోకండి.",
-                "bn": f"আপনার OTP {otp} কারও সাথে শেয়ার করবেন না।",
-                "as": f"আপোনাৰ OTP {otp} কাৰো সৈতে শ্বেয়াৰ নকৰিব।"
+                "en": "Do not share your OTP {otp} with anyone.",
+                "gu": "તમારો OTP {otp} કોઈની સાથે શેર કરશો નહીં.",
+                "hi": "अपना OTP {otp} किसी के साथ साझा न करें।",
+                "kn": "ನಿಮ್ಮ OTP {otp} ಅನ್ನು ಯಾರೊಂದಿಗೂ ಹಂಚಿಕೊಳ್ಳಬೇಡಿ.",
+                "ml": "നിങ്ങളുടെ OTP {otp} ആരുമായും പങ്കിടരുത്.",
+                "mr": "तुमचा OTP {otp} कोणाशीही शेअर करू नका.",
+                "or": "ଆପଣଙ୍କର OTP {otp} କାହା ସହିତ ସେୟାର କରନ୍ତુ ନାହିଁ ।",
+                "pa": "ਆਪਣਾ OTP {otp} ਕਿਸੇ ਨਾਲ ਸਾਂਝਾ ਨਾ ਕਰੋ।",
+                "ta": "உங்கள் OTP {otp}-ஐ யாருடனும் பகிர வேண்டாம்.",
+                "te": "மீ OTP {otp}ని ఎవరితోనూ పంచుకోకండి.",
+                "bn": "আপনার OTP {otp} কারও সাথে শেয়ার করবেন না।",
+                "as": "আপোনাৰ OTP {otp} কাৰো সৈতে শ্বেয়াৰ নকৰিব।"
             }
-            return phrases.get(lang, phrases["en"])
+            phrase = phrases.get(lang, phrases["en"])
+            transcript = phrase.format(otp=otp_words)
+            native = phrase.format(otp=otp)
+            roman = transliterate_to_roman(transcript, lang)
+            code_mixed = transcript
+            return transcript, native, roman, code_mixed
+            
         elif val_type == "amount":
             amount = random.randint(100, 25000)
             phrases = {
-                "en": f"Please pay {amount} rupees using any app.",
-                "gu": f"કૃપા કરીને કોઈપણ એપનો ઉપયોગ કરીને {amount} રૂપિયા ચૂકવો.",
-                "hi": f"कृपया किसी भी ऐप का उपयोग करके {amount} रुपये का भुगतान करें।",
-                "kn": f"ದಯವಿಟ್ಟು ಯಾವುದೇ ಆಪ್ ಬಳಸಿ {amount} ರೂಪಾಯಿಗಳನ್ನು ಪಾವತಿಸಿ.",
-                "ml": f"ദയവായി ഏതെങ്കിലും ആപ്പ് ഉപയോഗിച്ച് {amount} രൂപ നൽകുക.",
-                "mr": f"कृपया कोणत्याही ॲपचा वापर करून {amount} रुपये भरा.",
-                "or": f"ଦୟାକରି ଯେକୌଣସି ଆପ୍ ବ୍ୟବହାର କରି {amount} ଟଙ୍କା ଦେୟ କରନ୍ତુ ।",
-                "pa": f"ਕਿਰਪา ਕਰਕੇ ਕਿਸੇ ਵੀ ਐਪ ਰਾਹੀਂ {amount} ਰੁਪਏ ਦਾ ਭੁਗਤਾਨ ਕਰੋ।",
-                "ta": f"தயவுசெய்து ஏதேனும் ஒரு செயலியைப் பயன்படுத்தி {amount} ரூபாய் செலுத்தவும்.",
-                "te": f"దయచేసి ఏదైనా యాప్ ఉపయోగించి {amount} రూపాయలు చెల్లించండి.",
-                "bn": f"অনুগ্রহ করে যেকোনো অ্যাপ ব্যবহার করে {amount} টাকা পরিশোধ করুন।",
-                "as": ["অনুগ্ৰহ কৰি যিকোনো অ্যাপ ব্যৱহাৰ কৰি {amount} টকা পৰিশোধ কৰক।"]
+                "en": "Please pay {amount} rupees using any app.",
+                "gu": "કૃપા કરીને કોઈપણ એપનો ઉપયોગ કરીને {amount} રૂપિયા ચૂકવો.",
+                "hi": "कृपया किसी भी ऐप का उपयोग करके {amount} रुपये का भुगतान करें।",
+                "kn": "ದಯવિಟ್ಟು ಯಾವುದೇ ಆಪ್ ಬಳસી {amount} ರೂಪಾಯಿಗಳನ್ನು ಪಾವತಿಸಿ.",
+                "ml": "ദയവായി ഏതെങ്കിലും ആപ്പ് ഉപയോഗിച്ച് {amount} രൂപ നൽകുക.",
+                "mr": "कृपया कोणत्याही ॲपचा वापर करून {amount} रुपये भरा.",
+                "or": "ଦୟાକରି ଯેકୌଣସિ ଆପ୍ ବ୍ୟવહାର કરી {amount} ଟଙ୍କા ଦେય કରନ୍ତୁ ।",
+                "pa": "ਕਿਰਪਾ ਕਰਕੇ ਕਿਸੇ ਵੀ ਐਪ ਰਾਹੀਂ {amount} ਰੁਪਏ ਦਾ ਭੁਗਤਾਨ ਕਰੋ।",
+                "ta": "தயவுசெய்து ஏதேனும் ஒரு செயலியைப் பயன்படுத்தி {amount} ரூபாய் செலுத்தவும்.",
+                "te": "దయచేసి ఏదైనా యాప్ ఉపయోగించి {amount} రూపాయలు చెల్లించండి.",
+                "bn": "অনুগ্রহ করে যেকোনো অ্যাপ ব্যবহার করে {amount} টাকা পরিশোধ করুন।",
+                "as": "অনুগ্ৰহ কৰি যিকোনো অ্যাপ ব্যৱহাৰ কৰি {amount} টকা পৰিশোধ কৰক।"
             }
-            return phrases.get(lang, phrases["en"])
+            phrase = phrases.get(lang, phrases["en"])
+            transcript = phrase.format(amount=amount)
+            native = phrase.format(amount=amount)
+            roman = transliterate_to_roman(transcript, lang)
+            code_mixed = transcript
+            return transcript, native, roman, code_mixed
+            
         else:
             day = random.randint(1, 28)
             month = random.randint(1, 12)
             year = random.randint(2020, 2026)
             phrases = {
-                "en": f"The scheduled date is {day:02d}/{month:02d}/{year}.",
-                "gu": f"નિર્ધારિત તારીખ {day:02d}/{month:02d}/{year} છે.",
-                "hi": f"निर्धारित तिथि {day:02d}/{month:02d}/{year} है।",
-                "kn": ["ನಿಗದಿಪಡಿಸಿದ ದಿನಾಂಕ {day:02d}/{month:02d}/{year} ಆಗಿದೆ."],
-                "ml": f"നിശ്ചയിച്ച തീയതി {day:02d}/{month:02d}/{year} ആണ്.",
-                "mr": f"नियोजित तारीख {day:02d}/{month:02d}/{year} आहे.",
-                "or": f"ନିର୍ଦ୍ଧାରିତ ତାରିଖ ହେଉଛି {day:02d}/{month:02d}/{year} ।",
-                "pa": f"ਨਿਰਧਾਰਤ ਮਿਤੀ {day:02d}/{month:02d}/{year} ਹੈ।",
-                "ta": f"திட்டமிடப்பட்ட தேதி {day:02d}/{month:02d}/{year} ஆகும்.",
-                "te": f"షెడ్యూల్ చేయబడిన తేదీ {day:02d}/{month:02d}/{year}.",
-                "bn": f"নির্ধারিত তারিখটি হলো {day:02d}/{month:02d}/{year}।",
-                "as": f"নিৰ্ধাৰিত তাৰিখটো হ’ল {day:02d}/{month:02d}/{year}।"
+                "en": "The scheduled date is {day:02d}/{month:02d}/{year}.",
+                "gu": "નિર્ધારિત તારીખ {day:02d}/{month:02d}/{year} છે.",
+                "hi": "निर्धारित तिथि {day:02d}/{month:02d}/{year} है।",
+                "kn": "ನಿಗದಿಪಡಿಸಿದ ದಿನಾಂక {day:02d}/{month:02d}/{year} ಆಗಿದೆ.",
+                "ml": "നിശ്ചയിച്ച തീയതി {day:02d}/{month:02d}/{year} ആണ്.",
+                "mr": "नियोजित तारीख {day:02d}/{month:02d}/{year} आहे.",
+                "or": "ନିର୍ଦ୍ଧାରିତ ତାରିଖ ହେଉଛି {day:02d}/{month:02d}/{year} ।",
+                "pa": "ਨਿਰਧਾਰਤ ਮਿਤੀ {day:02d}/{month:02d}/{year} ਹੈ।",
+                "ta": "திட்டமிடப்பட்ட தேதி {day:02d}/{month:02d}/{year} ஆகும்.",
+                "te": "షెడ్యూల్ చేయబడిన తేదీ {day:02d}/{month:02d}/{year}.",
+                "bn": "নির্ধারিত তারিখটি হলো {day:02d}/{month:02d}/{year}।",
+                "as": "নিৰ্ধাৰিত তাৰিখটো হ’ল {day:02d}/{month:02d}/{year}।"
             }
-            return phrases.get(lang, phrases["en"])
-
-    # Fallback to slots-augmented templates
-    return build_augmented_sentence(lang, scenario)
+            phrase = phrases.get(lang, phrases["en"])
+            transcript = phrase.format(day=day, month=month, year=year)
+            native = phrase.format(day=day, month=month, year=year)
+            roman = transliterate_to_roman(transcript, lang)
+            code_mixed = transcript
+            return transcript, native, roman, code_mixed
+            
+    # Fallback to templates
+    lang_templates = TEMPLATES.get(scenario, TEMPLATES["normal_native_speech"]).get(lang, TEMPLATES["normal_native_speech"]["en"])
+    template = random.choice(lang_templates)
+    
+    transcript = template
+    native = template
+    code_mixed = template
+    
+    # Dynamic slot replacement
+    slots_to_fill = ["name", "city", "app", "acronym", "company", "unit"]
+    for slot in slots_to_fill:
+        placeholder = f"{{{slot}}}"
+        if placeholder in template:
+            if slot == "name":
+                val = random.choice(SLOTS["names"].get(lang, SLOTS["names"]["en"]))
+            elif slot == "city":
+                val = random.choice(SLOTS["cities"].get(lang, SLOTS["cities"]["en"]))
+            elif slot == "app":
+                val = random.choice(SLOTS["apps"])
+            elif slot == "acronym":
+                val = random.choice(SLOTS["acronyms"])
+            elif slot == "company":
+                val = random.choice(SLOTS["companies"])
+            elif slot == "unit":
+                val = random.choice(SLOTS["units"])
+                
+            transcript = transcript.replace(placeholder, val)
+            native = native.replace(placeholder, val)
+            code_mixed = code_mixed.replace(placeholder, val)
+            
+    roman = transliterate_to_roman(transcript, lang)
+    return transcript, native, roman, code_mixed
 
 
 def main():
@@ -525,7 +529,7 @@ def main():
     for scenario_name, count in scenario_counts.items():
         logger.info(f"Generating {count} utterances for scenario '{scenario_name}'...")
         for _ in range(count):
-            text = generate_scenario_sentence(lang, scenario_name)
+            transcript, native, roman, code_mixed = generate_scenario_sentence_parallel(lang, scenario_name)
             
             audio_filename = f"{lang}_{scenario_name}_{index:05d}.mp3"
             audio_path = audio_dir / audio_filename
@@ -536,12 +540,12 @@ def main():
             # Synthesize Audio if requested
             if args.synthesize and gTTS_module:
                 try:
-                    tts = gTTS_module(text=text, lang=SUPPORTED_LANGUAGES[lang]["tts_code"])
+                    tts = gTTS_module(text=transcript, lang=SUPPORTED_LANGUAGES[lang]["tts_code"])
                     tts.save(str(audio_path))
                     # Estimate duration based on word count (approx 150 words per minute)
-                    words = len(text.split())
+                    words = len(transcript.split())
                     duration = round(max(1.5, (words / 150.0) * 60.0), 2)
-                    time.sleep(0.1) # Small delay between requests to avoid limits
+                    time.sleep(0.05) # Small delay to avoid rate limits
                 except Exception as e:
                     logger.error(f"TTS synthesis failed for index {index}: {e}")
                     duration = 0.0
@@ -549,7 +553,10 @@ def main():
             record = {
                 "id": f"{lang}_{index:05d}",
                 "audio_path": relative_audio_path if args.synthesize else "N/A",
-                "transcript": text,
+                "transcript": transcript,
+                "native_text": native,
+                "romanized_text": roman,
+                "code_mixed_text": code_mixed,
                 "scenario": scenario_name,
                 "language": lang,
                 "duration_seconds": duration
@@ -561,7 +568,8 @@ def main():
     logger.info(f"Writing metadata to {metadata_file}...")
     try:
         with open(metadata_file, "w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=["id", "audio_path", "transcript", "scenario", "language", "duration_seconds"])
+            fieldnames = ["id", "audio_path", "transcript", "native_text", "romanized_text", "code_mixed_text", "scenario", "language", "duration_seconds"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(dataset_records)
         logger.info(f"Metadata file generated successfully at {metadata_file}!")

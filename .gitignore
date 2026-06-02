@@ -32,3 +32,8 @@ wheels/
 
 # Temporary dataset checkpoints
 *_checkpoint.json
+
+# Local temp folders
+stt_test/
+scratch/
+
