@@ -754,24 +754,28 @@ def main():
     output_path = Path(args.output)
     checkpoint_path = output_path.with_name(f"{output_path.stem}_checkpoint.json")
 
-    # Load existing progress
+    # Load existing progress & select/reconstruct baseline languages order
     generated_dataset = []
-    completed_scenarios = {}
+    checkpoint_langs = []
+    
     if checkpoint_path.exists():
         try:
             with open(checkpoint_path, "r", encoding="utf-8") as f:
                 generated_dataset = json.load(f)
+            # Find the primary languages of the baseline items in order of occurrence
             for item in generated_dataset:
-                sc_meta = item.get("metadata", {}).get("scenario", "")
-                sc = sc_meta.replace(f"{lang}_", "")
-                completed_scenarios[sc] = completed_scenarios.get(sc, 0) + 1
+                p_lang = item.get("metadata", {}).get("primary_language", "")
+                if p_lang and p_lang != lang and p_lang not in checkpoint_langs:
+                    checkpoint_langs.append(p_lang)
             logger.info(f"Resuming from checkpoint. Loaded {len(generated_dataset)} entries.")
         except Exception:
             logger.warning("Failed to parse checkpoint. Starting fresh.")
 
-    # Select other languages for the baseline
+    # Select other languages for the baseline, preserving the order of already generated languages
     other_langs = [l for l in SUPPORTED_LANGUAGES if l != lang]
-    random.shuffle(other_langs)
+    remaining_langs = [l for l in other_langs if l not in checkpoint_langs]
+    random.shuffle(remaining_langs)
+    other_langs = checkpoint_langs + remaining_langs
     
     # Map other language baselines
     baseline_mappings = {
@@ -782,6 +786,21 @@ def main():
         "base_lang_5": (other_langs[3], "normal"),
         "base_lang_6": (other_langs[4], "normal"),
     }
+
+    # Build reverse mappings for correct completed scenario parsing
+    reverse_baseline_mappings = {}
+    for base_sc, (t_lang, sub_sc) in baseline_mappings.items():
+        reverse_baseline_mappings[f"{t_lang}_{sub_sc}"] = base_sc
+
+    # Parse completed scenarios
+    completed_scenarios = {}
+    for item in generated_dataset:
+        sc_meta = item.get("metadata", {}).get("scenario", "")
+        if sc_meta in reverse_baseline_mappings:
+            sc = reverse_baseline_mappings[sc_meta]
+        else:
+            sc = sc_meta.replace(f"{lang}_", "")
+        completed_scenarios[sc] = completed_scenarios.get(sc, 0) + 1
 
     # Build target counts
     target_counts = {}
