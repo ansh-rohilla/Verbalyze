@@ -582,6 +582,8 @@ def call_gemini_api(api_key: str, model_name: str, system_prompt: str, scenario_
 def call_openai_api(api_key: str, model_name: str, system_prompt: str, scenario_desc: str, primary_lang: str) -> Optional[Dict[str, Any]]:
     """Calls OpenAI API using urllib REST call."""
     url = "https://api.openai.com/v1/chat/completions"
+    if api_key.startswith("gsk_"):
+        url = "https://api.groq.com/openai/v1/chat/completions"
     
     prompt = (
         f"You are a dataset generator assistant. Generate a natural phone conversation in JSON format.\n"
@@ -608,18 +610,21 @@ def call_openai_api(api_key: str, model_name: str, system_prompt: str, scenario_
         "temperature": 0.7
     }
 
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+
     req = urllib.request.Request(
         url,
         data=json.dumps(data).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}"
-        },
+        headers=headers,
         method="POST"
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=30) as response:
+        with urllib.request.urlopen(req, timeout=60) as response:
             res_data = json.loads(response.read().decode("utf-8"))
             text = res_data["choices"][0]["message"]["content"]
             return json.loads(text.strip())
