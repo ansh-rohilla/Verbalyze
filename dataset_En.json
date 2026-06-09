@@ -829,7 +829,17 @@
       },
       {
         "role": "assistant",
-        "content": "Cool, sounds like a plan. I'll see you around three o'clock then?"
+        "content": "Cool, sounds like a plan. I'll see you around three o'clock then?",
+        "tool_calls": [
+          {
+            "id": "call_gxdx8yvs",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -1039,7 +1049,17 @@
       },
       {
         "role": "assistant",
-        "content": "Sounds good! Talk to you later, okay?"
+        "content": "Sounds good! Talk to you later, okay?",
+        "tool_calls": [
+          {
+            "id": "call_sn0nt0nk",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -1565,7 +1585,17 @@
       },
       {
         "role": "assistant",
-        "content": "Anytime! You take care of yourself, okay?"
+        "content": "Anytime! You take care of yourself, okay?",
+        "tool_calls": [
+          {
+            "id": "call_m2z8lwp5",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -1657,7 +1687,17 @@
       },
       {
         "role": "assistant",
-        "content": "Right, the one with the really good muffins? Yeah, definitely. I'll see you there then."
+        "content": "Right, the one with the really good muffins? Yeah, definitely. I'll see you there then.",
+        "tool_calls": [
+          {
+            "id": "call_lahn06om",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -1871,7 +1911,17 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, keep it simple, I like that. Well, enjoy your break, okay? I will talk to you later!"
+        "content": "Oh, keep it simple, I like that. Well, enjoy your break, okay? I will talk to you later!",
+        "tool_calls": [
+          {
+            "id": "call_gi3qeapg",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -2479,7 +2529,17 @@
       },
       {
         "role": "assistant",
-        "content": "Three is perfect. Well, see you then?"
+        "content": "Three is perfect. Well, see you then?",
+        "tool_calls": [
+          {
+            "id": "call_2dmj8z40",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -2989,7 +3049,17 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, it's totally fine, really. I'm just looking forward to catching up, you know? See you then."
+        "content": "Oh, it's totally fine, really. I'm just looking forward to catching up, you know? See you then.",
+        "tool_calls": [
+          {
+            "id": "call_x6yvkavq",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -3343,7 +3413,17 @@
       },
       {
         "role": "assistant",
-        "content": "No problem at all! Give the dog a pet for me, okay? Have a nice walk!"
+        "content": "No problem at all! Give the dog a pet for me, okay? Have a nice walk!",
+        "tool_calls": [
+          {
+            "id": "call_u1qvg9o0",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -3443,7 +3523,17 @@
       },
       {
         "role": "assistant",
-        "content": "Sounds like a plan. Can't wait! Talk to you later."
+        "content": "Sounds like a plan. Can't wait! Talk to you later.",
+        "tool_calls": [
+          {
+            "id": "call_hq5zgs21",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -3545,7 +3635,17 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, that sounds lovely. I'd love a good cup of coffee. See you then?"
+        "content": "Oh, that sounds lovely. I'd love a good cup of coffee. See you then?",
+        "tool_calls": [
+          {
+            "id": "call_9x4qgm91",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -3679,7 +3779,17 @@
       },
       {
         "role": "assistant",
-        "content": "Right, sounds like a plan. Can't wait, talk to you later!"
+        "content": "Right, sounds like a plan. Can't wait, talk to you later!",
+        "tool_calls": [
+          {
+            "id": "call_afkahfav",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -4921,7 +5031,17 @@
       },
       {
         "role": "assistant",
-        "content": "Seven thirty works perfectly for me. See you then?"
+        "content": "Seven thirty works perfectly for me. See you then?",
+        "tool_calls": [
+          {
+            "id": "call_kkncgf4o",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       },
       {
         "role": "user",
@@ -5669,7 +5789,17 @@
       },
       {
         "role": "assistant",
-        "content": "Right, okay, I'll grab a couple of colas from the shop downstairs. See you in about thirty minutes?"
+        "content": "Right, okay, I'll grab a couple of colas from the shop downstairs. See you in about thirty minutes?",
+        "tool_calls": [
+          {
+            "id": "call_f8kld795",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -6235,7 +6365,17 @@
       },
       {
         "role": "assistant",
-        "content": "Right? They're honestly the best. Okay, I'll see you there then!"
+        "content": "Right? They're honestly the best. Okay, I'll see you there then!",
+        "tool_calls": [
+          {
+            "id": "call_yzcudxlh",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -6431,7 +6571,17 @@
       },
       {
         "role": "assistant",
-        "content": "Right, I hear you. It has been such a long week already. I will see you there at four, okay?"
+        "content": "Right, I hear you. It has been such a long week already. I will see you there at four, okay?",
+        "tool_calls": [
+          {
+            "id": "call_vbg2g4zx",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -6473,7 +6623,17 @@
       },
       {
         "role": "assistant",
-        "content": "Twelve thirty is perfect. Gives me just enough time to wrap up this email. I'll see you there?"
+        "content": "Twelve thirty is perfect. Gives me just enough time to wrap up this email. I'll see you there?",
+        "tool_calls": [
+          {
+            "id": "call_q68iusil",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       },
       {
         "role": "user",
@@ -6787,7 +6947,17 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, right, the one with the really good muffins? I love that place. See you there then?"
+        "content": "Oh, right, the one with the really good muffins? I love that place. See you there then?",
+        "tool_calls": [
+          {
+            "id": "call_lqx1rqsd",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -7069,7 +7239,17 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, nice. I've heard good things about that place. Okay, count me in. I'll see you there around seven, yeah?"
+        "content": "Oh, nice. I've heard good things about that place. Okay, count me in. I'll see you there around seven, yeah?",
+        "tool_calls": [
+          {
+            "id": "call_q4f2g4vu",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -7827,7 +8007,17 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, nice! I love their pasta, you know? Okay, consider me in. I will see you there at seven then?"
+        "content": "Oh, nice! I love their pasta, you know? Okay, consider me in. I will see you there at seven then?",
+        "tool_calls": [
+          {
+            "id": "call_v4eembim",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -7933,7 +8123,17 @@
       },
       {
         "role": "assistant",
-        "content": "Sounds great! See you soon. Drive safe, okay?"
+        "content": "Sounds great! See you soon. Drive safe, okay?",
+        "tool_calls": [
+          {
+            "id": "call_dq2cvzc3",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -7983,7 +8183,17 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, the new one? I've heard good things. Okay, let's do it. I'll see you then!"
+        "content": "Oh, the new one? I've heard good things. Okay, let's do it. I'll see you then!",
+        "tool_calls": [
+          {
+            "id": "call_l1rvn1fi",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -8123,7 +8333,17 @@
       },
       {
         "role": "assistant",
-        "content": "Sounds like a plan. I'll see you there, okay?"
+        "content": "Sounds like a plan. I'll see you there, okay?",
+        "tool_calls": [
+          {
+            "id": "call_1od2p9e8",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -8531,7 +8751,17 @@
       },
       {
         "role": "assistant",
-        "content": "Seven works perfect. I'll see you there, okay?"
+        "content": "Seven works perfect. I'll see you there, okay?",
+        "tool_calls": [
+          {
+            "id": "call_lamuw28m",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -8897,7 +9127,17 @@
       },
       {
         "role": "assistant",
-        "content": "Awesome. Okay, I'll see you there then. Can't wait!"
+        "content": "Awesome. Okay, I'll see you there then. Can't wait!",
+        "tool_calls": [
+          {
+            "id": "call_re089oht",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -8977,7 +9217,17 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, nice! I love that area. Sounds like a plan then, I'll see you there?"
+        "content": "Oh, nice! I love that area. Sounds like a plan then, I'll see you there?",
+        "tool_calls": [
+          {
+            "id": "call_6vv9br44",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -9087,7 +9337,17 @@
       },
       {
         "role": "assistant",
-        "content": "Right? It's so good. Okay, consider it a date then. See you at seven!"
+        "content": "Right? It's so good. Okay, consider it a date then. See you at seven!",
+        "tool_calls": [
+          {
+            "id": "call_2zwcxoti",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -9325,7 +9585,17 @@
       },
       {
         "role": "assistant",
-        "content": "Four works for me. Right, that sounds perfect. See you then?"
+        "content": "Four works for me. Right, that sounds perfect. See you then?",
+        "tool_calls": [
+          {
+            "id": "call_zrjwe9wy",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -9511,7 +9781,17 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, right, the deli? I love that place. Yeah, that sounds like a great idea. See you there then?"
+        "content": "Oh, right, the deli? I love that place. Yeah, that sounds like a great idea. See you there then?",
+        "tool_calls": [
+          {
+            "id": "call_fnutopv9",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -10005,7 +10285,17 @@
       },
       {
         "role": "assistant",
-        "content": "Seven works perfectly for me. See you then?"
+        "content": "Seven works perfectly for me. See you then?",
+        "tool_calls": [
+          {
+            "id": "call_r90ysw5y",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -10409,7 +10699,17 @@
       },
       {
         "role": "assistant",
-        "content": "Right? Well, I will let you get back to your work then. Talk later?"
+        "content": "Right? Well, I will let you get back to your work then. Talk later?",
+        "tool_calls": [
+          {
+            "id": "call_emdsbi1m",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       },
       {
         "role": "user",
@@ -11035,7 +11335,17 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, right, the one with the good pastries? Yeah, I'm definitely in. See you there then."
+        "content": "Oh, right, the one with the good pastries? Yeah, I'm definitely in. See you there then.",
+        "tool_calls": [
+          {
+            "id": "call_ki10ktv0",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -11179,7 +11489,17 @@
       },
       {
         "role": "assistant",
-        "content": "Awesome. See you in a bit then. Can't wait!"
+        "content": "Awesome. See you in a bit then. Can't wait!",
+        "tool_calls": [
+          {
+            "id": "call_ip4kl2wh",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -12447,7 +12767,17 @@
       },
       {
         "role": "assistant",
-        "content": "Right, see you then! Can't wait."
+        "content": "Right, see you then! Can't wait.",
+        "tool_calls": [
+          {
+            "id": "call_k6s13of8",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -13325,7 +13655,17 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, me too, honestly. I've been staring at my screen for way too long. See you in a bit then?"
+        "content": "Oh, me too, honestly. I've been staring at my screen for way too long. See you in a bit then?",
+        "tool_calls": [
+          {
+            "id": "call_izecmlue",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -14280,7 +14620,17 @@
       },
       {
         "role": "assistant",
-        "content": "Enjoy your meal! Talk to you later, okay?"
+        "content": "Enjoy your meal! Talk to you later, okay?",
+        "tool_calls": [
+          {
+            "id": "call_z0na20f4",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -18154,7 +18504,17 @@
       },
       {
         "role": "assistant",
-        "content": "Of course! Let me check that for you. I see your appointment is set for two."
+        "content": "Of course! Let me check that for you. I see your appointment is set for two.",
+        "tool_calls": [
+          {
+            "id": "call_x82o9qey",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -20176,17 +20536,7 @@
       },
       {
         "role": "assistant",
-        "content": "Okay, got it, five seven two zero four. Thanks for finding that. Just give me one moment here, I am going to see exactly why it got locked so we can get you sorted out.",
-        "tool_calls": [
-          {
-            "id": "call_yy12nqy9",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Okay, got it, five seven two zero four. Thanks for finding that. Just give me one moment here, I am going to see exactly why it got locked so we can get you sorted out."
       }
     ],
     "metadata": {
@@ -20618,17 +20968,7 @@
       },
       {
         "role": "assistant",
-        "content": "I completely understand. I am pulling up your account info as we speak, so let us see if we can get you back on track before your deadline hits.",
-        "tool_calls": [
-          {
-            "id": "call_x2xmtv50",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "I completely understand. I am pulling up your account info as we speak, so let us see if we can get you back on track before your deadline hits."
       }
     ],
     "metadata": {
@@ -20670,17 +21010,7 @@
       },
       {
         "role": "assistant",
-        "content": "Right, I am on it. I am pulling up your account now, and I promise I will do my absolute best to get you back online as fast as I possibly can. Let's see here, hmm, okay, I see a signal issue in your neighborhood.",
-        "tool_calls": [
-          {
-            "id": "call_n60i8auo",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Right, I am on it. I am pulling up your account now, and I promise I will do my absolute best to get you back online as fast as I possibly can. Let's see here, hmm, okay, I see a signal issue in your neighborhood."
       }
     ],
     "metadata": {
@@ -20918,17 +21248,7 @@
       },
       {
         "role": "assistant",
-        "content": "Right, let me pull that up. Hmm, okay, I see it here. It looks like it is actually just a few miles away at the local hub. It should be out for delivery first thing in the morning. I know that does not help for right now, but at least we know it is safe and almost there.",
-        "tool_calls": [
-          {
-            "id": "call_xn5gxvnt",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Right, let me pull that up. Hmm, okay, I see it here. It looks like it is actually just a few miles away at the local hub. It should be out for delivery first thing in the morning. I know that does not help for right now, but at least we know it is safe and almost there."
       }
     ],
     "metadata": {
@@ -21384,7 +21704,17 @@
       },
       {
         "role": "assistant",
-        "content": "Okay, thank you. Hmm, okay, I see your account right here. Let me take a closer look at the signal in your area. I'm going to do my absolute best to get you back online, okay?"
+        "content": "Okay, thank you. Hmm, okay, I see your account right here. Let me take a closer look at the signal in your area. I'm going to do my absolute best to get you back online, okay?",
+        "tool_calls": [
+          {
+            "id": "call_ywxxi2g6",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -21822,17 +22152,7 @@
       },
       {
         "role": "assistant",
-        "content": "I hear you, and I truly want to get this sorted out for you. Let me pull up your order number. It is just taking a second, hmm, here we go.",
-        "tool_calls": [
-          {
-            "id": "call_gw5lq6hk",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "I hear you, and I truly want to get this sorted out for you. Let me pull up your order number. It is just taking a second, hmm, here we go."
       }
     ],
     "metadata": {
@@ -22076,17 +22396,7 @@
       },
       {
         "role": "assistant",
-        "content": "Okay, thanks for that. Let me pull it up right now. Hmm, okay, I see what is happening here. Let me just take a quick look at the connection from our end.",
-        "tool_calls": [
-          {
-            "id": "call_g4jjqipq",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Okay, thanks for that. Let me pull it up right now. Hmm, okay, I see what is happening here. Let me just take a quick look at the connection from our end."
       }
     ],
     "metadata": {
@@ -22782,17 +23092,7 @@
       },
       {
         "role": "assistant",
-        "content": "Okay, thank you. I am pulling up your details now, and I promise I am going to do my absolute best to get this sorted out for you right away. Let us see what is going on here.",
-        "tool_calls": [
-          {
-            "id": "call_lwjppkm5",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Okay, thank you. I am pulling up your details now, and I promise I am going to do my absolute best to get this sorted out for you right away. Let us see what is going on here."
       }
     ],
     "metadata": {
@@ -23180,17 +23480,7 @@
       },
       {
         "role": "assistant",
-        "content": "Sure thing, let me take a quick look into that for you. Hang on just a sec.",
-        "tool_calls": [
-          {
-            "id": "call_rhvnss2d",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Sure thing, let me take a quick look into that for you. Hang on just a sec."
       }
     ],
     "metadata": {
@@ -23270,17 +23560,7 @@
       },
       {
         "role": "assistant",
-        "content": "Got it, seventy-six, nine, forty-two. Okay, let me pull that up for you real quick. Just one second.",
-        "tool_calls": [
-          {
-            "id": "call_7fa23ju7",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Got it, seventy-six, nine, forty-two. Okay, let me pull that up for you real quick. Just one second."
       }
     ],
     "metadata": {
@@ -23764,17 +24044,7 @@
       },
       {
         "role": "assistant",
-        "content": "Okay, right, let me pull that up for you. Give me just one second, hmm, okay, here we go.",
-        "tool_calls": [
-          {
-            "id": "call_vmigfyvp",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Okay, right, let me pull that up for you. Give me just one second, hmm, okay, here we go."
       }
     ],
     "metadata": {
@@ -24962,17 +25232,7 @@
       },
       {
         "role": "assistant",
-        "content": "Okay, right, I see. Let me pull that up for you. Just one second while I look into those dates.",
-        "tool_calls": [
-          {
-            "id": "call_llgmhky4",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Okay, right, I see. Let me pull that up for you. Just one second while I look into those dates."
       }
     ],
     "metadata": {
@@ -25256,17 +25516,7 @@
       },
       {
         "role": "assistant",
-        "content": "Ah, okay, that makes sense! You're looking for the printer drivers. Sure thing, I can definitely help you with that. Just let me pull that up for you.",
-        "tool_calls": [
-          {
-            "id": "call_w9aaqyhq",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Ah, okay, that makes sense! You're looking for the printer drivers. Sure thing, I can definitely help you with that. Just let me pull that up for you."
       }
     ],
     "metadata": {
@@ -25808,7 +26058,17 @@
       },
       {
         "role": "assistant",
-        "content": "Of course! You go take care of that. Just give me a ring whenever you are ready, I will be here."
+        "content": "Of course! You go take care of that. Just give me a ring whenever you are ready, I will be here.",
+        "tool_calls": [
+          {
+            "id": "call_a547eerq",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -27734,17 +27994,7 @@
       },
       {
         "role": "assistant",
-        "content": "Hmm, okay, let me look closer at that for you. I'm sorry if that's confusing, let me pull up the original request right now.",
-        "tool_calls": [
-          {
-            "id": "call_2z20vumc",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Hmm, okay, let me look closer at that for you. I'm sorry if that's confusing, let me pull up the original request right now."
       }
     ],
     "metadata": {
@@ -29100,17 +29350,7 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, my bad, I totally misheard you there. Sorry about that! Let me pull up order four zero two instead.",
-        "tool_calls": [
-          {
-            "id": "call_edsfgyhu",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Oh, my bad, I totally misheard you there. Sorry about that! Let me pull up order four zero two instead."
       }
     ],
     "metadata": {
@@ -29148,17 +29388,7 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, my bad! Sorry about that mix up. Let me look at four two one for you instead. Give me just a second.",
-        "tool_calls": [
-          {
-            "id": "call_11s5wclk",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Oh, my bad! Sorry about that mix up. Let me look at four two one for you instead. Give me just a second."
       }
     ],
     "metadata": {
@@ -29590,17 +29820,7 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, my bad, sorry about that. I think I had my wires crossed for a second. You said the coffee table, got it. Let me pull that up for you right now.",
-        "tool_calls": [
-          {
-            "id": "call_vu4onnxy",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Oh, my bad, sorry about that. I think I had my wires crossed for a second. You said the coffee table, got it. Let me pull that up for you right now."
       }
     ],
     "metadata": {
@@ -29744,17 +29964,7 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, my mistake, sorry about that! I must have misheard you. Let me fix that. Okay, so we are looking at the tenth of May instead. Let me pull those up for you now.",
-        "tool_calls": [
-          {
-            "id": "call_iyil8ik3",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Oh, my mistake, sorry about that! I must have misheard you. Let me fix that. Okay, so we are looking at the tenth of May instead. Let me pull those up for you now."
       }
     ],
     "metadata": {
@@ -30260,17 +30470,7 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, my bad! Sorry about that. Maple Avenue, right. Let me pull that up for you instead. Give me just a second.",
-        "tool_calls": [
-          {
-            "id": "call_5pjlb3m6",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Oh, my bad! Sorry about that. Maple Avenue, right. Let me pull that up for you instead. Give me just a second."
       }
     ],
     "metadata": {
@@ -30728,17 +30928,7 @@
       },
       {
         "role": "assistant",
-        "content": "Ah, my mistake! Sorry about that, I hear you now. Four hundred two. Let me pull that up for you, one second.",
-        "tool_calls": [
-          {
-            "id": "call_4fqmjshy",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Ah, my mistake! Sorry about that, I hear you now. Four hundred two. Let me pull that up for you, one second."
       }
     ],
     "metadata": {
@@ -30776,17 +30966,7 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, my mistake, sorry about that! Four zero two. Okay, let me pull that one up for you now. Hmm, let's see here.",
-        "tool_calls": [
-          {
-            "id": "call_2zug1tmp",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Oh, my mistake, sorry about that! Four zero two. Okay, let me pull that one up for you now. Hmm, let's see here."
       }
     ],
     "metadata": {
@@ -31324,17 +31504,7 @@
       },
       {
         "role": "assistant",
-        "content": "Oh, my mistake! Sorry about that. I think I was looking at the wrong screen for a second. You're totally right, the basic plan is twenty dollars. Let me pull that up for you instead.",
-        "tool_calls": [
-          {
-            "id": "call_zzrx37bz",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Oh, my mistake! Sorry about that. I think I was looking at the wrong screen for a second. You're totally right, the basic plan is twenty dollars. Let me pull that up for you instead."
       }
     ],
     "metadata": {
@@ -40640,17 +40810,7 @@
       },
       {
         "role": "assistant",
-        "content": "Perfect. I am looking for afternoon flights on June fifteenth now. Let me find you the best one.",
-        "tool_calls": [
-          {
-            "id": "call_gorcig9i",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Perfect. I am looking for afternoon flights on June fifteenth now. Let me find you the best one."
       }
     ],
     "metadata": {
@@ -48203,17 +48363,7 @@
       },
       {
         "role": "assistant",
-        "content": "Got it. Searching for two tickets to Mumbai for next week right away.",
-        "tool_calls": [
-          {
-            "id": "call_pn8n7e7y",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Got it. Searching for two tickets to Mumbai for next week right away."
       }
     ],
     "metadata": {

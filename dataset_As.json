@@ -661,7 +661,17 @@
       },
       {
         "role": "assistant",
-        "content": "কোনো কথা নাই। আপুনি চিন্তা নকৰিব। সকলো ঠিক হৈ যাব। এতিয়া যাওক, মই আপোনাক আকৌ ফোন কৰিম।"
+        "content": "কোনো কথা নাই। আপুনি চিন্তা নকৰিব। সকলো ঠিক হৈ যাব। এতিয়া যাওক, মই আপোনাক আকৌ ফোন কৰিম।",
+        "tool_calls": [
+          {
+            "id": "call_v3w9wtjf",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -3077,7 +3087,17 @@
       },
       {
         "role": "assistant",
-        "content": "কোনো কথা নাই! আপোনাৰ দিনটো ভাল যাওঁক। আকৌ কথা হ'ব।"
+        "content": "কোনো কথা নাই! আপোনাৰ দিনটো ভাল যাওঁক। আকৌ কথা হ'ব।",
+        "tool_calls": [
+          {
+            "id": "call_c8qmuhl4",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -3845,7 +3865,17 @@
       },
       {
         "role": "assistant",
-        "content": "ঠিক আছে, বাৰু। আপোনাৰ বিহুৰ বাবে বহুত শুভেচ্ছা থাকিল! আকৌ কথা হ'ব।"
+        "content": "ঠিক আছে, বাৰু। আপোনাৰ বিহুৰ বাবে বহুত শুভেচ্ছা থাকিল! আকৌ কথা হ'ব।",
+        "tool_calls": [
+          {
+            "id": "call_wy3jn6m0",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -5428,7 +5458,17 @@
       },
       {
         "role": "assistant",
-        "content": "কোনো কথা নাই। আপোনাৰ ৰান্ধনি ভাল হওক! আকৌ কথা হ'ব। বাই!"
+        "content": "কোনো কথা নাই। আপোনাৰ ৰান্ধনি ভাল হওক! আকৌ কথা হ'ব। বাই!",
+        "tool_calls": [
+          {
+            "id": "call_hh6o894r",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -6989,7 +7029,17 @@
       },
       {
         "role": "assistant",
-        "content": "আহ্, শুনিয়েই ভাল লাগিল! আচলতে, এনেকুৱা ঠাইবোৰ মনটো পোহৰ কৰি তোলে। ঠিকে আছে, আকৌ কথা হ'ব।"
+        "content": "আহ্, শুনিয়েই ভাল লাগিল! আচলতে, এনেকুৱা ঠাইবোৰ মনটো পোহৰ কৰি তোলে। ঠিকে আছে, আকৌ কথা হ'ব।",
+        "tool_calls": [
+          {
+            "id": "call_lou1k3qv",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -8371,7 +8421,17 @@
       },
       {
         "role": "assistant",
-        "content": "কোনো কথা নাই। আপোনাৰ ছোৱালীজনী সোনকালে সুস্থ হৈ উঠক, এই কামনা কৰো। আকৌ কথা হ'ব।"
+        "content": "কোনো কথা নাই। আপোনাৰ ছোৱালীজনী সোনকালে সুস্থ হৈ উঠক, এই কামনা কৰো। আকৌ কথা হ'ব।",
+        "tool_calls": [
+          {
+            "id": "call_p3mk5w1u",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -8643,7 +8703,17 @@
       },
       {
         "role": "assistant",
-        "content": "ঠিকে আছে। আপুনিও ভাল থাকক। বিহুৰ আনন্দ লওক। আকৌ কথা হ'ব। বাই বাই।"
+        "content": "ঠিকে আছে। আপুনিও ভাল থাকক। বিহুৰ আনন্দ লওক। আকৌ কথা হ'ব। বাই বাই।",
+        "tool_calls": [
+          {
+            "id": "call_k7t4vx4m",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -9149,7 +9219,17 @@
       },
       {
         "role": "assistant",
-        "content": "ঠিক আছে, আপুনিও ভাল থাকক। বিহুৰ বাবে আগতীয়াকৈ শুভেচ্ছা থাকিল। আকৌ কথা হ'ব। যাওক।"
+        "content": "ঠিক আছে, আপুনিও ভাল থাকক। বিহুৰ বাবে আগতীয়াকৈ শুভেচ্ছা থাকিল। আকৌ কথা হ'ব। যাওক।",
+        "tool_calls": [
+          {
+            "id": "call_gum6s2j6",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -9349,7 +9429,17 @@
       },
       {
         "role": "assistant",
-        "content": "ঠিকে আছে, বাৰু। আহক, আকৌ কথা হ'ব। বাই বাই!"
+        "content": "ঠিকে আছে, বাৰু। আহক, আকৌ কথা হ'ব। বাই বাই!",
+        "tool_calls": [
+          {
+            "id": "call_ps1opvjf",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -10459,7 +10549,17 @@
       },
       {
         "role": "assistant",
-        "content": "আচ্ছা। তেনেহ'লে বাৰু, মই আপোনাক কিছুমান companyৰ বিষয়ে জানিবলৈ দিওঁ। আকৌ কথা হ'ব।"
+        "content": "আচ্ছা। তেনেহ'লে বাৰু, মই আপোনাক কিছুমান companyৰ বিষয়ে জানিবলৈ দিওঁ। আকৌ কথা হ'ব।",
+        "tool_calls": [
+          {
+            "id": "call_th3h4dcm",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -10617,7 +10717,17 @@
       },
       {
         "role": "assistant",
-        "content": "কোনো কথা নাই। আপুনি ভালকৈ যাওঁক। আকৌ কথা হ'ব।"
+        "content": "কোনো কথা নাই। আপুনি ভালকৈ যাওঁক। আকৌ কথা হ'ব।",
+        "tool_calls": [
+          {
+            "id": "call_yxwajbpn",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -11450,7 +11560,17 @@
       },
       {
         "role": "assistant",
-        "content": "তোমাৰ কি সহায় কৰিব পাৰিলোঁ, সেইটো জানি ভাল লাগিল। বাৰু ৰাখোঁ। আকৌ কথা হ'ব।"
+        "content": "তোমাৰ কি সহায় কৰিব পাৰিলোঁ, সেইটো জানি ভাল লাগিল। বাৰু ৰাখোঁ। আকৌ কথা হ'ব।",
+        "tool_calls": [
+          {
+            "id": "call_a97ae7b8",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -12822,7 +12942,17 @@
       },
       {
         "role": "assistant",
-        "content": "বাৰু, কোনো কথা নাই! আপোনাৰ ভ্ৰমণৰ বাবে আগতীয়াকৈ শুভেচ্ছা থাকিল। আকৌ কথা হ'ব।"
+        "content": "বাৰু, কোনো কথা নাই! আপোনাৰ ভ্ৰমণৰ বাবে আগতীয়াকৈ শুভেচ্ছা থাকিল। আকৌ কথা হ'ব।",
+        "tool_calls": [
+          {
+            "id": "call_zwch844c",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -12904,7 +13034,17 @@
       },
       {
         "role": "assistant",
-        "content": "ঠিক আছে, ঠিকে আছে। ৰেচিপিটো বনাই শেষ হ'লে মোক ক'বচোন। বাই!"
+        "content": "ঠিক আছে, ঠিকে আছে। ৰেচিপিটো বনাই শেষ হ'লে মোক ক'বচোন। বাই!",
+        "tool_calls": [
+          {
+            "id": "call_r3m4oy26",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -13233,7 +13373,17 @@
       },
       {
         "role": "assistant",
-        "content": "ঠিকে আছে, বাই!"
+        "content": "ঠিকে আছে, বাই!",
+        "tool_calls": [
+          {
+            "id": "call_sx71i05v",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -15298,7 +15448,17 @@
       },
       {
         "role": "assistant",
-        "content": "কোনো কথা নাই! আপোনাৰ ভ্ৰমণটো বৰ ভাল হওক। আকৌ কথা হ'ব। বাই!"
+        "content": "কোনো কথা নাই! আপোনাৰ ভ্ৰমণটো বৰ ভাল হওক। আকৌ কথা হ'ব। বাই!",
+        "tool_calls": [
+          {
+            "id": "call_b2s97u8v",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -16207,7 +16367,17 @@
       },
       {
         "role": "assistant",
-        "content": "আপোনাকেও ধন্যবাদ। কোনো অসুবিধা হ'লে আকৌ কওক। যাওক, ভাল থাকক।"
+        "content": "আপোনাকেও ধন্যবাদ। কোনো অসুবিধা হ'লে আকৌ কওক। যাওক, ভাল থাকক।",
+        "tool_calls": [
+          {
+            "id": "call_0bgbxpkw",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -16348,7 +16518,17 @@
       },
       {
         "role": "assistant",
-        "content": "আকৌ কওক! ভাল লাগিল আপোনাৰ লগত কথা পাতি। ঠিক আছে, ৰাখোঁ তেন্তে। সোনকালে কথা হ'ব।"
+        "content": "আকৌ কওক! ভাল লাগিল আপোনাৰ লগত কথা পাতি। ঠিক আছে, ৰাখোঁ তেন্তে। সোনকালে কথা হ'ব।",
+        "tool_calls": [
+          {
+            "id": "call_kiew5y7q",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -16398,7 +16578,17 @@
       },
       {
         "role": "assistant",
-        "content": "খুব ভাল কথা। আপুনি চেষ্টা কৰক। ভাল লাগিব নিশ্চয়। ঠিকে আছে, বাই। আকৌ কথা হ'ব।"
+        "content": "খুব ভাল কথা। আপুনি চেষ্টা কৰক। ভাল লাগিব নিশ্চয়। ঠিকে আছে, বাই। আকৌ কথা হ'ব।",
+        "tool_calls": [
+          {
+            "id": "call_oqh8a5bx",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -16472,7 +16662,17 @@
       },
       {
         "role": "assistant",
-        "content": "কোনো কথা নাই। আপুনি মনটো নকৰিব। আকৌ কথা হ'ব। ৰাখোঁ বাৰু।"
+        "content": "কোনো কথা নাই। আপুনি মনটো নকৰিব। আকৌ কথা হ'ব। ৰাখোঁ বাৰু।",
+        "tool_calls": [
+          {
+            "id": "call_r3yjjlr7",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -17296,7 +17496,17 @@
       },
       {
         "role": "assistant",
-        "content": "খুব ভাল কথা! কোনো কথা নাই। আকৌ ক'ৰাৱা লাগিলে ক'ব। এতিয়া বাৰু ৰাখোঁ। ভাল থাকক!"
+        "content": "খুব ভাল কথা! কোনো কথা নাই। আকৌ ক'ৰাৱা লাগিলে ক'ব। এতিয়া বাৰু ৰাখোঁ। ভাল থাকক!",
+        "tool_calls": [
+          {
+            "id": "call_bi25v7fv",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -17467,7 +17677,17 @@
       },
       {
         "role": "assistant",
-        "content": "ঠিকে আছে, যাওক। সাৱধান থাকিব। বাই বাই।"
+        "content": "ঠিকে আছে, যাওক। সাৱধান থাকিব। বাই বাই।",
+        "tool_calls": [
+          {
+            "id": "call_l4bkfw81",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -19166,7 +19386,17 @@
       },
       {
         "role": "assistant",
-        "content": "কোনো কথা নাই। আপোনাৰ যাত্ৰা শুভ হওক! দেৱীৰ আশীৰ্বাদ আপোনাৰ লগত থাকক। আকৌ কথা হ'ব। যাওক।"
+        "content": "কোনো কথা নাই। আপোনাৰ যাত্ৰা শুভ হওক! দেৱীৰ আশীৰ্বাদ আপোনাৰ লগত থাকক। আকৌ কথা হ'ব। যাওক।",
+        "tool_calls": [
+          {
+            "id": "call_mpvts1vh",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -24303,7 +24533,17 @@
       },
       {
         "role": "assistant",
-        "content": "আপোনাৰ স্বাগতম! যদি কিবা লাগিলে মোক জনাব। ভাল থাকক।"
+        "content": "আপোনাৰ স্বাগতম! যদি কিবা লাগিলে মোক জনাব। ভাল থাকক।",
+        "tool_calls": [
+          {
+            "id": "call_wm7vq56s",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -25460,17 +25700,7 @@
       },
       {
         "role": "assistant",
-        "content": "ধন্যবাদ খবৰটো দিয়াৰ বাবে। মই এতিয়া সেইখিনিকে চাওঁ।",
-        "tool_calls": [
-          {
-            "id": "call_rw6mnkpq",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "ধন্যবাদ খবৰটো দিয়াৰ বাবে। মই এতিয়া সেইখিনিকে চাওঁ।"
       }
     ],
     "metadata": {
@@ -31110,7 +31340,17 @@
       },
       {
         "role": "assistant",
-        "content": "ঠিকে আছে। আকৌ কথা হ'ব। বাই!"
+        "content": "ঠিকে আছে। আকৌ কথা হ'ব। বাই!",
+        "tool_calls": [
+          {
+            "id": "call_3yb3qqs6",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -32941,17 +33181,7 @@
       },
       {
         "role": "assistant",
-        "content": "এক ছেকেণ্ড ৰহক, মই লৈছো। XYZ-one two three নম্বৰটোৰ অৰ্ডাৰটোৰ বিষয়ে কিবা তথ্য আছে নেকি চাওঁ। আপোনাৰ লগত কথা পাতি ভাল লাগিল, ধন্যবাদ।",
-        "tool_calls": [
-          {
-            "id": "call_xoz6kheo",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "এক ছেকেণ্ড ৰহক, মই লৈছো। XYZ-one two three নম্বৰটোৰ অৰ্ডাৰটোৰ বিষয়ে কিবা তথ্য আছে নেকি চাওঁ। আপোনাৰ লগত কথা পাতি ভাল লাগিল, ধন্যবাদ।"
       }
     ],
     "metadata": {
@@ -34696,7 +34926,17 @@
       },
       {
         "role": "assistant",
-        "content": "ভাল লাগিল শুনি। ঠিকে আছে। আকৌ কথা হ'ব। বাৰু ৰাখোঁ।"
+        "content": "ভাল লাগিল শুনি। ঠিকে আছে। আকৌ কথা হ'ব। বাৰু ৰাখোঁ।",
+        "tool_calls": [
+          {
+            "id": "call_32gsrhzy",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -34828,7 +35068,17 @@
       },
       {
         "role": "assistant",
-        "content": "ঠিক আছে, কোনো অসুবিধা নাই। আপোনাৰ দিনটো ভাল যাওঁক। আকৌ কথা হ'ব।"
+        "content": "ঠিক আছে, কোনো অসুবিধা নাই। আপোনাৰ দিনটো ভাল যাওঁক। আকৌ কথা হ'ব।",
+        "tool_calls": [
+          {
+            "id": "call_ycipgqbl",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -35167,7 +35417,17 @@
       },
       {
         "role": "assistant",
-        "content": "কোনো কথা নাই। আপোনাৰ appraisal ভালেই হওক, এই কামনা কৰো। আকৌ কথা হ'ব। যাওক।"
+        "content": "কোনো কথা নাই। আপোনাৰ appraisal ভালেই হওক, এই কামনা কৰো। আকৌ কথা হ'ব। যাওক।",
+        "tool_calls": [
+          {
+            "id": "call_bn7ex65o",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -35723,7 +35983,17 @@
       },
       {
         "role": "assistant",
-        "content": "বাৰু, আপোনাৰ কেনাকাটা ভাল হওক! এতিয়া ৰাখোঁ। আকৌ কথা হ'ব।"
+        "content": "বাৰু, আপোনাৰ কেনাকাটা ভাল হওক! এতিয়া ৰাখোঁ। আকৌ কথা হ'ব।",
+        "tool_calls": [
+          {
+            "id": "call_2btjzvrg",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -36428,7 +36698,17 @@
       },
       {
         "role": "assistant",
-        "content": "বাৰু, ঠিকে আছে। আপোনাৰ দাদাক সোনকালে ফোন কৰিব। আকৌ কথা হ'ব।"
+        "content": "বাৰু, ঠিকে আছে। আপোনাৰ দাদাক সোনকালে ফোন কৰিব। আকৌ কথা হ'ব।",
+        "tool_calls": [
+          {
+            "id": "call_0odg2av7",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -38180,7 +38460,17 @@
       },
       {
         "role": "assistant",
-        "content": "কোনো অসুবিধা নাই। আপোনাক সহায় কৰি ভাল লাগিল। আকৌ কথা হ'ব। বাৰু, এতিয়া যাওক।"
+        "content": "কোনো অসুবিধা নাই। আপোনাক সহায় কৰি ভাল লাগিল। আকৌ কথা হ'ব। বাৰু, এতিয়া যাওক।",
+        "tool_calls": [
+          {
+            "id": "call_ktovrzcv",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -39151,7 +39441,17 @@
       },
       {
         "role": "assistant",
-        "content": "ঠিকে আছে, বাই।"
+        "content": "ঠিকে আছে, বাই।",
+        "tool_calls": [
+          {
+            "id": "call_8l0dknh1",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -40712,7 +41012,17 @@
       },
       {
         "role": "assistant",
-        "content": "আৰে, কি কয়! আপোনাক সহায় কৰিব পাই ভাল লাগিল। আকৌ কথা হ'ব। বাৰু, ৰাখোঁ।"
+        "content": "আৰে, কি কয়! আপোনাক সহায় কৰিব পাই ভাল লাগিল। আকৌ কথা হ'ব। বাৰু, ৰাখোঁ।",
+        "tool_calls": [
+          {
+            "id": "call_lkolvov7",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -41534,7 +41844,17 @@
       },
       {
         "role": "assistant",
-        "content": "ঠিকে আছে। আপোনাৰ কাৰণে মই সদায় আছোঁ। বাই।"
+        "content": "ঠিকে আছে। আপোনাৰ কাৰণে মই সদায় আছোঁ। বাই।",
+        "tool_calls": [
+          {
+            "id": "call_cx72nree",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -43339,7 +43659,17 @@
       },
       {
         "role": "assistant",
-        "content": "ঠিক আছে, চিন্তা নকৰিব। যিহেতু এটা ডাঙৰ অনুষ্ঠান, হয়তো আন কোনোবাইও নামটো জানিব। কাইলৈ গৈয়েই সোধিব পাৰিব।"
+        "content": "ঠিক আছে, চিন্তা নকৰিব। যিহেতু এটা ডাঙৰ অনুষ্ঠান, হয়তো আন কোনোবাইও নামটো জানিব। কাইলৈ গৈয়েই সোধিব পাৰিব।",
+        "tool_calls": [
+          {
+            "id": "call_ow06j58c",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -46455,7 +46785,17 @@
       },
       {
         "role": "assistant",
-        "content": "নাই কিয়! আপোনাৰ সহায় কৰিব পাই সুখী হ'লো। ভাল থাকক!"
+        "content": "নাই কিয়! আপোনাৰ সহায় কৰিব পাই সুখী হ'লো। ভাল থাকক!",
+        "tool_calls": [
+          {
+            "id": "call_vwd47mve",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -48270,7 +48610,17 @@
       },
       {
         "role": "assistant",
-        "content": "কোনো কথা নাই! ভাল লাগিল কথা পাতি। আকৌ কথা হ'ব।"
+        "content": "কোনো কথা নাই! ভাল লাগিল কথা পাতি। আকৌ কথা হ'ব।",
+        "tool_calls": [
+          {
+            "id": "call_ma6v9ol4",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -49556,7 +49906,17 @@
       },
       {
         "role": "assistant",
-        "content": "কোনো কথা নাই। আপোনাৰ ভৱিষ্যতৰ বাবে শুভকামনা। আকৌ কথা হ'ব।"
+        "content": "কোনো কথা নাই। আপোনাৰ ভৱিষ্যতৰ বাবে শুভকামনা। আকৌ কথা হ'ব।",
+        "tool_calls": [
+          {
+            "id": "call_fod2svh6",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -50980,7 +51340,17 @@
       },
       {
         "role": "assistant",
-        "content": "কোনো কথা নাই। আপোনাৰ যাত্ৰা শুভ হওক! আকৌ কথা হ'ব। ৰাখোঁ বাৰু।"
+        "content": "কোনো কথা নাই। আপোনাৰ যাত্ৰা শুভ হওক! আকৌ কথা হ'ব। ৰাখোঁ বাৰু।",
+        "tool_calls": [
+          {
+            "id": "call_uvhh08si",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -54435,7 +54805,17 @@
       },
       {
         "role": "assistant",
-        "content": "কোনো কথা নাই। ভাল লাগিল আপোনাৰ সৈতে কথা পাতি। আকৌ কথা হ'ব।"
+        "content": "কোনো কথা নাই। ভাল লাগিল আপোনাৰ সৈতে কথা পাতি। আকৌ কথা হ'ব।",
+        "tool_calls": [
+          {
+            "id": "call_29dm085b",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -57800,7 +58180,17 @@
       },
       {
         "role": "assistant",
-        "content": "কোনো কথা নাই। আপোনাৰ কিবা সহায় লাগিলে আকৌ ফোন কৰিব। বাই বাই।"
+        "content": "কোনো কথা নাই। আপোনাৰ কিবা সহায় লাগিলে আকৌ ফোন কৰিব। বাই বাই।",
+        "tool_calls": [
+          {
+            "id": "call_kc8g5b95",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -62788,7 +63178,17 @@
       },
       {
         "role": "assistant",
-        "content": "মোৰো আপোনাৰ সৈতে কথা পাতি বৰ ভাল লাগিল। সময় লৈয়ে চিন্তা কৰক। ঠিকে আছে, আকৌ কথা হ'ব। বাই।"
+        "content": "মোৰো আপোনাৰ সৈতে কথা পাতি বৰ ভাল লাগিল। সময় লৈয়ে চিন্তা কৰক। ঠিকে আছে, আকৌ কথা হ'ব। বাই।",
+        "tool_calls": [
+          {
+            "id": "call_hgc1t6aa",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -63091,7 +63491,17 @@
       },
       {
         "role": "assistant",
-        "content": "ঠিক আছে hailede। ভাল থাকিবা। আকৌ কথা হ'ব। বাই!"
+        "content": "ঠিক আছে hailede। ভাল থাকিবা। আকৌ কথা হ'ব। বাই!",
+        "tool_calls": [
+          {
+            "id": "call_ymbwc4e0",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {

@@ -5485,7 +5485,17 @@
       },
       {
         "role": "assistant",
-        "content": "आपण त्याच कॅफेमध्ये भेटूया जिथे आपण नेहमी जातो. काय म्हणतोस?"
+        "content": "आपण त्याच कॅफेमध्ये भेटूया जिथे आपण नेहमी जातो. काय म्हणतोस?",
+        "tool_calls": [
+          {
+            "id": "call_ix494bu9",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -5975,17 +5985,7 @@
       },
       {
         "role": "assistant",
-        "content": "हां, चालेल! ठीक आहे, मग मी वाट बघतो हा. काळजी घे तुझी.",
-        "tool_calls": [
-          {
-            "id": "call_cg7pu8z1",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "हां, चालेल! ठीक आहे, मग मी वाट बघतो हा. काळजी घे तुझी."
       }
     ],
     "metadata": {
@@ -9947,7 +9947,17 @@
       },
       {
         "role": "assistant",
-        "content": "हो, नक्की! बरं तर मग, ठेवतो आता?"
+        "content": "हो, नक्की! बरं तर मग, ठेवतो आता?",
+        "tool_calls": [
+          {
+            "id": "call_5uzqaqk8",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -10805,17 +10815,7 @@
       },
       {
         "role": "assistant",
-        "content": "ठिक आहे, मग सात वाजता भेटूया. मी तिथेच वाट बघतो तुझी, काळजी घे!",
-        "tool_calls": [
-          {
-            "id": "call_vawhwii5",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "ठिक आहे, मग सात वाजता भेटूया. मी तिथेच वाट बघतो तुझी, काळजी घे!"
       }
     ],
     "metadata": {
@@ -11017,7 +11017,17 @@
       },
       {
         "role": "assistant",
-        "content": "हो, माझं पण तेच! दिवसभर कामातच जातोय. पण ठीक आहे, कधीतरी निवांत भेटूया आपण, चालेल?"
+        "content": "हो, माझं पण तेच! दिवसभर कामातच जातोय. पण ठीक आहे, कधीतरी निवांत भेटूया आपण, चालेल?",
+        "tool_calls": [
+          {
+            "id": "call_lf89fqky",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -11753,7 +11763,17 @@
       },
       {
         "role": "assistant",
-        "content": "खूपच छान! मग उद्या भेटूया का मग?"
+        "content": "खूपच छान! मग उद्या भेटूया का मग?",
+        "tool_calls": [
+          {
+            "id": "call_6o3iffrp",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -11915,7 +11935,17 @@
       },
       {
         "role": "assistant",
-        "content": "ठीक आहे, मग आता मी ठेवतो का? पुन्हा निवांत गप्पा मारूया आपण, चालेल?"
+        "content": "ठीक आहे, मग आता मी ठेवतो का? पुन्हा निवांत गप्पा मारूया आपण, चालेल?",
+        "tool_calls": [
+          {
+            "id": "call_lpv0za12",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -12381,7 +12411,17 @@
       },
       {
         "role": "assistant",
-        "content": "अरे, यात थँक्स कशाला? आपण मित्र आहोत ना! मग उद्या भेटूया का मग?"
+        "content": "अरे, यात थँक्स कशाला? आपण मित्र आहोत ना! मग उद्या भेटूया का मग?",
+        "tool_calls": [
+          {
+            "id": "call_7f53g3cu",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -20846,17 +20886,7 @@
       },
       {
         "role": "assistant",
-        "content": "बरं, मिळाला मला तुमचा आयडी. थांबा एक मिनिट, मी सिस्टिम चेक करतोय... हो, इथे तांत्रिक अडचण दिसतेय. तुम्ही काळजी करू नका, हे मी पाच मिनिटांत ठीक करून देतो, मग तुम्ही सहज बिल भरू शकाल.",
-        "tool_calls": [
-          {
-            "id": "call_28023k9d",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "बरं, मिळाला मला तुमचा आयडी. थांबा एक मिनिट, मी सिस्टिम चेक करतोय... हो, इथे तांत्रिक अडचण दिसतेय. तुम्ही काळजी करू नका, हे मी पाच मिनिटांत ठीक करून देतो, मग तुम्ही सहज बिल भरू शकाल."
       }
     ],
     "metadata": {
@@ -21000,17 +21030,7 @@
       },
       {
         "role": "assistant",
-        "content": "हो, मी लगेच बघतोय. मला फक्त दोन मिनिटं द्या, आपण हे नक्कीच सोडवूया, काळजी नको करू.",
-        "tool_calls": [
-          {
-            "id": "call_490eqptu",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "हो, मी लगेच बघतोय. मला फक्त दोन मिनिटं द्या, आपण हे नक्कीच सोडवूया, काळजी नको करू."
       }
     ],
     "metadata": {
@@ -21146,17 +21166,7 @@
       },
       {
         "role": "assistant",
-        "content": "धन्यवाद. हो, मिळाला नंबर. बरं, आता मी सिस्टिममध्ये चेक करतोय. काळजी करू नका, मी बघतोय काय झालंय ते.",
-        "tool_calls": [
-          {
-            "id": "call_x9rinx4l",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "धन्यवाद. हो, मिळाला नंबर. बरं, आता मी सिस्टिममध्ये चेक करतोय. काळजी करू नका, मी बघतोय काय झालंय ते."
       }
     ],
     "metadata": {
@@ -21250,17 +21260,7 @@
       },
       {
         "role": "assistant",
-        "content": "बरं, धन्यवाद. फक्त एक मिनिट थांबा, मी सिस्टीममध्ये बघतोय. हा, इथं थोडी तांत्रिक अडचण दिसतेय, मी आताच हे ठीक करतो, तुम्ही अजिबात टेन्शन घेऊ नका.",
-        "tool_calls": [
-          {
-            "id": "call_l7cgq7wt",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "बरं, धन्यवाद. फक्त एक मिनिट थांबा, मी सिस्टीममध्ये बघतोय. हा, इथं थोडी तांत्रिक अडचण दिसतेय, मी आताच हे ठीक करतो, तुम्ही अजिबात टेन्शन घेऊ नका."
       }
     ],
     "metadata": {
@@ -21354,17 +21354,7 @@
       },
       {
         "role": "assistant",
-        "content": "ठीक आहे, मी समजतोय तुमची अडचण. मी आताच तुमच्या खात्याची माहिती चेक करतो, तुम्ही फक्त एक मिनिट थांबा हां.",
-        "tool_calls": [
-          {
-            "id": "call_wq5zh3e2",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "ठीक आहे, मी समजतोय तुमची अडचण. मी आताच तुमच्या खात्याची माहिती चेक करतो, तुम्ही फक्त एक मिनिट थांबा हां."
       }
     ],
     "metadata": {
@@ -21414,7 +21404,17 @@
       },
       {
         "role": "assistant",
-        "content": "हो, अगदी नक्की. मी स्वतः लक्ष ठेवतेय यावर. टेन्शन नको घेऊ, आता सगळं नीट होईल. अजून काही हवंय का तुम्हाला?"
+        "content": "हो, अगदी नक्की. मी स्वतः लक्ष ठेवतेय यावर. टेन्शन नको घेऊ, आता सगळं नीट होईल. अजून काही हवंय का तुम्हाला?",
+        "tool_calls": [
+          {
+            "id": "call_ajbb14w4",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -21684,17 +21684,7 @@
       },
       {
         "role": "assistant",
-        "content": "बरं, पाचशे सत्तर रुपये. मी आताच सिस्टिममध्ये बघतो. घाबरू नका, मी हे लगेच नीट करून देतो. तुम्ही फक्त दोन मिनिटं थांबा, मी चेक करतोय.",
-        "tool_calls": [
-          {
-            "id": "call_kblxng5x",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "बरं, पाचशे सत्तर रुपये. मी आताच सिस्टिममध्ये बघतो. घाबरू नका, मी हे लगेच नीट करून देतो. तुम्ही फक्त दोन मिनिटं थांबा, मी चेक करतोय."
       }
     ],
     "metadata": {
@@ -21788,7 +21778,17 @@
       },
       {
         "role": "assistant",
-        "content": "नक्कीच, मी जबाबदारी घेतो. मी आत्ताच्या आत्ता ट्रॅक करतोय, तुम्ही काळजी करू नका. मी तुम्हाला पाच मिनिटांत परत फोन करतो, ठीक आहे?"
+        "content": "नक्कीच, मी जबाबदारी घेतो. मी आत्ताच्या आत्ता ट्रॅक करतोय, तुम्ही काळजी करू नका. मी तुम्हाला पाच मिनिटांत परत फोन करतो, ठीक आहे?",
+        "tool_calls": [
+          {
+            "id": "call_suo72ct8",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -21916,17 +21916,7 @@
       },
       {
         "role": "assistant",
-        "content": "आभारी आहे. थोडा वेळ थांबा, मी बघतोय काय प्रॉब्लेम आहे. काळजी करू नका, आपण नक्कीच काहीतरी मार्ग काढू.",
-        "tool_calls": [
-          {
-            "id": "call_ijhuu3dr",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "आभारी आहे. थोडा वेळ थांबा, मी बघतोय काय प्रॉब्लेम आहे. काळजी करू नका, आपण नक्कीच काहीतरी मार्ग काढू."
       }
     ],
     "metadata": {
@@ -22428,17 +22418,7 @@
       },
       {
         "role": "assistant",
-        "content": "हां, मिळाला नंबर. थांबा एक मिनिट. हो, दिसतय मला. अरे, डिलिव्हरी बॉयची गाडी थोडी खराब झाली होती म्हणून उशीर झालाय. पण काळजी करू नका, मी आत्ताच बोलतो त्यांच्याशी, आज संध्याकाळपर्यंत तुमचं पार्सल नक्की पोहोचेल.",
-        "tool_calls": [
-          {
-            "id": "call_m60hd3jw",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "हां, मिळाला नंबर. थांबा एक मिनिट. हो, दिसतय मला. अरे, डिलिव्हरी बॉयची गाडी थोडी खराब झाली होती म्हणून उशीर झालाय. पण काळजी करू नका, मी आत्ताच बोलतो त्यांच्याशी, आज संध्याकाळपर्यंत तुमचं पार्सल नक्की पोहोचेल."
       }
     ],
     "metadata": {
@@ -22584,17 +22564,7 @@
       },
       {
         "role": "assistant",
-        "content": "हो, नक्की. मी ट्रॅकिंग बघतोय... अरे, इथं काही तांत्रिक अडचण दिसतेय. काळजी करू नका, मी आत्ताच्या आत्ता दुसरं काहीतरी करतो जेणेकरून तुम्हाला पंधरा मिनिटांत जेवण मिळेल.",
-        "tool_calls": [
-          {
-            "id": "call_983xkg8k",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "हो, नक्की. मी ट्रॅकिंग बघतोय... अरे, इथं काही तांत्रिक अडचण दिसतेय. काळजी करू नका, मी आत्ताच्या आत्ता दुसरं काहीतरी करतो जेणेकरून तुम्हाला पंधरा मिनिटांत जेवण मिळेल."
       }
     ],
     "metadata": {
@@ -22868,17 +22838,7 @@
       },
       {
         "role": "assistant",
-        "content": "बरं, आठ नऊ चार पाच सहा... हा नंबर मिळाला मला. थांबा, मी लगेच खात्री करतोय. घाबरू नका, मी बघतोय हे का अडकलंय ते, आपण आजच हे ठीक करून घेऊ.",
-        "tool_calls": [
-          {
-            "id": "call_j5grpt6g",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "बरं, आठ नऊ चार पाच सहा... हा नंबर मिळाला मला. थांबा, मी लगेच खात्री करतोय. घाबरू नका, मी बघतोय हे का अडकलंय ते, आपण आजच हे ठीक करून घेऊ."
       }
     ],
     "metadata": {
@@ -23066,17 +23026,7 @@
       },
       {
         "role": "assistant",
-        "content": "नक्कीच, मी पूर्ण प्रयत्न करतोय. मला फक्त एक मिनिट द्या, मी तुमचं पार्सल कुठे आहे ते शोधून सांगतो. काळजी करू नका, मी मदत करतोय.",
-        "tool_calls": [
-          {
-            "id": "call_1jmjvodn",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "नक्कीच, मी पूर्ण प्रयत्न करतोय. मला फक्त एक मिनिट द्या, मी तुमचं पार्सल कुठे आहे ते शोधून सांगतो. काळजी करू नका, मी मदत करतोय."
       }
     ],
     "metadata": {
@@ -23298,17 +23248,7 @@
       },
       {
         "role": "assistant",
-        "content": "हो, नक्कीच. मी हे प्राधान्याने बघतोय. तुम्ही इतका वेळ संयम ठेवलात त्याबद्दल धन्यवाद, आपण हे नक्कीच सोडवू.",
-        "tool_calls": [
-          {
-            "id": "call_k1hfoebd",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "हो, नक्कीच. मी हे प्राधान्याने बघतोय. तुम्ही इतका वेळ संयम ठेवलात त्याबद्दल धन्यवाद, आपण हे नक्कीच सोडवू."
       }
     ],
     "metadata": {
@@ -23478,17 +23418,7 @@
       },
       {
         "role": "assistant",
-        "content": "बरं, धन्यवाद. फक्त एक मिनिट थांबा, मी तपासून पाहतो. तुम्ही खूप संयम ठेवलात, त्याबद्दल खरंच आभार.",
-        "tool_calls": [
-          {
-            "id": "call_3dkiw7ow",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "बरं, धन्यवाद. फक्त एक मिनिट थांबा, मी तपासून पाहतो. तुम्ही खूप संयम ठेवलात, त्याबद्दल खरंच आभार."
       }
     ],
     "metadata": {
@@ -23530,17 +23460,7 @@
       },
       {
         "role": "assistant",
-        "content": "बरं, धन्यवाद. मी लगेच चेक करतोय. फक्त एक मिनिट द्या मला, मी सगळी माहिती तपासून तुम्हाला सांगतो काय झालंय ते.",
-        "tool_calls": [
-          {
-            "id": "call_cvc9jtmo",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "बरं, धन्यवाद. मी लगेच चेक करतोय. फक्त एक मिनिट द्या मला, मी सगळी माहिती तपासून तुम्हाला सांगतो काय झालंय ते."
       }
     ],
     "metadata": {
@@ -23756,17 +23676,7 @@
       },
       {
         "role": "assistant",
-        "content": "बरं ठीक आहे, समजलं मला. सकाळी सहा वाजताची पुणे स्टेशनची गाडी बघतो मी. थोडा वेळ थांबा हा.",
-        "tool_calls": [
-          {
-            "id": "call_0xrzdm4x",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "बरं ठीक आहे, समजलं मला. सकाळी सहा वाजताची पुणे स्टेशनची गाडी बघतो मी. थोडा वेळ थांबा हा."
       }
     ],
     "metadata": {
@@ -23990,17 +23900,7 @@
       },
       {
         "role": "assistant",
-        "content": "हो, नक्कीच! बरं झालं विचारलंत. मी तुम्हाला जवळच्या भाजीवाल्याचा नंबर देते, एक मिनिट थांबा हां.",
-        "tool_calls": [
-          {
-            "id": "call_kpkaeep4",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "हो, नक्कीच! बरं झालं विचारलंत. मी तुम्हाला जवळच्या भाजीवाल्याचा नंबर देते, एक मिनिट थांबा हां."
       }
     ],
     "metadata": {
@@ -24160,17 +24060,7 @@
       },
       {
         "role": "assistant",
-        "content": "ठीक आहे, मी बघते. एक मिनिट थांबा बरं का.",
-        "tool_calls": [
-          {
-            "id": "call_rix5utqn",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "ठीक आहे, मी बघते. एक मिनिट थांबा बरं का."
       }
     ],
     "metadata": {
@@ -25572,17 +25462,7 @@
       },
       {
         "role": "assistant",
-        "content": "बरं, काळजी नको करू. मी चेक करते, एक मिनिट थांबा हां.",
-        "tool_calls": [
-          {
-            "id": "call_m67wu6ie",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "बरं, काळजी नको करू. मी चेक करते, एक मिनिट थांबा हां."
       }
     ],
     "metadata": {
@@ -25970,7 +25850,17 @@
       },
       {
         "role": "assistant",
-        "content": "बरं, दोन वाजेपर्यंत नक्कीच होईल. मी उद्या दुपारी एक वाजताची वेळ ठेवते, चालेल ना तुम्हाला?"
+        "content": "बरं, दोन वाजेपर्यंत नक्कीच होईल. मी उद्या दुपारी एक वाजताची वेळ ठेवते, चालेल ना तुम्हाला?",
+        "tool_calls": [
+          {
+            "id": "call_fxmwhtpv",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -28960,17 +28850,7 @@
       },
       {
         "role": "assistant",
-        "content": "बरं ठीक आहे, मी पुन्हा एकदा बघतो, कदाचित काही तांत्रिक अडचण असेल, मी पाच मिनिटांत परत पाठवतो—",
-        "tool_calls": [
-          {
-            "id": "call_yjuxum4t",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "बरं ठीक आहे, मी पुन्हा एकदा बघतो, कदाचित काही तांत्रिक अडचण असेल, मी पाच मिनिटांत परत पाठवतो—"
       },
       {
         "role": "user",
@@ -29410,17 +29290,7 @@
       },
       {
         "role": "assistant",
-        "content": "नक्कीच, मी आत्ताच ट्रॅकिंग टीमला फोन करून कळवतो की ते लवकरात लवकर पोहोचवावं. काळजी करू नका, मी बघतोय.",
-        "tool_calls": [
-          {
-            "id": "call_aelv1sk2",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "नक्कीच, मी आत्ताच ट्रॅकिंग टीमला फोन करून कळवतो की ते लवकरात लवकर पोहोचवावं. काळजी करू नका, मी बघतोय."
       }
     ],
     "metadata": {
@@ -29768,7 +29638,17 @@
       },
       {
         "role": "assistant",
-        "content": "नक्कीच, मी आत्ताच बघतो आणि तुला पाच मिनिटांत परत फोन करतो, ठीक आहे?"
+        "content": "नक्कीच, मी आत्ताच बघतो आणि तुला पाच मिनिटांत परत फोन करतो, ठीक आहे?",
+        "tool_calls": [
+          {
+            "id": "call_14cuug4r",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -29814,17 +29694,7 @@
       },
       {
         "role": "assistant",
-        "content": "नक्कीच, मी लगेच बघतो आणि तुम्हाला पाच मिनिटांत अपडेट देतो.",
-        "tool_calls": [
-          {
-            "id": "call_xg12hiik",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "नक्कीच, मी लगेच बघतो आणि तुम्हाला पाच मिनिटांत अपडेट देतो."
       }
     ],
     "metadata": {
@@ -33406,7 +33276,17 @@
       },
       {
         "role": "assistant",
-        "content": "हो समीरजी, मी स्वतः लक्ष ठेवतोय की उद्या दुपारपर्यंत तुमचं पार्सल तुम्हाला मिळेल. अजून काही मदत हवी आहे का तुम्हाला?"
+        "content": "हो समीरजी, मी स्वतः लक्ष ठेवतोय की उद्या दुपारपर्यंत तुमचं पार्सल तुम्हाला मिळेल. अजून काही मदत हवी आहे का तुम्हाला?",
+        "tool_calls": [
+          {
+            "id": "call_mvp5b02p",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -33552,7 +33432,17 @@
       },
       {
         "role": "assistant",
-        "content": "छान! मग काळजी घ्या आणि काम झाल्यावर मला सांगा, आपण नंतर बोलूया का?"
+        "content": "छान! मग काळजी घ्या आणि काम झाल्यावर मला सांगा, आपण नंतर बोलूया का?",
+        "tool_calls": [
+          {
+            "id": "call_n01w3u9s",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -34930,17 +34820,7 @@
       },
       {
         "role": "assistant",
-        "content": "Got it. I will look for one ticket to Mumbai for tomorrow. Just a second.",
-        "tool_calls": [
-          {
-            "id": "call_9avth73l",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Got it. I will look for one ticket to Mumbai for tomorrow. Just a second."
       }
     ],
     "metadata": {
@@ -35540,17 +35420,7 @@
       },
       {
         "role": "assistant",
-        "content": "Got it. Let me pull that up for you. One moment please.",
-        "tool_calls": [
-          {
-            "id": "call_ip7f94xx",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Got it. Let me pull that up for you. One moment please."
       }
     ],
     "metadata": {
@@ -36623,17 +36493,7 @@
       },
       {
         "role": "assistant",
-        "content": "Thanks. Give me just a second while I pull that up for you.",
-        "tool_calls": [
-          {
-            "id": "call_uymbs9rt",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Thanks. Give me just a second while I pull that up for you."
       }
     ],
     "metadata": {
@@ -43007,17 +42867,7 @@
       },
       {
         "role": "assistant",
-        "content": "हो, नक्कीच! मी बघते तुमची कालची ऑर्डर. फक्त एक मिनिट थांबा हां.",
-        "tool_calls": [
-          {
-            "id": "call_sbj29f6v",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "हो, नक्कीच! मी बघते तुमची कालची ऑर्डर. फक्त एक मिनिट थांबा हां."
       }
     ],
     "metadata": {
@@ -43199,7 +43049,17 @@
       },
       {
         "role": "assistant",
-        "content": "हो, नक्कीच! उद्या दुपारी बारा वाजता मी तुमची वेळ नक्की करून ठेवते. अजून काही मदत हवी आहे का तुम्हाला?"
+        "content": "हो, नक्कीच! उद्या दुपारी बारा वाजता मी तुमची वेळ नक्की करून ठेवते. अजून काही मदत हवी आहे का तुम्हाला?",
+        "tool_calls": [
+          {
+            "id": "call_ctg4701v",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -50819,17 +50679,7 @@
       },
       {
         "role": "assistant",
-        "content": "ಸರಿ, ಬಿಡಿ ನಾನು ನೋಡ್ತೀನಿ. ಇವತ್ತು ಒಂದು ಕೆಲಸ ಮಾಡಿ, ಫೋನ್ ರೀಸ್ಟಾರ್ಟ್ ಮಾಡಿ ನೋಡಿ, ಆಮೇಲೆ ಏನಾದ್ರೂ ಹೆಚ್ಚು ಸಮಸ್ಯೆ ಇದ್ರೆ ನನಗೆ ಹೇಳಿ.",
-        "tool_calls": [
-          {
-            "id": "call_vnp4xtcy",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "ಸರಿ, ಬಿಡಿ ನಾನು ನೋಡ್ತೀನಿ. ಇವತ್ತು ಒಂದು ಕೆಲಸ ಮಾಡಿ, ಫೋನ್ ರೀಸ್ಟಾರ್ಟ್ ಮಾಡಿ ನೋಡಿ, ಆಮೇಲೆ ಏನಾದ್ರೂ ಹೆಚ್ಚು ಸಮಸ್ಯೆ ಇದ್ರೆ ನನಗೆ ಹೇಳಿ."
       }
     ],
     "metadata": {
@@ -51573,17 +51423,7 @@
       },
       {
         "role": "assistant",
-        "content": "ಹೌದು, ಮಾಡಿ ನೋಡಿ. ಒಂದು ನಿಮಿಷ ಕಾಯ್ತೀನಿ, ಆಮೇಲೆ ಹೇಳಿ ಏನಾಗುತ್ತೆ ಅಂತ.",
-        "tool_calls": [
-          {
-            "id": "call_xtndzs3l",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "ಹೌದು, ಮಾಡಿ ನೋಡಿ. ಒಂದು ನಿಮಿಷ ಕಾಯ್ತೀನಿ, ಆಮೇಲೆ ಹೇಳಿ ಏನಾಗುತ್ತೆ ಅಂತ."
       }
     ],
     "metadata": {
@@ -73010,17 +72850,7 @@
       },
       {
         "role": "assistant",
-        "content": "धन्यवाद. आता बघतो. बाय!",
-        "tool_calls": [
-          {
-            "id": "call_e0zro3pr",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "धन्यवाद. आता बघतो. बाय!"
       }
     ],
     "metadata": {

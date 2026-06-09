@@ -75,7 +75,17 @@
       },
       {
         "role": "assistant",
-        "content": "हमम, ये तो बहुत अच्छा आईडिया है। ठीक है, फिर शाम को पांच बजे मिलते हैं?"
+        "content": "हमम, ये तो बहुत अच्छा आईडिया है। ठीक है, फिर शाम को पांच बजे मिलते हैं?",
+        "tool_calls": [
+          {
+            "id": "call_f1zaksd1",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -155,7 +165,17 @@
       },
       {
         "role": "assistant",
-        "content": "हमम, ये सुनकर अच्छा लगा कि वो अब ठीक हैं। अपना ख्याल रखना, ठीक है? वैसे, वीकेंड पर क्या प्लान है?"
+        "content": "हमम, ये सुनकर अच्छा लगा कि वो अब ठीक हैं। अपना ख्याल रखना, ठीक है? वैसे, वीकेंड पर क्या प्लान है?",
+        "tool_calls": [
+          {
+            "id": "call_t4ra1tiy",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -529,7 +549,17 @@
       },
       {
         "role": "assistant",
-        "content": "ठीक है, फिर मजे से चाय पियो और थोड़ा रिलैक्स करो। अपना ख्याल रखना, ठीक है?"
+        "content": "ठीक है, फिर मजे से चाय पियो और थोड़ा रिलैक्स करो। अपना ख्याल रखना, ठीक है?",
+        "tool_calls": [
+          {
+            "id": "call_j8dcq8ud",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -733,7 +763,17 @@
       },
       {
         "role": "assistant",
-        "content": "अरे वाह, फिर तो चाय का मज़ा और बढ़ जाएगा। चलो, आराम से चाय पियो आप, अपना ख्याल रखना ठीक है?"
+        "content": "अरे वाह, फिर तो चाय का मज़ा और बढ़ जाएगा। चलो, आराम से चाय पियो आप, अपना ख्याल रखना ठीक है?",
+        "tool_calls": [
+          {
+            "id": "call_l4xg1ojk",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -1079,7 +1119,17 @@
       },
       {
         "role": "assistant",
-        "content": "ठीक है, पक्का! तो फिर शाम को पांच बजे मिलते हैं, चलेगा?"
+        "content": "ठीक है, पक्का! तो फिर शाम को पांच बजे मिलते हैं, चलेगा?",
+        "tool_calls": [
+          {
+            "id": "call_q46in0mh",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -1583,7 +1633,17 @@
       },
       {
         "role": "assistant",
-        "content": "हमम, पक्का? चलो फिर ठीक है। मिलते हैं कल, अपना ख्याल रखना!"
+        "content": "हमम, पक्का? चलो फिर ठीक है। मिलते हैं कल, अपना ख्याल रखना!",
+        "tool_calls": [
+          {
+            "id": "call_1o3erlvx",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -1779,7 +1839,17 @@
       },
       {
         "role": "assistant",
-        "content": "अरे कोई बात नहीं, आजकल तो सबकी यही कहानी है। अपना ख्याल रखा करो थोड़ा। चलो फिर बात करते हैं?"
+        "content": "अरे कोई बात नहीं, आजकल तो सबकी यही कहानी है। अपना ख्याल रखा करो थोड़ा। चलो फिर बात करते हैं?",
+        "tool_calls": [
+          {
+            "id": "call_stwesgki",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -1931,7 +2001,17 @@
       },
       {
         "role": "assistant",
-        "content": "अरे वाह, ये तो एकदम परफेक्ट है। गरम-गरम चाय और ये मौसम, और क्या चाहिए! चलो अपना ख्याल रखना, फिर बात करते हैं।"
+        "content": "अरे वाह, ये तो एकदम परफेक्ट है। गरम-गरम चाय और ये मौसम, और क्या चाहिए! चलो अपना ख्याल रखना, फिर बात करते हैं।",
+        "tool_calls": [
+          {
+            "id": "call_x44m3o7r",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -2479,7 +2559,17 @@
       },
       {
         "role": "assistant",
-        "content": "हमम, बढ़िया है। चलो, अपना ख्याल रखना और जल्दी से चाय पी लो, ठीक है?"
+        "content": "हमम, बढ़िया है। चलो, अपना ख्याल रखना और जल्दी से चाय पी लो, ठीक है?",
+        "tool_calls": [
+          {
+            "id": "call_10enf80b",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -3635,7 +3725,17 @@
       },
       {
         "role": "assistant",
-        "content": "हाँ बिल्कुल! ठीक है, पाँच बजे के करीब मिलते हैं फिर। चलेगा?"
+        "content": "हाँ बिल्कुल! ठीक है, पाँच बजे के करीब मिलते हैं फिर। चलेगा?",
+        "tool_calls": [
+          {
+            "id": "call_pjxp3u3e",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -3723,7 +3823,17 @@
       },
       {
         "role": "assistant",
-        "content": "हाँ हाँ, बिल्कुल। अपना ख्याल रखना और अच्छे से घर पहुँचना, ठीक है?"
+        "content": "हाँ हाँ, बिल्कुल। अपना ख्याल रखना और अच्छे से घर पहुँचना, ठीक है?",
+        "tool_calls": [
+          {
+            "id": "call_werx5ac0",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -3867,7 +3977,17 @@
       },
       {
         "role": "assistant",
-        "content": "हाँ बिल्कुल! कल शाम को पांच बजे मिलते हैं। ठीक है ना?"
+        "content": "हाँ बिल्कुल! कल शाम को पांच बजे मिलते हैं। ठीक है ना?",
+        "tool_calls": [
+          {
+            "id": "call_0qkeudea",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -4021,7 +4141,17 @@
       },
       {
         "role": "assistant",
-        "content": "हाँ, ये हुई ना बात! बढ़िया है, एक गरमा-गरम चाय तो बनती है। अपना ख्याल रखना, ठीक है?"
+        "content": "हाँ, ये हुई ना बात! बढ़िया है, एक गरमा-गरम चाय तो बनती है। अपना ख्याल रखना, ठीक है?",
+        "tool_calls": [
+          {
+            "id": "call_qa5nho5k",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -4749,7 +4879,17 @@
       },
       {
         "role": "assistant",
-        "content": "ठीक है, फिर तो तुम जल्दी फ्री हो जाओगी। चलो अपना ख्याल रखना, और हाँ, ज्यादा स्ट्रेस मत लेना, ठीक है?"
+        "content": "ठीक है, फिर तो तुम जल्दी फ्री हो जाओगी। चलो अपना ख्याल रखना, और हाँ, ज्यादा स्ट्रेस मत लेना, ठीक है?",
+        "tool_calls": [
+          {
+            "id": "call_3sv5r43h",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -4883,7 +5023,17 @@
       },
       {
         "role": "assistant",
-        "content": "ज़रूर बोल दूँगा! चलो अब ज्यादा परेशान नहीं करता, अपना ख्याल रखना, ठीक है? फिर बात करते हैं।"
+        "content": "ज़रूर बोल दूँगा! चलो अब ज्यादा परेशान नहीं करता, अपना ख्याल रखना, ठीक है? फिर बात करते हैं।",
+        "tool_calls": [
+          {
+            "id": "call_m975t341",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -4921,7 +5071,17 @@
       },
       {
         "role": "assistant",
-        "content": "अरे बिल्कुल चलेगा! छह बजे का समय एकदम सही है। फिर मिलते हैं कल, ठीक है?"
+        "content": "अरे बिल्कुल चलेगा! छह बजे का समय एकदम सही है। फिर मिलते हैं कल, ठीक है?",
+        "tool_calls": [
+          {
+            "id": "call_10otcu14",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       },
       {
         "role": "user",
@@ -6393,7 +6553,17 @@
       },
       {
         "role": "assistant",
-        "content": "बढ़िया! तो फिर मिलते हैं कल, करीब सात बजे? मुझे बहुत अच्छा लगेगा।"
+        "content": "बढ़िया! तो फिर मिलते हैं कल, करीब सात बजे? मुझे बहुत अच्छा लगेगा।",
+        "tool_calls": [
+          {
+            "id": "call_5vnxvjev",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -7517,7 +7687,17 @@
       },
       {
         "role": "assistant",
-        "content": "ठीक है, सादा खाना भी अच्छा होता है कभी कभी। चलो, मैं अभी थोड़ा काम निपटा लूँ, बाद में बात करते हैं?"
+        "content": "ठीक है, सादा खाना भी अच्छा होता है कभी कभी। चलो, मैं अभी थोड़ा काम निपटा लूँ, बाद में बात करते हैं?",
+        "tool_calls": [
+          {
+            "id": "call_zrtk9yg9",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -7849,7 +8029,17 @@
       },
       {
         "role": "assistant",
-        "content": "अरे, इसमें शुक्रिया की क्या बात है! अपना ख्याल रखना, ठीक है?"
+        "content": "अरे, इसमें शुक्रिया की क्या बात है! अपना ख्याल रखना, ठीक है?",
+        "tool_calls": [
+          {
+            "id": "call_99wa520i",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -8089,7 +8279,17 @@
       },
       {
         "role": "assistant",
-        "content": "हाँ, बिल्कुल! ये हुई न बात। चलो ठीक है, अब मैं चलती हूँ, अपना ख्याल रखना और अच्छे से खाना खाना, ठीक है?"
+        "content": "हाँ, बिल्कुल! ये हुई न बात। चलो ठीक है, अब मैं चलती हूँ, अपना ख्याल रखना और अच्छे से खाना खाना, ठीक है?",
+        "tool_calls": [
+          {
+            "id": "call_y4h3au92",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -9397,7 +9597,17 @@
       },
       {
         "role": "assistant",
-        "content": "अच्छा, सात-आठ लोग? अरे फिर तो बहुत मज़ा आता। पर चलो, फिर कभी सही। आप चाय पी रहे हैं क्या अभी?"
+        "content": "अच्छा, सात-आठ लोग? अरे फिर तो बहुत मज़ा आता। पर चलो, फिर कभी सही। आप चाय पी रहे हैं क्या अभी?",
+        "tool_calls": [
+          {
+            "id": "call_5dlb5pgc",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -9935,7 +10145,17 @@
       },
       {
         "role": "assistant",
-        "content": "अरे वाह, ये तो बहुत अच्छा आईडिया है! बिल्कुल, पक्का मिलते हैं। चलो, मैं तुम्हें संडे सुबह फोन करता हूँ, ठीक है?"
+        "content": "अरे वाह, ये तो बहुत अच्छा आईडिया है! बिल्कुल, पक्का मिलते हैं। चलो, मैं तुम्हें संडे सुबह फोन करता हूँ, ठीक है?",
+        "tool_calls": [
+          {
+            "id": "call_kwa515j4",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -10407,7 +10627,17 @@
       },
       {
         "role": "assistant",
-        "content": "अरे पक्का! मुझे बहुत खुशी होगी। ठीक है, फिर मिलते हैं छह बजे?"
+        "content": "अरे पक्का! मुझे बहुत खुशी होगी। ठीक है, फिर मिलते हैं छह बजे?",
+        "tool_calls": [
+          {
+            "id": "call_b0u9rg4d",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -10627,7 +10857,17 @@
       },
       {
         "role": "assistant",
-        "content": "हमम, समझ सकती हूँ। कभी-कभी सादा दिन भी अच्छा होता है। चलो, अपना ध्यान रखना, फिर बात करते हैं, ठीक है?"
+        "content": "हमम, समझ सकती हूँ। कभी-कभी सादा दिन भी अच्छा होता है। चलो, अपना ध्यान रखना, फिर बात करते हैं, ठीक है?",
+        "tool_calls": [
+          {
+            "id": "call_vvyh5q0n",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -10673,7 +10913,17 @@
       },
       {
         "role": "assistant",
-        "content": "बिल्कुल! पक्का पार्टी देंगे। वैसे वीकेंड पर फ्री हो? मिलते हैं कहीं बाहर।"
+        "content": "बिल्कुल! पक्का पार्टी देंगे। वैसे वीकेंड पर फ्री हो? मिलते हैं कहीं बाहर।",
+        "tool_calls": [
+          {
+            "id": "call_2gd4joxt",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -11189,7 +11439,17 @@
       },
       {
         "role": "assistant",
-        "content": "बिल्कुल सही! कभी-कभी अकेले कॉफी पीना भी काफी अच्छा लगता है। चलो, अपना ख्याल रखना, ठीक है?"
+        "content": "बिल्कुल सही! कभी-कभी अकेले कॉफी पीना भी काफी अच्छा लगता है। चलो, अपना ख्याल रखना, ठीक है?",
+        "tool_calls": [
+          {
+            "id": "call_eu5uydzl",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -13071,7 +13331,17 @@
       },
       {
         "role": "assistant",
-        "content": "ठीक है, तो शाम के साढ़े पांच बजे मिलते हैं, चलेगा?"
+        "content": "ठीक है, तो शाम के साढ़े पांच बजे मिलते हैं, चलेगा?",
+        "tool_calls": [
+          {
+            "id": "call_ukwpv10h",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -13117,7 +13387,17 @@
       },
       {
         "role": "assistant",
-        "content": "हाँ, पक्का! शाम के पांच बजे मिलते हैं, ठीक है?"
+        "content": "हाँ, पक्का! शाम के पांच बजे मिलते हैं, ठीक है?",
+        "tool_calls": [
+          {
+            "id": "call_bfhp79m6",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -13207,7 +13487,17 @@
       },
       {
         "role": "assistant",
-        "content": "ठीक है, चलेगा! पांच बजे का समय सही है। मिलते हैं फिर?"
+        "content": "ठीक है, चलेगा! पांच बजे का समय सही है। मिलते हैं फिर?",
+        "tool_calls": [
+          {
+            "id": "call_c0k6yqzg",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -13249,7 +13539,17 @@
       },
       {
         "role": "assistant",
-        "content": "हमम, समझ सकती हूँ। चलो कोई नहीं, अपना ख्याल रखना और काम के बीच में थोड़ा पानी पी लेना। ठीक है?"
+        "content": "हमम, समझ सकती हूँ। चलो कोई नहीं, अपना ख्याल रखना और काम के बीच में थोड़ा पानी पी लेना। ठीक है?",
+        "tool_calls": [
+          {
+            "id": "call_llgn8djk",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -17813,17 +18113,7 @@
       },
       {
         "role": "assistant",
-        "content": "ठीक है, मैं देख रहा हूँ। सुबह सात बजे वाली तीन फ्लाइट्स उपलब्ध हैं।",
-        "tool_calls": [
-          {
-            "id": "call_c0uz5jq4",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "ठीक है, मैं देख रहा हूँ। सुबह सात बजे वाली तीन फ्लाइट्स उपलब्ध हैं।"
       }
     ],
     "metadata": {
@@ -18168,17 +18458,7 @@
       },
       {
         "role": "assistant",
-        "content": "ठीक है, पाँच हज़ार रुपये के अंदर मैं आपको कुछ अच्छे विकल्प ढूँढ कर बताता हूँ।",
-        "tool_calls": [
-          {
-            "id": "call_f47dyn7x",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "ठीक है, पाँच हज़ार रुपये के अंदर मैं आपको कुछ अच्छे विकल्प ढूँढ कर बताता हूँ।"
       }
     ],
     "metadata": {
@@ -23556,17 +23836,7 @@
       },
       {
         "role": "assistant",
-        "content": "अच्छा, आप स्टेटस पूछ रहे हैं! ठीक है, समझ गया। बस एक सेकंड दीजिए, मैं देख कर बताता हूँ।",
-        "tool_calls": [
-          {
-            "id": "call_og3xtq4w",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "अच्छा, आप स्टेटस पूछ रहे हैं! ठीक है, समझ गया। बस एक सेकंड दीजिए, मैं देख कर बताता हूँ।"
       }
     ],
     "metadata": {
@@ -25436,7 +25706,17 @@
       },
       {
         "role": "assistant",
-        "content": "अरे कोई बात नहीं, बिल्कुल समझ सकती हूँ। तुम आराम से बात कर लो, हम बाद में बात कर लेंगे। अपना ध्यान रखना, ठीक है?"
+        "content": "अरे कोई बात नहीं, बिल्कुल समझ सकती हूँ। तुम आराम से बात कर लो, हम बाद में बात कर लेंगे। अपना ध्यान रखना, ठीक है?",
+        "tool_calls": [
+          {
+            "id": "call_0ywoum4i",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -27920,17 +28200,7 @@
       },
       {
         "role": "assistant",
-        "content": "हमम, समझ गया। तो आगे के पांच अंक भी बता दीजिए, मैं अभी चेक करके बताता हूँ।",
-        "tool_calls": [
-          {
-            "id": "call_apyzccmy",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "हमम, समझ गया। तो आगे के पांच अंक भी बता दीजिए, मैं अभी चेक करके बताता हूँ।"
       }
     ],
     "metadata": {
@@ -27980,17 +28250,7 @@
       },
       {
         "role": "assistant",
-        "content": "अरे, बस वही तो देख रहा हूँ, बस एक पल दीजिए, आपकी राशि अभी स्क्रीन पर आ रही है।",
-        "tool_calls": [
-          {
-            "id": "call_ifv1m1bm",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "अरे, बस वही तो देख रहा हूँ, बस एक पल दीजिए, आपकी राशि अभी स्क्रीन पर आ रही है।"
       }
     ],
     "metadata": {
@@ -29610,7 +29870,17 @@
       },
       {
         "role": "assistant",
-        "content": "कोई बात नहीं! तो डन रहा, कल शाम सात बजे मिलते हैं। और कुछ चाहिए आपको?"
+        "content": "कोई बात नहीं! तो डन रहा, कल शाम सात बजे मिलते हैं। और कुछ चाहिए आपको?",
+        "tool_calls": [
+          {
+            "id": "call_cx5z576t",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -30096,7 +30366,17 @@
       },
       {
         "role": "assistant",
-        "content": "हाँ, कोई बात नहीं! बिल्कुल ध्यान रहेगा। कल ग्यारह बजे मिलते हैं, और कुछ मदद चाहिए आपको?"
+        "content": "हाँ, कोई बात नहीं! बिल्कुल ध्यान रहेगा। कल ग्यारह बजे मिलते हैं, और कुछ मदद चाहिए आपको?",
+        "tool_calls": [
+          {
+            "id": "call_snyo1d82",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -31784,7 +32064,17 @@
       },
       {
         "role": "assistant",
-        "content": "हमम, बहुत बढ़िया। चलिए फिर, मैं याद रखूँगा। और कुछ मदद चाहिए आपको?"
+        "content": "हमम, बहुत बढ़िया। चलिए फिर, मैं याद रखूँगा। और कुछ मदद चाहिए आपको?",
+        "tool_calls": [
+          {
+            "id": "call_yqnz2ssu",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -33156,7 +33446,17 @@
       },
       {
         "role": "assistant",
-        "content": "हमम, ठीक है फिर। छोटी गाड़ी ही रहने देती हूँ। और कुछ मदद चाहिए आपको?"
+        "content": "हमम, ठीक है फिर। छोटी गाड़ी ही रहने देती हूँ। और कुछ मदद चाहिए आपको?",
+        "tool_calls": [
+          {
+            "id": "call_posq2is9",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -34409,17 +34709,7 @@
       },
       {
         "role": "assistant",
-        "content": "Got it, thank you. I am pulling up those details for you now, just a second.",
-        "tool_calls": [
-          {
-            "id": "call_2ybne4om",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Got it, thank you. I am pulling up those details for you now, just a second."
       }
     ],
     "metadata": {
@@ -46446,17 +46736,7 @@
       },
       {
         "role": "assistant",
-        "content": "ಓಕೆ, ಹಾಗಾದ್ರೆ ನಾನು ಇಲ್ಲಿಂದಲೇ ಒಂದು ಸಿಗ್ನಲ್ ಕಳಿಸ್ತೀನಿ ನೋಡಿ. ಒಂದು ನಿಮಿಷ ವೇಯ್ಟ್ ಮಾಡಿ.",
-        "tool_calls": [
-          {
-            "id": "call_az760h3m",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "ಓಕೆ, ಹಾಗಾದ್ರೆ ನಾನು ಇಲ್ಲಿಂದಲೇ ಒಂದು ಸಿಗ್ನಲ್ ಕಳಿಸ್ತೀನಿ ನೋಡಿ. ಒಂದು ನಿಮಿಷ ವೇಯ್ಟ್ ಮಾಡಿ."
       }
     ],
     "metadata": {
@@ -47878,17 +48158,7 @@
       },
       {
         "role": "assistant",
-        "content": "ಸರಿ ರೀ, ನೋಡಿ, ಒಂದು ವೇಳೆ ಅದೂ ಸರಿಯಾಗಿದ್ರೂ ಲೈಟ್ ಬರ್ತಿಲ್ಲ ಅಂದ್ರೆ ಹೇಳಿ, ನಾನು ಬೇರೆ ದಾರಿ ನೋಡ್ತೀನಿ.",
-        "tool_calls": [
-          {
-            "id": "call_8f79fgsl",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "ಸರಿ ರೀ, ನೋಡಿ, ಒಂದು ವೇಳೆ ಅದೂ ಸರಿಯಾಗಿದ್ರೂ ಲೈಟ್ ಬರ್ತಿಲ್ಲ ಅಂದ್ರೆ ಹೇಳಿ, ನಾನು ಬೇರೆ ದಾರಿ ನೋಡ್ತೀನಿ."
       }
     ],
     "metadata": {
@@ -48676,17 +48946,7 @@
       },
       {
         "role": "assistant",
-        "content": "Got it, that is eight nine four two. One moment please.",
-        "tool_calls": [
-          {
-            "id": "call_pvl7gl01",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Got it, that is eight nine four two. One moment please."
       }
     ],
     "metadata": {

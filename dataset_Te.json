@@ -31,7 +31,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఏంటి అండి, అందులో ఏముంది! సరే అయితే, మీకు మంచి రోజు కావాలని కోరుకుంటున్నాను. మళ్ళీ మాట్లాడుకుందాం, బాయ్!"
+        "content": "ఏంటి అండి, అందులో ఏముంది! సరే అయితే, మీకు మంచి రోజు కావాలని కోరుకుంటున్నాను. మళ్ళీ మాట్లాడుకుందాం, బాయ్!",
+        "tool_calls": [
+          {
+            "id": "call_l8qrfw77",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -123,7 +133,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరే అయితే, థాంక్స్ అండి. రేపు కలుద్దాం, బాయ్."
+        "content": "సరే అయితే, థాంక్స్ అండి. రేపు కలుద్దాం, బాయ్.",
+        "tool_calls": [
+          {
+            "id": "call_v1iyq9jm",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -385,7 +405,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరే అండి, జాగ్రత్త. మళ్ళీ మాట్లాడుదాం, బాయ్."
+        "content": "సరే అండి, జాగ్రత్త. మళ్ళీ మాట్లాడుదాం, బాయ్.",
+        "tool_calls": [
+          {
+            "id": "call_sep3z87y",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -487,7 +517,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఏం పర్వాలేదు, మళ్ళీ రేపు కలుద్దాం. ఉంటాను మరి."
+        "content": "ఏం పర్వాలేదు, మళ్ళీ రేపు కలుద్దాం. ఉంటాను మరి.",
+        "tool_calls": [
+          {
+            "id": "call_r5u3r75a",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -537,7 +577,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, మరి రేపు కలుద్దాం, ఉంటాను."
+        "content": "సరేనండి, మరి రేపు కలుద్దాం, ఉంటాను.",
+        "tool_calls": [
+          {
+            "id": "call_kiopxdpu",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -621,7 +671,17 @@
       },
       {
         "role": "assistant",
-        "content": "అంతా బాగానే ఉంది అండి. సరే, మరి మీరు కాసేపు విశ్రాంతి తీసుకోండి, మళ్ళీ మాట్లాడుకుందాం!"
+        "content": "అంతా బాగానే ఉంది అండి. సరే, మరి మీరు కాసేపు విశ్రాంతి తీసుకోండి, మళ్ళీ మాట్లాడుకుందాం!",
+        "tool_calls": [
+          {
+            "id": "call_wsy88pjp",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -823,7 +883,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, మంచిది. జాగ్రత్త, మళ్ళీ మాట్లాడుకుందాం!"
+        "content": "సరేనండి, మంచిది. జాగ్రత్త, మళ్ళీ మాట్లాడుకుందాం!",
+        "tool_calls": [
+          {
+            "id": "call_tast2sl8",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -911,7 +981,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే అండి, సరే అయితే, మళ్ళీ మాట్లాడుకుందాం, జాగ్రత్త!"
+        "content": "ఓకే అండి, సరే అయితే, మళ్ళీ మాట్లాడుకుందాం, జాగ్రత్త!",
+        "tool_calls": [
+          {
+            "id": "call_0nqv47ah",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -1193,7 +1273,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరే అండి, మంచిది. జాగ్రత్తగా వెళ్ళి రండి, మళ్ళీ మాట్లాడుకుందాం. బాయ్!"
+        "content": "సరే అండి, మంచిది. జాగ్రత్తగా వెళ్ళి రండి, మళ్ళీ మాట్లాడుకుందాం. బాయ్!",
+        "tool_calls": [
+          {
+            "id": "call_pv71hazr",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -1377,7 +1467,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే చాలా మంచిది! అయితే మీరు జాగ్రత్తగా వెళ్ళి రండి మరి, ఇంకేంటి సంగతులు?"
+        "content": "ఓకే చాలా మంచిది! అయితే మీరు జాగ్రత్తగా వెళ్ళి రండి మరి, ఇంకేంటి సంగతులు?",
+        "tool_calls": [
+          {
+            "id": "call_ge1mn7rn",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -1419,7 +1519,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, మరేమీ లేదు. మీరు కూడా మంచి నీళ్లు బాగా తాగండి, సరేనా? మళ్ళీ కలుద్దాం!"
+        "content": "సరేనండి, మరేమీ లేదు. మీరు కూడా మంచి నీళ్లు బాగా తాగండి, సరేనా? మళ్ళీ కలుద్దాం!",
+        "tool_calls": [
+          {
+            "id": "call_dmsacx0y",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -1521,7 +1631,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, జాగ్రత్తగా ఉండండి. మళ్ళీ కలుద్దాం, సెలవు."
+        "content": "సరేనండి, జాగ్రత్తగా ఉండండి. మళ్ళీ కలుద్దాం, సెలవు.",
+        "tool_calls": [
+          {
+            "id": "call_oxlg4qvc",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -1567,7 +1687,17 @@
       },
       {
         "role": "assistant",
-        "content": "అయితే జాగ్రత్త అండి, వెళ్లేటప్పుడు గొడుగు లేదా ఏదైనా హ్యాట్ లాంటిది తీసుకెళ్లడం మంచిది."
+        "content": "అయితే జాగ్రత్త అండి, వెళ్లేటప్పుడు గొడుగు లేదా ఏదైనా హ్యాట్ లాంటిది తీసుకెళ్లడం మంచిది.",
+        "tool_calls": [
+          {
+            "id": "call_p1ybmk32",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -1609,7 +1739,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే అండి, సరే మరి! జాగ్రత్తగా వెళ్ళి రండి, మళ్ళీ మాట్లాడుకుందాం."
+        "content": "ఓకే అండి, సరే మరి! జాగ్రత్తగా వెళ్ళి రండి, మళ్ళీ మాట్లాడుకుందాం.",
+        "tool_calls": [
+          {
+            "id": "call_g9d05j20",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -1801,7 +1941,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరే అయితే, మళ్ళీ మాట్లాడుకుందాం. జాగ్రత్తగా ఉండండి."
+        "content": "సరే అయితే, మళ్ళీ మాట్లాడుకుందాం. జాగ్రత్తగా ఉండండి.",
+        "tool_calls": [
+          {
+            "id": "call_qlkh4yw6",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -2001,7 +2151,17 @@
       },
       {
         "role": "assistant",
-        "content": "అయితే జాగ్రత్త అండి, మంచిగా నీళ్లు తాగండి. సరేనా?"
+        "content": "అయితే జాగ్రత్త అండి, మంచిగా నీళ్లు తాగండి. సరేనా?",
+        "tool_calls": [
+          {
+            "id": "call_wzuic0s8",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -2497,7 +2657,17 @@
       },
       {
         "role": "assistant",
-        "content": "అవును అండి, జాగ్రత్తగా ఉండండి. నీళ్లు బాగా తాగుతూ ఉండండి. ఇంకేంటి విశేషాలు?"
+        "content": "అవును అండి, జాగ్రత్తగా ఉండండి. నీళ్లు బాగా తాగుతూ ఉండండి. ఇంకేంటి విశేషాలు?",
+        "tool_calls": [
+          {
+            "id": "call_u909xwl4",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -2539,7 +2709,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, మంచిది. మీ రోజు చాలా బాగుండాలని కోరుకుంటున్నాను, మళ్ళీ కలుద్దాం!"
+        "content": "సరేనండి, మంచిది. మీ రోజు చాలా బాగుండాలని కోరుకుంటున్నాను, మళ్ళీ కలుద్దాం!",
+        "tool_calls": [
+          {
+            "id": "call_f9gt579y",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -3723,7 +3903,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, మంచిది. మళ్ళీ మాట్లాడుకుందాం, ఉంటాను మరి."
+        "content": "సరేనండి, మంచిది. మళ్ళీ మాట్లాడుకుందాం, ఉంటాను మరి.",
+        "tool_calls": [
+          {
+            "id": "call_ecfiu63e",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -3875,7 +4065,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, అయితే రేపు కలుద్దాం. ఇంకేమైనా పని ఉందా?"
+        "content": "సరేనండి, అయితే రేపు కలుద్దాం. ఇంకేమైనా పని ఉందా?",
+        "tool_calls": [
+          {
+            "id": "call_1h18sam2",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -4035,7 +4235,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరే అండి, మళ్ళీ కలుద్దాం మరి, జాగ్రత్త!"
+        "content": "సరే అండి, మళ్ళీ కలుద్దాం మరి, జాగ్రత్త!",
+        "tool_calls": [
+          {
+            "id": "call_kzg9qlkd",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -4129,7 +4339,17 @@
       },
       {
         "role": "assistant",
-        "content": "అయ్యో పర్లేదులేండి, ఎందుకు థాంక్స్. రేపు కలుద్దాం మరి, జాగ్రత్త!"
+        "content": "అయ్యో పర్లేదులేండి, ఎందుకు థాంక్స్. రేపు కలుద్దాం మరి, జాగ్రత్త!",
+        "tool_calls": [
+          {
+            "id": "call_sg6ft7tl",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -4273,7 +4493,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, జాగ్రత్తగా వెళ్లి రండి. ఇంకేమైనా సహాయం కావాలా?"
+        "content": "సరేనండి, జాగ్రత్తగా వెళ్లి రండి. ఇంకేమైనా సహాయం కావాలా?",
+        "tool_calls": [
+          {
+            "id": "call_lp0of5tz",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -4383,7 +4613,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, జాగ్రత్తగా వెళ్ళి రండి. మళ్ళీ మాట్లాడుకుందాం, బాయ్!"
+        "content": "సరేనండి, జాగ్రత్తగా వెళ్ళి రండి. మళ్ళీ మాట్లాడుకుందాం, బాయ్!",
+        "tool_calls": [
+          {
+            "id": "call_fvb4lz83",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -4433,7 +4673,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరే అండి, అది చాలా బాగుంటుంది. అయితే రేపు సాయంత్రం ఏడు గంటలకు కాఫీ షాప్ దగ్గర కలుద్దాం. ఉంటాను మరి!"
+        "content": "సరే అండి, అది చాలా బాగుంటుంది. అయితే రేపు సాయంత్రం ఏడు గంటలకు కాఫీ షాప్ దగ్గర కలుద్దాం. ఉంటాను మరి!",
+        "tool_calls": [
+          {
+            "id": "call_3muk1mvy",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -4617,7 +4867,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఏం లేదులే అండి, ఊరికే పలకరిద్దామని ఫోన్ చేశాను. సరే, మరి మీ పని చూసుకోండి, మళ్ళీ మాట్లాడుకుందాం!"
+        "content": "ఏం లేదులే అండి, ఊరికే పలకరిద్దామని ఫోన్ చేశాను. సరే, మరి మీ పని చూసుకోండి, మళ్ళీ మాట్లాడుకుందాం!",
+        "tool_calls": [
+          {
+            "id": "call_540dmvs0",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -4659,7 +4919,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, మంచిది. జాగ్రత్త, మళ్ళీ మాట్లాడుదాం."
+        "content": "సరేనండి, మంచిది. జాగ్రత్త, మళ్ళీ మాట్లాడుదాం.",
+        "tool_calls": [
+          {
+            "id": "call_2gym9i23",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -4799,7 +5069,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే అండి, తప్పకుండా. మళ్ళీ మాట్లాడుదాం, జాగ్రత్త!"
+        "content": "ఓకే అండి, తప్పకుండా. మళ్ళీ మాట్లాడుదాం, జాగ్రత్త!",
+        "tool_calls": [
+          {
+            "id": "call_8t0ymvce",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -4951,7 +5231,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, అయితే మీరు బాగా ఎంజాయ్ చేయండి. మళ్ళీ మాట్లాడుకుందాం, ఉంటాను మరి."
+        "content": "సరేనండి, అయితే మీరు బాగా ఎంజాయ్ చేయండి. మళ్ళీ మాట్లాడుకుందాం, ఉంటాను మరి.",
+        "tool_calls": [
+          {
+            "id": "call_i35hqnsx",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -5283,7 +5573,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే, చాలా సంతోషం. అయితే రేపు కలుద్దాం మరి, బాయ్!"
+        "content": "ఓకే, చాలా సంతోషం. అయితే రేపు కలుద్దాం మరి, బాయ్!",
+        "tool_calls": [
+          {
+            "id": "call_ceocxpzi",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -5533,7 +5833,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, నాకేం పర్వాలేదు! ఎప్పుడు ఏ అవసరం వచ్చినా అడగండి. మళ్ళీ మాట్లాడుదాం, ఉంటాను!"
+        "content": "సరేనండి, నాకేం పర్వాలేదు! ఎప్పుడు ఏ అవసరం వచ్చినా అడగండి. మళ్ళీ మాట్లాడుదాం, ఉంటాను!",
+        "tool_calls": [
+          {
+            "id": "call_69xmeeef",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -5583,7 +5893,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, కచ్చితంగా కలుద్దాం. జాగ్రత్త, ఉంటాను మరి!"
+        "content": "సరేనండి, కచ్చితంగా కలుద్దాం. జాగ్రత్త, ఉంటాను మరి!",
+        "tool_calls": [
+          {
+            "id": "call_28i5xgt1",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -5685,7 +6005,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, అయితే మళ్ళీ కలుద్దాం. జాగ్రత్త!"
+        "content": "సరేనండి, అయితే మళ్ళీ కలుద్దాం. జాగ్రత్త!",
+        "tool_calls": [
+          {
+            "id": "call_0sttkxtp",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -5765,7 +6095,17 @@
       },
       {
         "role": "assistant",
-        "content": "అయ్యో పర్వాలేదండి, ధన్యవాదాలు ఏంటి! ఇంకేమైనా ఉంటే ఎప్పుడైనా అడగండి. ఉంటానండి, శుభం."
+        "content": "అయ్యో పర్వాలేదండి, ధన్యవాదాలు ఏంటి! ఇంకేమైనా ఉంటే ఎప్పుడైనా అడగండి. ఉంటానండి, శుభం.",
+        "tool_calls": [
+          {
+            "id": "call_waslyhwt",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -6085,7 +6425,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, మంచిది. జాగ్రత్తగా ఉండండి, మళ్ళీ మాట్లాడుదాం!"
+        "content": "సరేనండి, మంచిది. జాగ్రత్తగా ఉండండి, మళ్ళీ మాట్లాడుదాం!",
+        "tool_calls": [
+          {
+            "id": "call_6757q6nu",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -6221,7 +6571,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే చాలా మంచిది, వెళ్ళి రండి. మళ్ళీ మాట్లాడుదాం అండి, జాగ్రత్త."
+        "content": "ఓకే చాలా మంచిది, వెళ్ళి రండి. మళ్ళీ మాట్లాడుదాం అండి, జాగ్రత్త.",
+        "tool_calls": [
+          {
+            "id": "call_9f44l6t6",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -6331,7 +6691,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే అండి, ఉంటాను మరి. రేపు కలుద్దాం!"
+        "content": "ఓకే అండి, ఉంటాను మరి. రేపు కలుద్దాం!",
+        "tool_calls": [
+          {
+            "id": "call_w243rj96",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -7171,7 +7541,17 @@
       },
       {
         "role": "assistant",
-        "content": "పర్వాలేదండి, నాకేం పని ఉంటే చెప్పండి. మరొకసారి మాట్లాడుదాం, ఉంటాను మరి!"
+        "content": "పర్వాలేదండి, నాకేం పని ఉంటే చెప్పండి. మరొకసారి మాట్లాడుదాం, ఉంటాను మరి!",
+        "tool_calls": [
+          {
+            "id": "call_ze4ijf4q",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -7373,7 +7753,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరే అయితే, మళ్ళీ మాట్లాడుకుందాం. ఉంటాను మరి!"
+        "content": "సరే అయితే, మళ్ళీ మాట్లాడుకుందాం. ఉంటాను మరి!",
+        "tool_calls": [
+          {
+            "id": "call_p9wqflj3",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -7499,7 +7889,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, అలాగే! జాగ్రత్తగా ఉండండి, మళ్ళీ కలుద్దాం, ఉంటాను మరి!"
+        "content": "సరేనండి, అలాగే! జాగ్రత్తగా ఉండండి, మళ్ళీ కలుద్దాం, ఉంటాను మరి!",
+        "tool_calls": [
+          {
+            "id": "call_1hhfij1b",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -8213,7 +8613,17 @@
       },
       {
         "role": "assistant",
-        "content": "అసలు ఏమీ పర్లేదు అండి, మళ్ళీ ఆరు గంటలకి కలుద్దాం, ఉంటాను మరి."
+        "content": "అసలు ఏమీ పర్లేదు అండి, మళ్ళీ ఆరు గంటలకి కలుద్దాం, ఉంటాను మరి.",
+        "tool_calls": [
+          {
+            "id": "call_2qq52qmu",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -8547,7 +8957,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, జాగ్రత్త! మళ్ళీ కలుద్దాం, బాయ్!"
+        "content": "సరేనండి, జాగ్రత్త! మళ్ళీ కలుద్దాం, బాయ్!",
+        "tool_calls": [
+          {
+            "id": "call_0n7w1ela",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -9255,7 +9675,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, మరి సాయంత్రం మాట్లాడుకుందాం, ఉంటాను."
+        "content": "సరేనండి, మరి సాయంత్రం మాట్లాడుకుందాం, ఉంటాను.",
+        "tool_calls": [
+          {
+            "id": "call_kuy32wr5",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -9369,7 +9799,17 @@
       },
       {
         "role": "assistant",
-        "content": "అసలు ఏమీ పర్వాలేదు, సరే అయితే మళ్ళీ కలుద్దాం, జాగ్రత్త!"
+        "content": "అసలు ఏమీ పర్వాలేదు, సరే అయితే మళ్ళీ కలుద్దాం, జాగ్రత్త!",
+        "tool_calls": [
+          {
+            "id": "call_hkv3ks6m",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -9411,7 +9851,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఏంటి అండి, థాంక్స్ ఎందుకు? సరే అయితే, రేపు కలుద్దాం మరి."
+        "content": "ఏంటి అండి, థాంక్స్ ఎందుకు? సరే అయితే, రేపు కలుద్దాం మరి.",
+        "tool_calls": [
+          {
+            "id": "call_qq7pi1n3",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -9517,7 +9967,17 @@
       },
       {
         "role": "assistant",
-        "content": "చాలా సంతోషం అండి. సరే అయితే, మళ్ళీ మాట్లాడుకుందాం, జాగ్రత్త!"
+        "content": "చాలా సంతోషం అండి. సరే అయితే, మళ్ళీ మాట్లాడుకుందాం, జాగ్రత్త!",
+        "tool_calls": [
+          {
+            "id": "call_xrnyllmj",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -9567,7 +10027,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే, అయితే రేపు కలుద్దాం మరి. జాగ్రత్తగా రండి!"
+        "content": "ఓకే, అయితే రేపు కలుద్దాం మరి. జాగ్రత్తగా రండి!",
+        "tool_calls": [
+          {
+            "id": "call_jwlxshss",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -9617,7 +10087,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే అండి, జాగ్రత్త, మళ్ళీ మాట్లాడుకుందాం."
+        "content": "ఓకే అండి, జాగ్రత్త, మళ్ళీ మాట్లాడుకుందాం.",
+        "tool_calls": [
+          {
+            "id": "call_3m6w0l8c",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -9719,7 +10199,17 @@
       },
       {
         "role": "assistant",
-        "content": "అయ్యో పర్వాలేదు అండి, అది నా బాధ్యత కదా. మరి ఉంటాను అయితే!"
+        "content": "అయ్యో పర్వాలేదు అండి, అది నా బాధ్యత కదా. మరి ఉంటాను అయితే!",
+        "tool_calls": [
+          {
+            "id": "call_0nay1m91",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -9913,7 +10403,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే, అయితే అప్పుడు మాట్లాడుకుందాం లేండి. మళ్ళీ కాల్ చేస్తాను, ఉంటానండి."
+        "content": "ఓకే, అయితే అప్పుడు మాట్లాడుకుందాం లేండి. మళ్ళీ కాల్ చేస్తాను, ఉంటానండి.",
+        "tool_calls": [
+          {
+            "id": "call_wul2haz4",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -10015,7 +10515,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, జాగ్రత్తగా ఉండండి, మళ్ళీ మాట్లాడుకుందాం, బాయ్."
+        "content": "సరేనండి, జాగ్రత్తగా ఉండండి, మళ్ళీ మాట్లాడుకుందాం, బాయ్.",
+        "tool_calls": [
+          {
+            "id": "call_ju3kdpez",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -10065,7 +10575,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, మంచిది. జాగ్రత్త, మళ్ళీ మాట్లాడుకుందాం!"
+        "content": "సరేనండి, మంచిది. జాగ్రత్త, మళ్ళీ మాట్లాడుకుందాం!",
+        "tool_calls": [
+          {
+            "id": "call_ztyzos8l",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -10157,7 +10677,17 @@
       },
       {
         "role": "assistant",
-        "content": "అవును, సరేనండి. మళ్ళీ ఎప్పుడు కావాలన్నా అడగండి, ఉంటాను మరి!"
+        "content": "అవును, సరేనండి. మళ్ళీ ఎప్పుడు కావాలన్నా అడగండి, ఉంటాను మరి!",
+        "tool_calls": [
+          {
+            "id": "call_m6vedcum",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -10349,7 +10879,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, వెల్కమ్! మరింకేం లేదు కదా? అయితే మంచిది, ఉంటానండి."
+        "content": "సరేనండి, వెల్కమ్! మరింకేం లేదు కదా? అయితే మంచిది, ఉంటానండి.",
+        "tool_calls": [
+          {
+            "id": "call_odr5wyou",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -10521,7 +11061,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, అలాగే. జాగ్రత్తగా వెళ్ళి రండి, మళ్ళీ మాట్లాడుకుందాం!"
+        "content": "సరేనండి, అలాగే. జాగ్రత్తగా వెళ్ళి రండి, మళ్ళీ మాట్లాడుకుందాం!",
+        "tool_calls": [
+          {
+            "id": "call_vxe79ey5",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -10575,7 +11125,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, మంచిది. మళ్ళీ కలుద్దాం, ఉంటాను మరి. బాయ్."
+        "content": "సరేనండి, మంచిది. మళ్ళీ కలుద్దాం, ఉంటాను మరి. బాయ్.",
+        "tool_calls": [
+          {
+            "id": "call_qvt3rynm",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -10729,7 +11289,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే అండి, తప్పకుండా! మంచిది, జాగ్రత్తగా వెళ్లి రండి. మళ్ళీ మాట్లాడుకుందాం, బాయ్!"
+        "content": "ఓకే అండి, తప్పకుండా! మంచిది, జాగ్రత్తగా వెళ్లి రండి. మళ్ళీ మాట్లాడుకుందాం, బాయ్!",
+        "tool_calls": [
+          {
+            "id": "call_kx41q4ct",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -10923,7 +11493,17 @@
       },
       {
         "role": "assistant",
-        "content": "అవును, తప్పకుండా. సరేనండి, మళ్ళీ కలుద్దాం!"
+        "content": "అవును, తప్పకుండా. సరేనండి, మళ్ళీ కలుద్దాం!",
+        "tool_calls": [
+          {
+            "id": "call_wl05e3pj",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -11019,7 +11599,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరే, అంతా బాగున్నారు. మళ్ళీ మాట్లాడుకుందాం రా."
+        "content": "సరే, అంతా బాగున్నారు. మళ్ళీ మాట్లాడుకుందాం రా.",
+        "tool_calls": [
+          {
+            "id": "call_zctfcnil",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -11265,7 +11855,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే, తప్పకుండా ఉంటాను. ఇంకేంటి సంగతులు?"
+        "content": "ఓకే, తప్పకుండా ఉంటాను. ఇంకేంటి సంగతులు?",
+        "tool_calls": [
+          {
+            "id": "call_l84mz0dc",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -11411,7 +12011,17 @@
       },
       {
         "role": "assistant",
-        "content": "అదేంటి అండి, థాంక్స్ ఎందుకులేండి. సరే అయితే, మళ్ళీ రేపు కలుద్దాం!"
+        "content": "అదేంటి అండి, థాంక్స్ ఎందుకులేండి. సరే అయితే, మళ్ళీ రేపు కలుద్దాం!",
+        "tool_calls": [
+          {
+            "id": "call_7854eyep",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -11533,7 +12143,17 @@
       },
       {
         "role": "assistant",
-        "content": "అవునా, మంచిది! రేపు అక్కడ వాతావరణం కొంచెం ఎండగా ఉంటుంది, కాబట్టి జాగ్రత్తగా వెళ్లండి. ఇంకా ఏదైనా సహాయం కావాలా?"
+        "content": "అవునా, మంచిది! రేపు అక్కడ వాతావరణం కొంచెం ఎండగా ఉంటుంది, కాబట్టి జాగ్రత్తగా వెళ్లండి. ఇంకా ఏదైనా సహాయం కావాలా?",
+        "tool_calls": [
+          {
+            "id": "call_46il01a3",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -11617,7 +12237,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, అలాగే! రేపు సాయంత్రం కలుద్దాం అయితే. జాగ్రత్త!"
+        "content": "సరేనండి, అలాగే! రేపు సాయంత్రం కలుద్దాం అయితే. జాగ్రత్త!",
+        "tool_calls": [
+          {
+            "id": "call_2d0935bv",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -11887,7 +12517,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరే అండి, బుక్ చేశాక నాకు ఒకసారి ఫోన్ చేయండి, నేను రెడీగా ఉంటాను. థాంక్స్ అండి!"
+        "content": "సరే అండి, బుక్ చేశాక నాకు ఒకసారి ఫోన్ చేయండి, నేను రెడీగా ఉంటాను. థాంక్స్ అండి!",
+        "tool_calls": [
+          {
+            "id": "call_t3es1quf",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -12189,7 +12829,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరే అండి అయితే, మంచిది. జాగ్రత్తగా ఉండండి, మళ్ళీ కలుద్దాం!"
+        "content": "సరే అండి అయితే, మంచిది. జాగ్రత్తగా ఉండండి, మళ్ళీ కలుద్దాం!",
+        "tool_calls": [
+          {
+            "id": "call_h28h7tip",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -12289,7 +12939,17 @@
       },
       {
         "role": "assistant",
-        "content": "అయ్యో పర్లేదు అండి, మీ పని చూసుకోండి, మళ్ళీ ఎప్పుడు కావాలన్నా అడగండి, ఉంటాను మరి!"
+        "content": "అయ్యో పర్లేదు అండి, మీ పని చూసుకోండి, మళ్ళీ ఎప్పుడు కావాలన్నా అడగండి, ఉంటాను మరి!",
+        "tool_calls": [
+          {
+            "id": "call_n0m0lyvk",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -12331,7 +12991,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, పర్వాలేదు. ఇంకేమైనా అవసరమైతే ఎప్పుడైనా అడగండి. మళ్ళీ మాట్లాడుకుందాం, ఉంటాను మరి!"
+        "content": "సరేనండి, పర్వాలేదు. ఇంకేమైనా అవసరమైతే ఎప్పుడైనా అడగండి. మళ్ళీ మాట్లాడుకుందాం, ఉంటాను మరి!",
+        "tool_calls": [
+          {
+            "id": "call_5flgihxz",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -12513,7 +13183,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకేనండి, ఇంకా ఏమైనా సహాయం కావాలా? లేకపోతే ఉంటాను మరి."
+        "content": "ఓకేనండి, ఇంకా ఏమైనా సహాయం కావాలా? లేకపోతే ఉంటాను మరి.",
+        "tool_calls": [
+          {
+            "id": "call_1k9vtij2",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -12649,7 +13329,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే, మంచి ఐడియా! వేడి వేడి కాఫీ తాగితే ఈ వాతావరణానికి చాలా బాగుంటుంది. సరే మరి, మళ్ళీ మాట్లాడుకుందాం!"
+        "content": "ఓకే, మంచి ఐడియా! వేడి వేడి కాఫీ తాగితే ఈ వాతావరణానికి చాలా బాగుంటుంది. సరే మరి, మళ్ళీ మాట్లాడుకుందాం!",
+        "tool_calls": [
+          {
+            "id": "call_6rnuvl67",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -12699,7 +13389,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే అండి, జాగ్రత్తగా రండి. రేపు కలుద్దాం, బాయ్."
+        "content": "ఓకే అండి, జాగ్రత్తగా రండి. రేపు కలుద్దాం, బాయ్.",
+        "tool_calls": [
+          {
+            "id": "call_4z3esj04",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -13233,7 +13933,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరే అండి, మంచిది! బాగా ఎంజాయ్ చేయండి, మళ్ళీ మాట్లాడుకుందాం!"
+        "content": "సరే అండి, మంచిది! బాగా ఎంజాయ్ చేయండి, మళ్ళీ మాట్లాడుకుందాం!",
+        "tool_calls": [
+          {
+            "id": "call_7j9oq7id",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -13275,7 +13985,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే అండి, తప్పకుండా! మళ్ళీ కలుద్దాం, ఉంటాను మరి. జాగ్రత్త!"
+        "content": "ఓకే అండి, తప్పకుండా! మళ్ళీ కలుద్దాం, ఉంటాను మరి. జాగ్రత్త!",
+        "tool_calls": [
+          {
+            "id": "call_1wszi3mu",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -13873,17 +14593,7 @@
       },
       {
         "role": "assistant",
-        "content": "Got it, four two eight one. Let me pull that up for you right now.",
-        "tool_calls": [
-          {
-            "id": "call_argwm3v0",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Got it, four two eight one. Let me pull that up for you right now."
       }
     ],
     "metadata": {
@@ -19842,17 +20552,7 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే థాంక్స్ అండి. ఒక్క నిమిషం లైన్ లో ఉండండి చూస్తున్నాను. ఆ... చూశాను, మీ ఆర్డర్ దగ్గరలోని డెలివరీ సెంటర్ లో ఉంది, రేపు ఉదయం కల్లా మీకు వచ్చేస్తుంది.",
-        "tool_calls": [
-          {
-            "id": "call_ec4hr8cq",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "ఓకే థాంక్స్ అండి. ఒక్క నిమిషం లైన్ లో ఉండండి చూస్తున్నాను. ఆ... చూశాను, మీ ఆర్డర్ దగ్గరలోని డెలివరీ సెంటర్ లో ఉంది, రేపు ఉదయం కల్లా మీకు వచ్చేస్తుంది."
       }
     ],
     "metadata": {
@@ -20774,7 +21474,17 @@
       },
       {
         "role": "assistant",
-        "content": "అవును, మీ బాధ నాకు అర్థమవుతోంది అండి. పిల్లలు ఆకలితో ఉంటే చాలా కష్టంగా ఉంటుంది కదా. సరే, ఒక్క నిమిషం ఆగండి. ఆ డెలివరీ వ్యక్తితో నేను ఇప్పుడే మాట్లాడి మీకు అప్డేట్ ఇస్తాను. మీరు కంగారు పడకండి, నేను చూసుకుంటాను."
+        "content": "అవును, మీ బాధ నాకు అర్థమవుతోంది అండి. పిల్లలు ఆకలితో ఉంటే చాలా కష్టంగా ఉంటుంది కదా. సరే, ఒక్క నిమిషం ఆగండి. ఆ డెలివరీ వ్యక్తితో నేను ఇప్పుడే మాట్లాడి మీకు అప్డేట్ ఇస్తాను. మీరు కంగారు పడకండి, నేను చూసుకుంటాను.",
+        "tool_calls": [
+          {
+            "id": "call_2a88twc5",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -21382,17 +22092,7 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, ఒక్క నిమిషం ఆగండి. చూస్తున్నాను... ఓకే, ఇక్కడ కనిపిస్తోంది. అది మీ ఊరు చేరింది, రేపు ఉదయమే మీ ఇంటికి వచ్చేస్తుంది. ఇంత ఆలస్యానికి మళ్ళీ క్షమించండి.",
-        "tool_calls": [
-          {
-            "id": "call_ljvuvu43",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "సరేనండి, ఒక్క నిమిషం ఆగండి. చూస్తున్నాను... ఓకే, ఇక్కడ కనిపిస్తోంది. అది మీ ఊరు చేరింది, రేపు ఉదయమే మీ ఇంటికి వచ్చేస్తుంది. ఇంత ఆలస్యానికి మళ్ళీ క్షమించండి."
       }
     ],
     "metadata": {
@@ -22438,17 +23138,7 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, ఒక్క నిమిషం ఆగండి చూస్తున్నాను. మీ అకౌంట్‌లో ప్రస్తుతం ఐదు వందల రూపాయలు ఉన్నాయి.",
-        "tool_calls": [
-          {
-            "id": "call_hrb9j44q",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "సరేనండి, ఒక్క నిమిషం ఆగండి చూస్తున్నాను. మీ అకౌంట్‌లో ప్రస్తుతం ఐదు వందల రూపాయలు ఉన్నాయి."
       }
     ],
     "metadata": {
@@ -22958,17 +23648,7 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, ఒక్క నిమిషం ఆగండి చూస్తున్నాను. అవును, మీ ఖాతాలో పదిహేను వందల రూపాయలు ఉన్నాయి.",
-        "tool_calls": [
-          {
-            "id": "call_w0of4vz7",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "సరేనండి, ఒక్క నిమిషం ఆగండి చూస్తున్నాను. అవును, మీ ఖాతాలో పదిహేను వందల రూపాయలు ఉన్నాయి."
       }
     ],
     "metadata": {
@@ -23258,17 +23938,7 @@
       },
       {
         "role": "assistant",
-        "content": "అవును, రెండు నాలుగు ఎనిమిది. సరేనండి, ఒక్క నిమిషం చూడనివ్వండి.",
-        "tool_calls": [
-          {
-            "id": "call_lyy08qa7",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "అవును, రెండు నాలుగు ఎనిమిది. సరేనండి, ఒక్క నిమిషం చూడనివ్వండి."
       }
     ],
     "metadata": {
@@ -24106,17 +24776,7 @@
       },
       {
         "role": "assistant",
-        "content": "సరే అండి, ఇప్పుడు మీ ఆర్డర్ వివరాలు చూస్తున్నాను. ఒక్క సెకన్ ఆగండి, వస్తుంది.",
-        "tool_calls": [
-          {
-            "id": "call_gctmm24p",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "సరే అండి, ఇప్పుడు మీ ఆర్డర్ వివరాలు చూస్తున్నాను. ఒక్క సెకన్ ఆగండి, వస్తుంది."
       }
     ],
     "metadata": {
@@ -24158,7 +24818,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరే అండి, మీరు హాయిగా మాట్లాడి రండి. నేను ఇక్కడే ఉంటాను, ఏం కంగారు పడకండి."
+        "content": "సరే అండి, మీరు హాయిగా మాట్లాడి రండి. నేను ఇక్కడే ఉంటాను, ఏం కంగారు పడకండి.",
+        "tool_calls": [
+          {
+            "id": "call_nablcocq",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -24200,7 +24870,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే అండి, పర్వాలేదు ముందు అది చూసుకోండి, నేను ఇక్కడే ఉంటాను మీరు ఎప్పుడు ఖాళీగా ఉంటే అప్పుడు కాల్ చేయండి"
+        "content": "ఓకే అండి, పర్వాలేదు ముందు అది చూసుకోండి, నేను ఇక్కడే ఉంటాను మీరు ఎప్పుడు ఖాళీగా ఉంటే అప్పుడు కాల్ చేయండి",
+        "tool_calls": [
+          {
+            "id": "call_eo38ohms",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -24368,7 +25048,17 @@
       },
       {
         "role": "assistant",
-        "content": "అవును అండి, డెలివరీకి ముందు ఖచ్చితంగా కాల్ చేస్తారు. పర్వాలేదు, మీరు వెళ్లి చూడండి, నేను లైన్లోనే ఉంటాను."
+        "content": "అవును అండి, డెలివరీకి ముందు ఖచ్చితంగా కాల్ చేస్తారు. పర్వాలేదు, మీరు వెళ్లి చూడండి, నేను లైన్లోనే ఉంటాను.",
+        "tool_calls": [
+          {
+            "id": "call_uk3zz1cg",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -24402,7 +25092,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓహో, అలాగా! అయ్యో, చాలా సారీ అండి. అసలు ఇదెలా జరిగిందో కనుక్కుంటాను. మీరు మధ్యాహ్నం ఫ్రీగా ఉంటారా? మనం మళ్ళీ మాట్లాడుకుందాం."
+        "content": "ఓహో, అలాగా! అయ్యో, చాలా సారీ అండి. అసలు ఇదెలా జరిగిందో కనుక్కుంటాను. మీరు మధ్యాహ్నం ఫ్రీగా ఉంటారా? మనం మళ్ళీ మాట్లాడుకుందాం.",
+        "tool_calls": [
+          {
+            "id": "call_x0pisy59",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -24818,7 +25518,17 @@
       },
       {
         "role": "assistant",
-        "content": "తప్పకుండా అండి! మీ తమ్ముడికి పుట్టినరోజు శుభాకాంక్షలు. ప్యాకింగ్ చాలా జాగ్రత్తగా, భద్రంగా ఉండేలా నేను చూసుకుంటాను, మీరు అస్సలు టెన్షన్ పడకండి."
+        "content": "తప్పకుండా అండి! మీ తమ్ముడికి పుట్టినరోజు శుభాకాంక్షలు. ప్యాకింగ్ చాలా జాగ్రత్తగా, భద్రంగా ఉండేలా నేను చూసుకుంటాను, మీరు అస్సలు టెన్షన్ పడకండి.",
+        "tool_calls": [
+          {
+            "id": "call_sjt34y7d",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -24852,17 +25562,7 @@
       },
       {
         "role": "assistant",
-        "content": "చెప్పండి, మీ ఆర్డర్ నంబర్ చెప్తే స్టేటస్ ఏంటో ఇప్పుడే చూస్తాను. డెలివరీ బాయ్ నంబర్ కూడా మీకు వచ్చేలా చేస్తాను లెండి, టెన్షన్ వద్దు.",
-        "tool_calls": [
-          {
-            "id": "call_hmft0aef",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "చెప్పండి, మీ ఆర్డర్ నంబర్ చెప్తే స్టేటస్ ఏంటో ఇప్పుడే చూస్తాను. డెలివరీ బాయ్ నంబర్ కూడా మీకు వచ్చేలా చేస్తాను లెండి, టెన్షన్ వద్దు."
       }
     ],
     "metadata": {
@@ -24904,7 +25604,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే, తొమ్మిది ఏడు ఐదు రెండు మూడు, కదా? చూస్తున్నాను అండి. అబ్బా, అది ఆల్రెడీ అవుట్ ఫర్ డెలివరీ అని ఉంది. కానీ మీరు కంగారు పడకండి, నేను ఇప్పుడే డెలివరీ బాయ్ కి కాల్ చేసి అడ్రస్ మారుస్తాను."
+        "content": "ఓకే, తొమ్మిది ఏడు ఐదు రెండు మూడు, కదా? చూస్తున్నాను అండి. అబ్బా, అది ఆల్రెడీ అవుట్ ఫర్ డెలివరీ అని ఉంది. కానీ మీరు కంగారు పడకండి, నేను ఇప్పుడే డెలివరీ బాయ్ కి కాల్ చేసి అడ్రస్ మారుస్తాను.",
+        "tool_calls": [
+          {
+            "id": "call_e0sgro0t",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -25112,17 +25822,7 @@
       },
       {
         "role": "assistant",
-        "content": "చెప్పండి, ఒక్క నిమిషం ఉండండి చూస్తున్నాను. అడ్రస్ మారితే ఒక రెండు రోజులు అటు ఇటు అవ్వొచ్చు అంతేనండి.",
-        "tool_calls": [
-          {
-            "id": "call_csh102zv",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "చెప్పండి, ఒక్క నిమిషం ఉండండి చూస్తున్నాను. అడ్రస్ మారితే ఒక రెండు రోజులు అటు ఇటు అవ్వొచ్చు అంతేనండి."
       }
     ],
     "metadata": {
@@ -25302,7 +26002,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరే సరే, అలాగేనండి, జాగ్రత్త, మళ్ళీ మాట్లాడుకుందాంలే!"
+        "content": "సరే సరే, అలాగేనండి, జాగ్రత్త, మళ్ళీ మాట్లాడుకుందాంలే!",
+        "tool_calls": [
+          {
+            "id": "call_08ay5lhq",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -25344,7 +26054,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, అలాగే! ఏం పర్వాలేదు, మీరు చూసుకోండి. రేపు ఆఫీసులో కలుద్దాం మరి, జాగ్రత్త!"
+        "content": "సరేనండి, అలాగే! ఏం పర్వాలేదు, మీరు చూసుకోండి. రేపు ఆఫీసులో కలుద్దాం మరి, జాగ్రత్త!",
+        "tool_calls": [
+          {
+            "id": "call_olfby00q",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -25696,17 +26416,7 @@
       },
       {
         "role": "assistant",
-        "content": "అవును, పది గంటలకేనా, సరేనండి, చూస్తున్నాను.",
-        "tool_calls": [
-          {
-            "id": "call_8u6104x4",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "అవును, పది గంటలకేనా, సరేనండి, చూస్తున్నాను."
       }
     ],
     "metadata": {
@@ -25836,17 +26546,7 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, ఒక్క నిమిషం ఉండండి... ఆ, మీ బిల్లు మొత్తం ఐదు వందల రూపాయలు ఉంది.",
-        "tool_calls": [
-          {
-            "id": "call_pdz5bexa",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "సరేనండి, ఒక్క నిమిషం ఉండండి... ఆ, మీ బిల్లు మొత్తం ఐదు వందల రూపాయలు ఉంది."
       }
     ],
     "metadata": {
@@ -26158,17 +26858,7 @@
       },
       {
         "role": "assistant",
-        "content": "ఆ నంబర్ తీసుకున్నాను, ఒక్క నిమిషం ఉండండి... అవును, మీ బిల్లు మొత్తం ఐదు వందల రూపాయలు ఉంది.",
-        "tool_calls": [
-          {
-            "id": "call_x24ue9ui",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "ఆ నంబర్ తీసుకున్నాను, ఒక్క నిమిషం ఉండండి... అవును, మీ బిల్లు మొత్తం ఐదు వందల రూపాయలు ఉంది."
       }
     ],
     "metadata": {
@@ -27246,17 +27936,7 @@
       },
       {
         "role": "assistant",
-        "content": "అవును, సరిపోయింది, ఒక్క నిమిషం ఆగండి, మీ బ్యాలెన్స్ ఐదు వేల రూపాయలు ఉంది.",
-        "tool_calls": [
-          {
-            "id": "call_omxoseb6",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "అవును, సరిపోయింది, ఒక్క నిమిషం ఆగండి, మీ బ్యాలెన్స్ ఐదు వేల రూపాయలు ఉంది."
       }
     ],
     "metadata": {
@@ -27442,17 +28122,7 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే అర్థమైంది, ఒక్క నిమిషం ఉండండి, మీ వివరాలు చూస్తున్నాను. మీ ఖాతాలో ఇప్పుడు మొత్తం ఐదు వేల రూపాయలు ఉన్నాయి.",
-        "tool_calls": [
-          {
-            "id": "call_fex6f83b",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "ఓకే అర్థమైంది, ఒక్క నిమిషం ఉండండి, మీ వివరాలు చూస్తున్నాను. మీ ఖాతాలో ఇప్పుడు మొత్తం ఐదు వేల రూపాయలు ఉన్నాయి."
       }
     ],
     "metadata": {
@@ -27750,17 +28420,7 @@
       },
       {
         "role": "assistant",
-        "content": "అయ్యో సారీ అండి, నా పొరపాటు. రాత్రి ఎనిమిది గంటలకన్నమాట, ఇప్పుడు చూస్తున్నాను. అవును, ఇక్కడ ఉంది, మీ ఆర్డర్ రేపు సాయంత్రం లోపు వస్తుంది.",
-        "tool_calls": [
-          {
-            "id": "call_myvz3pvf",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "అయ్యో సారీ అండి, నా పొరపాటు. రాత్రి ఎనిమిది గంటలకన్నమాట, ఇప్పుడు చూస్తున్నాను. అవును, ఇక్కడ ఉంది, మీ ఆర్డర్ రేపు సాయంత్రం లోపు వస్తుంది."
       }
     ],
     "metadata": {
@@ -27980,17 +28640,7 @@
       },
       {
         "role": "assistant",
-        "content": "అరె సారీ అండి, పొరపాటు జరిగింది. రాము గారేనా, సరేనండి ఒక్క నిమిషం ఉండండి, మీ పుస్తకం వివరాలు చూస్తాను.",
-        "tool_calls": [
-          {
-            "id": "call_80tl9itc",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "అరె సారీ అండి, పొరపాటు జరిగింది. రాము గారేనా, సరేనండి ఒక్క నిమిషం ఉండండి, మీ పుస్తకం వివరాలు చూస్తాను."
       }
     ],
     "metadata": {
@@ -28228,7 +28878,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఏమీ పర్వాలేదు అండి, అంతా ఓకే. రేపు కలుద్దాం, సెలవు."
+        "content": "ఏమీ పర్వాలేదు అండి, అంతా ఓకే. రేపు కలుద్దాం, సెలవు.",
+        "tool_calls": [
+          {
+            "id": "call_hx2lbyh3",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -28814,7 +29474,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, మరి రేపు ఉదయం పది గంటలకు కలుద్దాం, ఉంటానండి."
+        "content": "సరేనండి, మరి రేపు ఉదయం పది గంటలకు కలుద్దాం, ఉంటానండి.",
+        "tool_calls": [
+          {
+            "id": "call_frx1kk1l",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -29018,7 +29688,17 @@
       },
       {
         "role": "assistant",
-        "content": "ఓకే రవి గారు, థాంక్స్ అండి. ఆరు గంటలకు కలుద్దాం, జాగ్రత్తగా రండి."
+        "content": "ఓకే రవి గారు, థాంక్స్ అండి. ఆరు గంటలకు కలుద్దాం, జాగ్రత్తగా రండి.",
+        "tool_calls": [
+          {
+            "id": "call_ciszb8za",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -31548,17 +32228,7 @@
       },
       {
         "role": "assistant",
-        "content": "మీ కుటుంబం అందరినీ కలిసెప్పుడు, ఆ కాన్ఫరెన్స్‌కేర్పాట్లు చూస్తాను.",
-        "tool_calls": [
-          {
-            "id": "call_orvewi0h",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "మీ కుటుంబం అందరినీ కలిసెప్పుడు, ఆ కాన్ఫరెన్స్‌కేర్పాట్లు చూస్తాను."
       }
     ],
     "metadata": {
@@ -35159,17 +35829,7 @@
       },
       {
         "role": "assistant",
-        "content": "Got it, seven two eight nine. Let me pull that up for you right now.",
-        "tool_calls": [
-          {
-            "id": "call_obi3czzc",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Got it, seven two eight nine. Let me pull that up for you right now."
       }
     ],
     "metadata": {
@@ -36260,17 +36920,7 @@
       },
       {
         "role": "assistant",
-        "content": "Thanks. Give me a moment to look that up for you.",
-        "tool_calls": [
-          {
-            "id": "call_lcbdivc6",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "Thanks. Give me a moment to look that up for you."
       }
     ],
     "metadata": {
@@ -39325,17 +39975,7 @@
       },
       {
         "role": "assistant",
-        "content": "తప్పకుండా అండి, ఉదయం ఎనిమిది గంటలకు ఉన్న ఫ్లైట్స్ చూస్తాను, ఒక్క నిమిషం ఆగండి.",
-        "tool_calls": [
-          {
-            "id": "call_3u4n8aow",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "తప్పకుండా అండి, ఉదయం ఎనిమిది గంటలకు ఉన్న ఫ్లైట్స్ చూస్తాను, ఒక్క నిమిషం ఆగండి."
       }
     ],
     "metadata": {
@@ -40025,17 +40665,7 @@
       },
       {
         "role": "assistant",
-        "content": "మంచిది, సోమవారం మరియు మంగళవారం టికెట్లు చూస్తాను. ఒక్క నిమిషం ఆగండి.",
-        "tool_calls": [
-          {
-            "id": "call_rzt8is7f",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "మంచిది, సోమవారం మరియు మంగళవారం టికెట్లు చూస్తాను. ఒక్క నిమిషం ఆగండి."
       }
     ],
     "metadata": {
@@ -40235,7 +40865,17 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, జాగ్రత్తగా వెళ్లి రండి. ఇంకేమైనా సహాయం కావాలా?"
+        "content": "సరేనండి, జాగ్రత్తగా వెళ్లి రండి. ఇంకేమైనా సహాయం కావాలా?",
+        "tool_calls": [
+          {
+            "id": "call_oo1dkbcy",
+            "type": "function",
+            "function": {
+              "name": "disconnect_tool",
+              "arguments": "{}"
+            }
+          }
+        ]
       }
     ],
     "metadata": {
@@ -40663,17 +41303,7 @@
       },
       {
         "role": "assistant",
-        "content": "తప్పకుండా, ఒక్క నిమిషం ఉండండి. మీ గత నెల బిల్లు మొత్తం ఎనిమిది వందల రూపాయలు అండి.",
-        "tool_calls": [
-          {
-            "id": "call_06yo7s86",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "తప్పకుండా, ఒక్క నిమిషం ఉండండి. మీ గత నెల బిల్లు మొత్తం ఎనిమిది వందల రూపాయలు అండి."
       }
     ],
     "metadata": {
@@ -40716,17 +41346,7 @@
       },
       {
         "role": "assistant",
-        "content": "సరేనండి, ఒక్క నిమిషం ఆగండి. మీ బిల్లు మొత్తం రెండు వందల యాభై రూపాయలు.",
-        "tool_calls": [
-          {
-            "id": "call_wbmv6ibr",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "సరేనండి, ఒక్క నిమిషం ఆగండి. మీ బిల్లు మొత్తం రెండు వందల యాభై రూపాయలు."
       }
     ],
     "metadata": {
@@ -55697,17 +56317,7 @@
       },
       {
         "role": "assistant",
-        "content": "సరే, మీకు మంచి రోజు ఉండాలి, ఆరోగ్యంగా ఉండండి, చూస్తాను",
-        "tool_calls": [
-          {
-            "id": "call_y2ihv1wi",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "సరే, మీకు మంచి రోజు ఉండాలి, ఆరోగ్యంగా ఉండండి, చూస్తాను"
       }
     ],
     "metadata": {
@@ -59373,17 +59983,7 @@
       },
       {
         "role": "assistant",
-        "content": "నేను కూడా ఇంటernet లో చూస్తాను. మనం మళ్లీ మాట్లాడుకుందాం. బై!",
-        "tool_calls": [
-          {
-            "id": "call_ni6xmvd9",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "నేను కూడా ఇంటernet లో చూస్తాను. మనం మళ్లీ మాట్లాడుకుందాం. బై!"
       }
     ],
     "metadata": {
@@ -78406,17 +79006,7 @@
       },
       {
         "role": "assistant",
-        "content": "సరే గారు, మీకు సంతోషంగా ఉండాలని కోరుకుంటున్నాను. డెలివరీ బాయ్ వచ్చిన తర్వాత, మీరు సంతృప్తి చెందేలా చూస్తాను. మీ బ్యాటరీ చార్జ్ చేయండి. మరోసారి మాట్లాడుకుందాం. మంచి రోజు అయ్యేలా చూసుకోండి. జై హింద్!",
-        "tool_calls": [
-          {
-            "id": "call_pklj16ag",
-            "type": "function",
-            "function": {
-              "name": "disconnect_tool",
-              "arguments": "{}"
-            }
-          }
-        ]
+        "content": "సరే గారు, మీకు సంతోషంగా ఉండాలని కోరుకుంటున్నాను. డెలివరీ బాయ్ వచ్చిన తర్వాత, మీరు సంతృప్తి చెందేలా చూస్తాను. మీ బ్యాటరీ చార్జ్ చేయండి. మరోసారి మాట్లాడుకుందాం. మంచి రోజు అయ్యేలా చూసుకోండి. జై హింద్!"
       }
     ],
     "metadata": {
