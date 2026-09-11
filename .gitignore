@@ -37,3 +37,8 @@ wheels/
 stt_test/
 scratch/
 
+# Environment files
+.env
+*.env
+.env.*
+!.env.example
