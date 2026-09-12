@@ -571,6 +571,7 @@ def call_gemini_api(api_key: str, model_name: str, system_prompt: str, scenario_
         headers={"Content-Type": "application/json"},
         method="POST"
     )
+    
 
     try:
         with urllib.request.urlopen(req, timeout=30) as response:
