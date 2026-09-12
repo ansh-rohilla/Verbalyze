@@ -147,3 +147,58 @@ This creates:
 - `stt_dataset/gu/metadata_gu.csv` containing metadata mapping text to audio files.
 - `stt_dataset/gu/audio/` directory filled with synthesized audio files.
 
+---
+
+## Part 3: Indic Voice AI Suite (`verbalyze`)
+
+A modular framework converting Verbalyze synthetic data into production benchmarks, fine-tuned Small Language Models (SLMs), and telephony voicebots.
+
+```
+verbalyze/
+├── pipeline/
+│   ├── stt_exporter.py       # Packages 172.8k STT dataset for Hugging Face Hub
+│   └── dialogue_exporter.py  # Formats 16.3k conversations into ChatML & ShareGPT
+├── benchmark/
+│   ├── evaluator.py          # ASR evaluation harness across 11 scenarios
+│   └── metrics.py            # WER, CER, Digit Accuracy, Acronym Retention
+├── agent/
+│   ├── voice_bot.py          # Telephony collection agent runtime
+│   ├── tools.py              # Telephony tools (disconnect_tool, payment links)
+│   └── audio_engine.py       # Edge-TTS neural audio synthesis & playback
+└── telephony/
+    └── server.py             # FastAPI Exotel/Twilio SIP webhook bridge
+```
+
+### 1. Phase 1: Benchmark Speech Models (`verbalyze benchmark`)
+Evaluate any speech engine (Whisper, Sarvam, Google, Azure) against the 172,800 STT scenario dataset:
+```bash
+# Evaluate on Hindi across 11 edge scenarios
+python3 -m verbalyze.cli benchmark --lang hi --samples 20 --output-report LEADERBOARD.md
+
+# Package the 172.8k dataset for Hugging Face
+python3 -m verbalyze.cli export-stt --output-dir data/stt_bench
+```
+
+### 2. Phase 2: Indic Voice SLM Fine-Tuning (`train_voice_slm.py`)
+Compile 16,370 multi-turn voice conversations and fine-tune low-latency 1B–3B models (Llama 3.2 / Qwen 2.5):
+```bash
+# 1. Compile conversations into ChatML & ShareGPT splits
+python3 -m verbalyze.cli export-dialogues --output-dir data/dialogues
+
+# 2. Verify dataset and pipeline (Dry Run)
+python3 scripts/train_voice_slm.py --dry-run
+
+# 3. Start QLoRA Fine-Tuning on GPU
+python3 scripts/train_voice_slm.py --model llama3.2-3b --epochs 3 --batch-size 4
+```
+
+### 3. Phase 3: Outbound Debt/EMI Telephony Voicebot (`verbalyze agent`)
+Simulate real phone calls with the Muthoot Fincorp recovery bot with natural fillers, emotion handling, and automatic call hangup (`disconnect_tool`):
+```bash
+# Launch interactive terminal voicebot simulation
+python3 -m verbalyze.cli agent --lang hi
+
+# Start the FastAPI Telephony Webhook Server for Exotel / Twilio SIP trunks
+python3 -m verbalyze.cli server --port 8000
+```
+

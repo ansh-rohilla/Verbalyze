@@ -42,3 +42,9 @@ scratch/
 *.env
 .env.*
 !.env.example
+
+# Generated datasets and training checkpoints
+data/**/*.jsonl
+data/**/*.json
+!data/**/README.md
+checkpoints/
