@@ -1,6 +1,7 @@
 # Verbalyze: Indic Voice AI & Synthetic Data Suite
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ansh-rohilla/Verbalyze/blob/main/notebooks/train_indic_voice_slm.ipynb)
+[![Hugging Face Spaces](https://img.shields.io/badge/🤗%20Hugging%20Face-verbalyze--demo-yellow)](https://huggingface.co/spaces/ansh-rohilla/verbalyze-demo)
 [![Hugging Face Dialogues](https://img.shields.io/badge/🤗%20Hugging%20Face-verbalyze--dialogues-blue)](https://huggingface.co/datasets/ansh-rohilla/verbalyze-dialogues)
 [![Hugging Face STT Benchmark](https://img.shields.io/badge/🤗%20Hugging%20Face-verbalyze--stt--bench-green)](https://huggingface.co/datasets/ansh-rohilla/verbalyze-stt-bench)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -215,6 +216,19 @@ python3 -m verbalyze.cli agent --lang hi
 
 # Start the FastAPI Telephony Webhook Server for Exotel / Twilio SIP trunks
 python3 -m verbalyze.cli server --port 8000
+```
+
+### 4. Interactive Web Application & Space (`verbalyze ui`)
+Launch the full-duplex telephony voicebot, STT benchmark arena, and multi-lingual dataset visualizer:
+
+[![Hugging Face Spaces](https://img.shields.io/badge/🤗%20Hugging%20Face-verbalyze--demo-yellow)](https://huggingface.co/spaces/ansh-rohilla/verbalyze-demo)
+
+```bash
+# Launch interactive Gradio Web App locally on http://localhost:7860
+python3 -m verbalyze.cli ui
+
+# Or deploy / sync directly to Hugging Face Spaces
+python3 -m verbalyze.cli deploy-space
 ```
 
 ---

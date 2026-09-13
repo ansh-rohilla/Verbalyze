@@ -28,6 +28,7 @@ NEURAL_VOICES = {
     "pa": "pa-IN-OjasNeural",
     "as": "bn-IN-TanishaaNeural", # Closest neural fallback
     "or": "hi-IN-SwaraNeural",     # Fallback
+    "ur": "ur-IN-GulNeural",       # Urdu
 }
 
 

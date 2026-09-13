@@ -16,3 +16,7 @@ uvicorn>=0.28.0
 fpdf2>=2.7.8
 datasets>=2.18.0
 huggingface-hub>=0.22.0
+pandas>=2.0.0
+
+# Interactive Web Application
+gradio>=6.0.0

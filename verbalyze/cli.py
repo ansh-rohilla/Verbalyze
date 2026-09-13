@@ -57,6 +57,15 @@ def main():
     p_hf.add_argument("--private", action="store_true", help="Publish as private dataset")
     p_hf.add_argument("--repo-id", type=str, default=None, help="Custom repo ID (e.g. username/my-dataset)")
 
+    # Command: ui
+    p_ui = subparsers.add_parser("ui", help="Launch interactive Gradio web application")
+    p_ui.add_argument("--port", type=int, default=7860, help="Web app port (default: 7860)")
+    p_ui.add_argument("--share", action="store_true", help="Generate a public Gradio share link")
+
+    # Command: deploy-space
+    p_sp = subparsers.add_parser("deploy-space", help="Deploy web application to Hugging Face Spaces")
+    p_sp.add_argument("--repo-id", type=str, default="ansh-rohilla/verbalyze-demo", help="Target Space repo ID")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -124,6 +133,19 @@ def main():
         except Exception as e:
             print(f"\n❌ Error publishing to Hugging Face: {e}")
             sys.exit(1)
+
+    elif args.command == "ui":
+        try:
+            import app
+            print(f"[UI] Starting Verbalyze Interactive Web App on http://localhost:{args.port}...")
+            app.demo.launch(server_name="0.0.0.0", server_port=args.port, share=args.share)
+        except Exception as e:
+            print(f"❌ Error launching web application: {e}")
+            sys.exit(1)
+
+    elif args.command == "deploy-space":
+        from scripts.deploy_space import deploy
+        deploy(repo_id=args.repo_id)
 
 
 if __name__ == "__main__":
