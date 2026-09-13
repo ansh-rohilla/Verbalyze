@@ -49,6 +49,14 @@ def main():
     p_srv.add_argument("--port", type=int, default=8000, help="Server port (default: 8000)")
     p_srv.add_argument("--host", type=str, default="0.0.0.0", help="Server host (default: 0.0.0.0)")
 
+    # Command: publish-hf
+    p_hf = subparsers.add_parser("publish-hf", help="Publish datasets to Hugging Face Hub")
+    p_hf.add_argument("--target", type=str, default="all", choices=["all", "dialogues", "stt"],
+                      help="Dataset to publish: 'dialogues', 'stt', or 'all' (default: all)")
+    p_hf.add_argument("--token", type=str, default=None, help="Hugging Face API token (with Write permissions)")
+    p_hf.add_argument("--private", action="store_true", help="Publish as private dataset")
+    p_hf.add_argument("--repo-id", type=str, default=None, help="Custom repo ID (e.g. username/my-dataset)")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -91,6 +99,31 @@ def main():
         except ImportError as e:
             print(f"Error starting server: {e}")
             print("Install uvicorn and fastapi: pip install uvicorn fastapi")
+
+    elif args.command == "publish-hf":
+        from verbalyze.pipeline.hf_publisher import publish_dataset, publish_all
+        try:
+            if args.target == "dialogues":
+                publish_dataset(
+                    folder_path="data/dialogues",
+                    repo_name="verbalyze-dialogues",
+                    token=args.token,
+                    private=args.private,
+                    custom_repo_id=args.repo_id
+                )
+            elif args.target == "stt":
+                publish_dataset(
+                    folder_path="data/stt_bench",
+                    repo_name="verbalyze-stt-bench",
+                    token=args.token,
+                    private=args.private,
+                    custom_repo_id=args.repo_id
+                )
+            else:
+                publish_all(token=args.token, private=args.private)
+        except Exception as e:
+            print(f"\n❌ Error publishing to Hugging Face: {e}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":
