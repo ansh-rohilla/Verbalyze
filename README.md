@@ -209,9 +209,18 @@ python3 scripts/train_voice_slm.py --model llama3.2-3b --epochs 3 --batch-size 4
 ```
 
 ### 3. Phase 3: Outbound Debt/EMI Telephony Voicebot (`verbalyze agent`)
-Simulate real phone calls with the Muthoot Fincorp recovery bot with natural fillers, emotion handling, and automatic call hangup (`disconnect_tool`):
+Simulate real phone calls with natural Indic fillers, emotion handling, neural audio playback, and automatic call hangup (`disconnect_tool`):
 ```bash
-# Launch interactive terminal voicebot simulation
+# 🎙️ Live Hands-Free Voice Mode on Mac (Speak into your microphone)
+python3 -m verbalyze.cli agent --lang hi --mic
+
+# Push-to-talk or auto Voice Activity Detection (VAD)
+python3 -m verbalyze.cli agent --lang hi --mic --mode auto
+
+# Switch personas (Banking KYC or Swiggy delivery)
+python3 -m verbalyze.cli agent --lang hi --persona bank_kyc --mic
+
+# Terminal text simulation mode
 python3 -m verbalyze.cli agent --lang hi
 
 # Start the FastAPI Telephony Webhook Server for Exotel / Twilio SIP trunks

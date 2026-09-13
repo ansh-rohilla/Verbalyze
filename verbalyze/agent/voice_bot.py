@@ -317,9 +317,87 @@ class VoiceAgent:
                     break
 
             except (KeyboardInterrupt, EOFError):
-                print("\n[Call interrupted]")
+    def run_live_microphone_call(self, mode: str = "push_to_talk"):
+        """
+        Runs a hands-free conversational voice session on Mac.
+        Listens to microphone, transcribes speech, reasons, and speaks back through speakers.
+        """
+        from verbalyze.agent.mic_listener import MicrophoneListener
+
+        listener = MicrophoneListener(language=self.language)
+
+        print("\n" + "=" * 64)
+        print("  🎙️  VERBALYZE: LIVE HANDS-FREE VOICEBOT ON MAC")
+        print(f"  Persona:  {self.persona.upper()} (Muthoot Loan Recovery ₹5,420)")
+        print(f"  Language: {self.language.upper()} | Voice: {self.audio_engine.voice if self.audio_engine else 'Default'}")
+        print(f"  Input:    MacBook Microphone ({listener.locale})")
+        print(f"  Output:   MacBook Speakers (Neural Edge-TTS via afplay)")
+        print(f"  Mode:     {'Push-to-Talk [ENTER to record]' if mode == 'push_to_talk' else 'Auto Voice Detection (VAD)'}")
+        print("  (Type 'q' or 'quit' at any prompt to hang up)")
+        print("=" * 64 + "\n")
+
+        # Initial outbound greeting
+        initial_greeting = self.get_initial_greeting()
+        print(f"📞 Agent: {initial_greeting}")
+        self.messages.append({"role": "assistant", "content": initial_greeting})
+
+        if self.voice_enabled and self.audio_engine:
+            audio_file = self.audio_engine.synthesize(initial_greeting)
+            if audio_file:
+                self.audio_engine.play(audio_file)
+
+        while self.is_call_active:
+            try:
+                user_utterance = None
+                wav_path = None
+
+                print("\n👤 You (Customer):")
+                if mode == "auto":
+                    wav_path = listener.record_auto_vad(silence_seconds=1.2)
+                else:
+                    prompt = input("   👉 Press [ENTER] to speak into mic (or type text directly): ").strip()
+                    if prompt.lower() in ["q", "quit", "exit"]:
+                        print("\n[Call ended by user]")
+                        break
+                    elif prompt:
+                        user_utterance = prompt
+                    else:
+                        wav_path = listener.record_push_to_talk()
+
+                if wav_path:
+                    print("⚡ Transcribing your speech...", end="\r", flush=True)
+                    user_utterance = listener.transcribe(wav_path)
+                    try:
+                        os.remove(wav_path)
+                    except Exception:
+                        pass
+
+                if not user_utterance or not user_utterance.strip():
+                    print("⚠️  [Could not detect speech clearly. Please try again]")
+                    continue
+
+                print(f"👤 Customer (Transcribed): \"{user_utterance}\"")
+
+                # Step agent
+                res = self.step(user_utterance)
+                print(f"📞 Agent: {res['text']}")
+
+                if res.get("tool_event"):
+                    print(f"   ⚙️  {res['tool_event']}")
+
+                if res.get("audio_path") and self.audio_engine:
+                    self.audio_engine.play(res["audio_path"])
+
+                if res.get("terminated"):
+                    print("\n🔴 [CALL TERMINATED - Phone Hung Up]")
+                    break
+
+            except (KeyboardInterrupt, EOFError):
+                print("\n[Call disconnected by user]")
                 break
-        print("\n========================================================\n")
+
+        print("\n" + "=" * 64 + "\n")
+
 
 
 if __name__ == "__main__":

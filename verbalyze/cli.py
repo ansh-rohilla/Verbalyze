@@ -40,9 +40,12 @@ def main():
 
     # Command: agent
     p_ag = subparsers.add_parser("agent", help="Launch interactive telephony voicebot simulator")
-    p_ag.add_argument("--lang", type=str, default="hi", choices=["hi", "en", "ta", "te", "mr", "gu", "bn"], help="Language code")
+    p_ag.add_argument("--lang", type=str, default="hi", choices=["hi", "en", "ta", "te", "mr", "gu", "bn", "kn", "ml", "pa", "or", "ur"], help="Language code")
+    p_ag.add_argument("--persona", type=str, default="muthoot_recovery", choices=["muthoot_recovery", "bank_kyc", "swiggy_delivery"], help="Telephony persona")
+    p_ag.add_argument("--mic", action="store_true", help="Enable hands-free microphone voice input on Mac")
+    p_ag.add_argument("--mode", type=str, default="push_to_talk", choices=["push_to_talk", "auto"], help="Microphone mode ('push_to_talk' or 'auto' VAD)")
     p_ag.add_argument("--no-voice", action="store_true", help="Disable audio speech synthesis playback")
-    p_ag.add_argument("--provider", type=str, default="groq", choices=["groq", "openai", "mock"], help="LLM Provider")
+    p_ag.add_argument("--provider", type=str, default="mock", choices=["groq", "openai", "mock"], help="LLM Provider")
 
     # Command: server
     p_srv = subparsers.add_parser("server", help="Start FastAPI telephony webhook server")
@@ -95,8 +98,16 @@ def main():
 
     elif args.command == "agent":
         from verbalyze.agent.voice_bot import VoiceAgent
-        bot = VoiceAgent(language=args.lang, llm_provider=args.provider, voice_enabled=not args.no_voice)
-        bot.run_interactive_terminal_call()
+        bot = VoiceAgent(
+            language=args.lang,
+            persona=args.persona,
+            llm_provider=args.provider,
+            voice_enabled=not args.no_voice
+        )
+        if args.mic:
+            bot.run_live_microphone_call(mode=args.mode)
+        else:
+            bot.run_interactive_terminal_call()
 
     elif args.command == "server":
         try:

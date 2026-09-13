@@ -3,6 +3,8 @@
 # Audio Synthesis & Voice Telephony Agent
 edge-tts>=6.1.10
 gTTS>=2.5.1
+sounddevice>=0.5.0
+SpeechRecognition>=3.14.0
 
 # Cloud Integration & S3 Datasets
 boto3>=1.34.0
