@@ -754,20 +754,6 @@ print(f"Total conversations: {len(dialogues)} | Sample turn: {dialogues[0]['mess
     let isCallActive = true;
     let callSeconds = 0;
     let timerInterval = null;
-
-    function initNewCall() {
-      isCallActive = true;
-      clearInterval(timerInterval);
-      callSeconds = 0;
-      timerInterval = setInterval(() => {
-        if (isCallActive) {
-          callSeconds++;
-          const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
-          const secs = String(callSeconds % 60).padStart(2, '0');
-          document.getElementById('call-timer').innerText = `${mins}:${secs}`;
-        }
-      }, 1000);
-
     let minQualityThreshold = 0.80;
 
     function updateQualityThreshold(val) {
@@ -816,19 +802,35 @@ print(f"Total conversations: {len(dialogues)} | Sample turn: {dialogues[0]['mess
 
     function initNewCall() {
       isCallActive = true;
+      if (timerInterval) clearInterval(timerInterval);
       callSeconds = 0;
-      clearInterval(callInterval);
-      callInterval = setInterval(updateCallTimer, 1000);
+      const timerEl = document.getElementById('call-timer');
+      if (timerEl) timerEl.innerText = '00:00';
 
-      document.getElementById('call-status-badge').className = "flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold";
-      document.getElementById('call-status-badge').innerHTML = '<span class="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse"></span><span>CALL CONNECTED (SIP-TRUNK #0821 | G.711)</span>';
+      timerInterval = setInterval(() => {
+        if (isCallActive) {
+          callSeconds++;
+          const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+          const secs = String(callSeconds % 60).padStart(2, '0');
+          const t = document.getElementById('call-timer');
+          if (t) t.innerText = `${mins}:${secs}`;
+        }
+      }, 1000);
+
+      const statusBadge = document.getElementById('call-status-badge');
+      if (statusBadge) {
+        statusBadge.className = "flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold";
+        statusBadge.innerHTML = '<span class="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse"></span><span>CALL CONNECTED (SIP-TRUNK #0821 | G.711)</span>';
+      }
       
-      const lang = document.getElementById('select-lang').value;
-      const persona = document.getElementById('select-persona').value;
+      const lang = document.getElementById('select-lang') ? document.getElementById('select-lang').value : 'hi';
+      const persona = document.getElementById('select-persona') ? document.getElementById('select-persona').value : 'muthoot_recovery';
 
       let greeting = GREETINGS[persona]?.[lang] || GREETINGS[persona]?.['hi'] || GREETINGS['muthoot_recovery']['hi'];
 
-      document.getElementById('chat-stream').innerHTML = '';
+      const chatStream = document.getElementById('chat-stream');
+      if (chatStream) chatStream.innerHTML = '';
+
       const score = 0.989;
       const mos = 4.96;
       const passed = score >= minQualityThreshold;
