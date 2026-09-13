@@ -202,3 +202,28 @@ python3 -m verbalyze.cli agent --lang hi
 python3 -m verbalyze.cli server --port 8000
 ```
 
+---
+
+## Live on Hugging Face Hub 🤗
+
+Both datasets are publicly indexed and ready to use in the Hugging Face `datasets` library:
+
+| Dataset | Samples | Formats | Link |
+|---|:---:|:---:|:---:|
+| **Verbalyze Dialogues** | **16,370** | ChatML, ShareGPT | [🤗 ansh-rohilla/verbalyze-dialogues](https://huggingface.co/datasets/ansh-rohilla/verbalyze-dialogues) |
+| **Verbalyze STT Benchmark** | **172,800** | JSONL, Parquet | [🤗 ansh-rohilla/verbalyze-stt-bench](https://huggingface.co/datasets/ansh-rohilla/verbalyze-stt-bench) |
+
+### Quickstart with Python:
+```python
+from datasets import load_dataset
+
+# 1. Load multi-turn telephony conversations (12 languages)
+dialogues = load_dataset("ansh-rohilla/verbalyze-dialogues", split="train")
+print(f"Loaded {len(dialogues)} dialogues. Sample turn: {dialogues[0]['messages'][1]}")
+
+# 2. Load STT scenario benchmark dataset (12 languages)
+stt_bench = load_dataset("ansh-rohilla/verbalyze-stt-bench", split="test")
+print(f"Loaded {len(stt_bench)} benchmark utterances. Sample: {stt_bench[0]['transcript']}")
+```
+
+
