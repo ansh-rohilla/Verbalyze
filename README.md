@@ -1,8 +1,11 @@
-# Synthetic Conversational & STT Data Generation
+# Verbalyze: Indic Voice AI & Synthetic Data Suite
 
-A suite of unified Python tools to generate synthetic datasets for voice assistant training and Speech-to-Text (STT) validation across 12 regional Indian languages and English.
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ansh-rohilla/Verbalyze/blob/main/notebooks/train_indic_voice_slm.ipynb)
+[![Hugging Face Dialogues](https://img.shields.io/badge/🤗%20Hugging%20Face-verbalyze--dialogues-blue)](https://huggingface.co/datasets/ansh-rohilla/verbalyze-dialogues)
+[![Hugging Face STT Benchmark](https://img.shields.io/badge/🤗%20Hugging%20Face-verbalyze--stt--bench-green)](https://huggingface.co/datasets/ansh-rohilla/verbalyze-stt-bench)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
----
+A unified suite for Indic Voice AI: 172.8k scenario-weighted STT benchmark, 16.3k multi-turn telephony conversations with function calling, low-latency Voice SLM fine-tuning recipes, and real-time SIP voicebots across 12 Indian languages.
 
 ## Supported Languages (12)
 
@@ -179,8 +182,20 @@ python3 -m verbalyze.cli benchmark --lang hi --samples 20 --output-report LEADER
 python3 -m verbalyze.cli export-stt --output-dir data/stt_bench
 ```
 
-### 2. Phase 2: Indic Voice SLM Fine-Tuning (`train_voice_slm.py`)
-Compile 16,370 multi-turn voice conversations and fine-tune low-latency 1B–3B models (Llama 3.2 / Qwen 2.5):
+### 2. Phase 2: Indic Voice SLM Fine-Tuning
+
+Fine-tune low-latency 1B–3B models (Llama 3.2 / Qwen 2.5) on 16,370 telephony conversations directly using Hugging Face datasets:
+
+#### ⚡ Option A: 1-Click Google Colab Notebook (Recommended)
+Train in ~35 minutes on a Google Colab GPU (T4 / A100) and automatically push your adapter to Hugging Face Hub:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ansh-rohilla/Verbalyze/blob/main/notebooks/train_indic_voice_slm.ipynb)
+
+* Pre-configured 4-bit QLoRA with `bitsandbytes`, `peft`, and `trl`
+* Supports `meta-llama/Llama-3.2-3B-Instruct` and `Qwen/Qwen2.5-3B-Instruct`
+* Built-in multi-turn evaluation + automatic push to your HF profile
+
+#### 💻 Option B: Local / Cluster GPU Training (`scripts/train_voice_slm.py`)
 ```bash
 # 1. Compile conversations into ChatML & ShareGPT splits
 python3 -m verbalyze.cli export-dialogues --output-dir data/dialogues
