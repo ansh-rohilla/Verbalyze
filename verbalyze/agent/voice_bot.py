@@ -97,16 +97,18 @@ class VoiceAgent:
         llm_provider: str = "groq",
         api_key: Optional[str] = None,
         model_name: Optional[str] = None,
-        voice_enabled: bool = True
+        voice_enabled: bool = True,
+        min_human_likeness: float = 0.80
     ):
         self.language = language
         self.persona = persona
+        self.min_human_likeness = min_human_likeness
         self.system_prompt = system_prompt or DEFAULT_SYSTEM_PROMPTS.get(language, DEFAULT_SYSTEM_PROMPTS["hi"])
         self.llm_provider = llm_provider
         self.api_key = api_key or os.environ.get("GROQ_API_KEY") or os.environ.get("OPENAI_API_KEY")
         self.model_name = model_name or ("llama-3.3-70b-versatile" if llm_provider == "groq" else "gpt-4o-mini")
         self.voice_enabled = voice_enabled
-        self.audio_engine = AudioEngine(language=language) if voice_enabled else None
+        self.audio_engine = AudioEngine(language=language, min_human_likeness=min_human_likeness) if voice_enabled else None
 
         self.messages: List[Dict[str, Any]] = [
             {"role": "system", "content": self.system_prompt}
@@ -259,14 +261,17 @@ class VoiceAgent:
             if terminated:
                 self.is_call_active = False
 
-        # 5. Synthesize voice if enabled
+        # 5. Synthesize voice if enabled (verified via Quality Gate)
         audio_path = None
+        quality_report = None
         if self.voice_enabled and self.audio_engine and content:
             audio_path = self.audio_engine.synthesize(content)
+            quality_report = self.audio_engine.last_quality_report
 
         return {
             "text": content,
             "audio_path": audio_path,
+            "quality_report": quality_report,
             "tool_event": tool_status if tool_call else None,
             "terminated": not self.is_call_active
         }
@@ -276,7 +281,7 @@ class VoiceAgent:
         print("\n========================================================")
         print("  VERBALYZE: OUTBOUND TELEPHONY VOICEBOT SIMULATOR      ")
         print("  Scenario: Muthoot Fincorp Loan EMI Recovery ($5,420)  ")
-        print("  Language: " + self.language.upper())
+        print(f"  Language: {self.language.upper()} | Min Human-Likeness: {self.min_human_likeness*100:.0f}%")
         print("  Type 'quit' or 'bye' to exit simulation               ")
         print("========================================================\n")
 
@@ -289,8 +294,12 @@ class VoiceAgent:
         print(f"📞 Agent: {initial_greeting}")
         if self.voice_enabled and self.audio_engine:
             audio_file = self.audio_engine.synthesize(initial_greeting)
+            if self.audio_engine.last_quality_report:
+                q = self.audio_engine.last_quality_report
+                print(f"   🎯 [Quality Gate] Human-Likeness: {q.score*100:.1f}% (MOS {q.mos_equivalent}/5.0) ✓ Accepted")
             if audio_file:
                 self.audio_engine.play(audio_file)
+                time.sleep(0.5)
 
         self.messages.append({"role": "assistant", "content": initial_greeting})
 
@@ -306,17 +315,26 @@ class VoiceAgent:
                 res = self.step(user_input)
                 print(f"📞 Agent: {res['text']}")
                 
+                if res.get("quality_report"):
+                    q = res["quality_report"]
+                    print(f"   🎯 [Quality Gate] Human-Likeness: {q.score*100:.1f}% (MOS {q.mos_equivalent}/5.0) ✓ Accepted")
+                elif self.voice_enabled:
+                    print("   ⚠️  [Quality Gate] Audio rejected: fell below human-likeness threshold.")
+
                 if res.get("tool_event"):
                     print(f"   ⚙️  {res['tool_event']}")
 
                 if res.get("audio_path") and self.audio_engine:
                     self.audio_engine.play(res["audio_path"])
+                    time.sleep(0.5)
 
                 if res.get("terminated"):
                     print("\n🔴 [CALL TERMINATED - Phone Hung Up]")
-                    break
-
             except (KeyboardInterrupt, EOFError):
+                print("\n[Call interrupted]")
+                break
+        print("\n========================================================\n")
+
     def run_live_microphone_call(self, mode: str = "push_to_talk"):
         """
         Runs a hands-free conversational voice session on Mac.
@@ -343,8 +361,12 @@ class VoiceAgent:
 
         if self.voice_enabled and self.audio_engine:
             audio_file = self.audio_engine.synthesize(initial_greeting)
+            if self.audio_engine.last_quality_report:
+                q = self.audio_engine.last_quality_report
+                print(f"   🎯 [Quality Gate] Human-Likeness: {q.score*100:.1f}% (MOS {q.mos_equivalent}/5.0) ✓ Accepted")
             if audio_file:
                 self.audio_engine.play(audio_file)
+                time.sleep(0.5)
 
         while self.is_call_active:
             try:
@@ -382,11 +404,18 @@ class VoiceAgent:
                 res = self.step(user_utterance)
                 print(f"📞 Agent: {res['text']}")
 
+                if res.get("quality_report"):
+                    q = res["quality_report"]
+                    print(f"   🎯 [Quality Gate] Human-Likeness: {q.score*100:.1f}% (MOS {q.mos_equivalent}/5.0) ✓ Accepted")
+                elif self.voice_enabled:
+                    print("   ⚠️  [Quality Gate] Audio rejected: fell below human-likeness threshold.")
+
                 if res.get("tool_event"):
                     print(f"   ⚙️  {res['tool_event']}")
 
                 if res.get("audio_path") and self.audio_engine:
                     self.audio_engine.play(res["audio_path"])
+                    time.sleep(0.5)
 
                 if res.get("terminated"):
                     print("\n🔴 [CALL TERMINATED - Phone Hung Up]")

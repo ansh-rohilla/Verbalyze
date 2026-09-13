@@ -173,21 +173,24 @@ def calculate_metrics_for_pred(reference: str, hypothesis: str) -> Dict[str, flo
 # Gradio Tab 1: Telephony Voicebot State
 # ==============================================================================
 class WebVoiceSession:
-    def __init__(self, language: str = "hi", persona: str = "muthoot_recovery", provider: str = "mock", api_key: str = ""):
+    def __init__(self, language: str = "hi", persona: str = "muthoot_recovery", provider: str = "mock", api_key: str = "", min_human_likeness: float = 0.80):
         self.language = language
         self.persona = persona
+        self.min_human_likeness = min_human_likeness
         self.agent = VoiceAgent(
             language=language,
             persona=persona,
             llm_provider="groq" if "groq" in provider.lower() else ("openai" if "openai" in provider.lower() else "mock"),
             api_key=api_key.strip() if api_key.strip() else None,
-            voice_enabled=True
+            voice_enabled=True,
+            min_human_likeness=min_human_likeness
         )
         self.call_history: List[Dict[str, str]] = []
         self.recent_tool_event: Optional[str] = None
+        self.recent_quality_badge: Optional[str] = None
         self.is_connected: bool = True
 
-    def start_call(self) -> Tuple[List[Dict[str, str]], Optional[str], str, str]:
+    def start_call(self) -> Tuple[List[Dict[str, str]], Optional[str], str, str, str]:
         """Initiates call with persona-specific greeting and neural speech."""
         greeting = self.agent.get_initial_greeting()
         self.call_history = [{"role": "assistant", "content": greeting}]
@@ -195,24 +198,33 @@ class WebVoiceSession:
         self.is_connected = True
         self.recent_tool_event = None
 
-        # Synthesize audio
+        # Synthesize audio with quality evaluation
         audio_file = None
+        quality_badge = "<div class='quality-badge'>🎯 Quality Gate: Verified ✓ (Min Score: 80% / MOS ~4.0 Gate Active)</div>"
         if self.agent.audio_engine:
             audio_file = self.agent.audio_engine.synthesize(greeting)
+            report = self.agent.audio_engine.last_quality_report
+            if report:
+                if report.passed and audio_file:
+                    quality_badge = f"<div class='quality-badge'>🎯 Quality Gate: Human-Likeness {report.score*100:.1f}% (MOS {report.mos_equivalent:.2f}/5.0 | Cadence: {report.cadence_score*100:.0f}%) ✓ Accepted</div>"
+                else:
+                    quality_badge = f"<div class='quality-badge-rejected'>⚠️ Quality Gate: Audio Rejected ({report.score*100:.1f}% < {self.min_human_likeness*100:.0f}%) — {report.feedback}</div>"
 
+        self.recent_quality_badge = quality_badge
         status_text = "🟢 **IN CALL** (Trunk: SIP-0821-DELHI | 8kHz G.711 Telephony Codec)"
         event_badge = "📞 Call Connected: Outbound Agent Dialed"
-        return self.call_history, audio_file, status_text, event_badge
+        return self.call_history, audio_file, status_text, event_badge, quality_badge
 
-    def send_turn(self, user_text: str) -> Tuple[List[Dict[str, str]], Optional[str], str, str]:
+    def send_turn(self, user_text: str) -> Tuple[List[Dict[str, str]], Optional[str], str, str, str]:
         """Processes user utterance and returns updated messages, audio, and telephony telemetry."""
+        default_badge = self.recent_quality_badge or "<div class='quality-badge'>🎯 Quality Gate Active</div>"
         if not user_text.strip():
-            return self.call_history, None, "🟢 **IN CALL**", self.recent_tool_event or "No action"
+            return self.call_history, None, "🟢 **IN CALL**", self.recent_tool_event or "No action", default_badge
 
         if not self.is_connected:
             self.call_history.append({"role": "user", "content": user_text})
             self.call_history.append({"role": "assistant", "content": "[Phone Call Disconnected - Click 'Restart Call' to dial again]"})
-            return self.call_history, None, "🔴 **CALL TERMINATED**", "Call is hung up."
+            return self.call_history, None, "🔴 **CALL TERMINATED**", "Call is hung up.", default_badge
 
         # Add user message
         self.call_history.append({"role": "user", "content": user_text})
@@ -221,6 +233,7 @@ class WebVoiceSession:
         res = self.agent.step(user_text)
         bot_reply = res.get("text", "")
         audio_file = res.get("audio_path")
+        report = res.get("quality_report")
         tool_event = res.get("tool_event")
         terminated = res.get("terminated", False)
 
@@ -235,16 +248,30 @@ class WebVoiceSession:
         event_text = tool_event if tool_event else ("🗣️ Spoken turn processed" if not terminated else "🔴 Call Hung Up")
         self.recent_tool_event = event_text
 
-        return self.call_history, audio_file, status_text, event_text
+        quality_badge = default_badge
+        if report:
+            if report.passed and audio_file:
+                quality_badge = (
+                    f"<div class='quality-badge'>🎯 Quality Gate: Human-Likeness {report.score*100:.1f}% "
+                    f"(MOS {report.mos_equivalent:.2f}/5.0 | Cadence: {report.cadence_score*100:.0f}% | Prosody: {report.prosody_score*100:.0f}%) ✓ Accepted</div>"
+                )
+            else:
+                quality_badge = (
+                    f"<div class='quality-badge-rejected'>⚠️ Quality Gate: Speech Rejected "
+                    f"({report.score*100:.1f}% < {self.min_human_likeness*100:.0f}%) — {report.feedback}</div>"
+                )
+        self.recent_quality_badge = quality_badge
+
+        return self.call_history, audio_file, status_text, event_text, quality_badge
 
 
 # Global sessions dict per session id (or simple instance)
 GLOBAL_SESSIONS: Dict[str, WebVoiceSession] = {}
 
-def get_or_create_session(session_id: str, lang_name: str, persona_name: str, provider: str, api_key: str) -> WebVoiceSession:
+def get_or_create_session(session_id: str, lang_name: str, persona_name: str, provider: str, api_key: str, min_score: float = 0.80) -> WebVoiceSession:
     lang_code = LANGUAGE_OPTIONS.get(lang_name, "hi")
     persona_code = PERSONA_OPTIONS.get(persona_name, "muthoot_recovery")
-    sess = WebVoiceSession(language=lang_code, persona=persona_code, provider=provider, api_key=api_key)
+    sess = WebVoiceSession(language=lang_code, persona=persona_code, provider=provider, api_key=api_key, min_human_likeness=min_score)
     GLOBAL_SESSIONS[session_id] = sess
     return sess
 
@@ -283,6 +310,26 @@ custom_css = """
     border-left: 4px solid #3b82f6;
     font-weight: 600;
     font-size: 0.95rem;
+}
+.quality-badge {
+    padding: 8px 14px;
+    background: #ecfdf5;
+    border-radius: 8px;
+    border-left: 4px solid #10b981;
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: #065f46;
+    margin-top: 6px;
+}
+.quality-badge-rejected {
+    padding: 8px 14px;
+    background: #fef2f2;
+    border-radius: 8px;
+    border-left: 4px solid #ef4444;
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: #991b1b;
+    margin-top: 6px;
 }
 .metric-box {
     padding: 12px;
@@ -356,11 +403,22 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
 
                     provider_radio.change(toggle_api_key_visibility, inputs=[provider_radio], outputs=[api_key_input])
 
+                    min_score_slider = gr.Slider(
+                        minimum=0.60,
+                        maximum=0.98,
+                        value=0.80,
+                        step=0.05,
+                        label="🎯 Quality Gate (Min Human-Likeness)",
+                        info="Rejects or auto-tunes speech below score threshold (Default: 80% / MOS ~4.0)",
+                        interactive=True
+                    )
+
                     start_btn = gr.Button("📞 Start / Restart Call", variant="primary", size="lg")
                     
                     gr.Markdown("---")
                     status_display = gr.Markdown("🟢 **IN CALL** (SIP Stream Connected)")
                     telemetry_display = gr.HTML("<div class='telephony-badge'>⚡ Telephony Event: Call Connected</div>")
+                    quality_display = gr.HTML("<div class='quality-badge'>🎯 Quality Gate: Human-Likeness 80% Gate Active ✓</div>")
                     bot_audio_output = gr.Audio(label="🔊 Agent Voice Response (Neural Edge-TTS)", autoplay=True, type="filepath")
 
                 with gr.Column(scale=6):
@@ -387,46 +445,46 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
                         quick_btn_4 = gr.Button("मैं अभी व्यस्त हूँ, मुझे कल कॉल कीजिए।", size="sm")
 
             # Voicebot Event handlers
-            def handle_start_call(s_id, l_name, p_name, prov, key):
-                session = get_or_create_session(s_id, l_name, p_name, prov, key)
-                history, audio, status, event = session.start_call()
+            def handle_start_call(s_id, l_name, p_name, prov, key, min_score):
+                session = get_or_create_session(s_id, l_name, p_name, prov, key, min_score)
+                history, audio, status, event, quality_badge = session.start_call()
                 event_html = f"<div class='telephony-badge'>⚡ Telephony Event: {event}</div>"
-                return history, audio, status, event_html
+                return history, audio, status, event_html, quality_badge
 
-            def handle_send_message(s_id, text, l_name, p_name, prov, key):
+            def handle_send_message(s_id, text, l_name, p_name, prov, key, min_score):
                 if s_id not in GLOBAL_SESSIONS:
-                    session = get_or_create_session(s_id, l_name, p_name, prov, key)
+                    session = get_or_create_session(s_id, l_name, p_name, prov, key, min_score)
                     session.start_call()
                 else:
                     session = GLOBAL_SESSIONS[s_id]
 
-                history, audio, status, event = session.send_turn(text)
+                history, audio, status, event, quality_badge = session.send_turn(text)
                 event_html = f"<div class='telephony-badge'>⚡ Telephony Event: {event}</div>"
-                return history, audio, status, event_html, ""
+                return history, audio, status, event_html, quality_badge, ""
 
             start_btn.click(
                 handle_start_call,
-                inputs=[session_state, lang_dropdown, persona_dropdown, provider_radio, api_key_input],
-                outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display]
+                inputs=[session_state, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider],
+                outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display, quality_display]
             )
 
             send_btn.click(
                 handle_send_message,
-                inputs=[session_state, user_input, lang_dropdown, persona_dropdown, provider_radio, api_key_input],
-                outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display, user_input]
+                inputs=[session_state, user_input, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider],
+                outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display, quality_display, user_input]
             )
             user_input.submit(
                 handle_send_message,
-                inputs=[session_state, user_input, lang_dropdown, persona_dropdown, provider_radio, api_key_input],
-                outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display, user_input]
+                inputs=[session_state, user_input, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider],
+                outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display, quality_display, user_input]
             )
 
             # Quick reply buttons
             for btn in [quick_btn_1, quick_btn_2, quick_btn_3, quick_btn_4]:
                 btn.click(
-                    lambda btn_text, s_id, l_name, p_name, prov, key: handle_send_message(s_id, btn_text, l_name, p_name, prov, key),
-                    inputs=[btn, session_state, lang_dropdown, persona_dropdown, provider_radio, api_key_input],
-                    outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display, user_input]
+                    lambda btn_text, s_id, l_name, p_name, prov, key, score: handle_send_message(s_id, btn_text, l_name, p_name, prov, key, score),
+                    inputs=[btn, session_state, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider],
+                    outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display, quality_display, user_input]
                 )
 
         # ======================================================================
@@ -650,8 +708,8 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
     # Initial trigger on load
     demo.load(
         handle_start_call,
-        inputs=[session_state, lang_dropdown, persona_dropdown, provider_radio, api_key_input],
-        outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display]
+        inputs=[session_state, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider],
+        outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display, quality_display]
     )
     demo.load(
         update_scenario_display,

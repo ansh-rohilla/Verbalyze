@@ -44,6 +44,7 @@ def main():
     p_ag.add_argument("--persona", type=str, default="muthoot_recovery", choices=["muthoot_recovery", "bank_kyc", "swiggy_delivery"], help="Telephony persona")
     p_ag.add_argument("--mic", action="store_true", help="Enable hands-free microphone voice input on Mac")
     p_ag.add_argument("--mode", type=str, default="push_to_talk", choices=["push_to_talk", "auto"], help="Microphone mode ('push_to_talk' or 'auto' VAD)")
+    p_ag.add_argument("--min-score", type=float, default=0.80, help="Minimum human-likeness quality threshold to accept speech audio (default: 0.80)")
     p_ag.add_argument("--no-voice", action="store_true", help="Disable audio speech synthesis playback")
     p_ag.add_argument("--provider", type=str, default="mock", choices=["groq", "openai", "mock"], help="LLM Provider")
 
@@ -102,7 +103,8 @@ def main():
             language=args.lang,
             persona=args.persona,
             llm_provider=args.provider,
-            voice_enabled=not args.no_voice
+            voice_enabled=not args.no_voice,
+            min_human_likeness=args.min_score
         )
         if args.mic:
             bot.run_live_microphone_call(mode=args.mode)
