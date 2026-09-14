@@ -177,10 +177,11 @@ class WebVoiceSession:
         self.language = language
         self.persona = persona
         self.min_human_likeness = min_human_likeness
+        prov = "ollama" if "ollama" in provider.lower() else ("groq" if "groq" in provider.lower() else ("openai" if "openai" in provider.lower() else "mock"))
         self.agent = VoiceAgent(
             language=language,
             persona=persona,
-            llm_provider="groq" if "groq" in provider.lower() else ("openai" if "openai" in provider.lower() else "mock"),
+            llm_provider=prov,
             api_key=api_key.strip() if api_key.strip() else None,
             voice_enabled=True,
             min_human_likeness=min_human_likeness
@@ -386,20 +387,20 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
                         interactive=True
                     )
                     provider_radio = gr.Radio(
-                        choices=["Built-in Indic Voice Engine (Instant & Free)", "Groq (Llama-3.3-70B)", "OpenAI (GPT-4o-mini)"],
+                        choices=["Built-in Indic Voice Engine (Instant & Free)", "Ollama (Local 100% Offline 3B SLM)", "Groq (Llama-3.3-70B)", "OpenAI (GPT-4o-mini)"],
                         value="Built-in Indic Voice Engine (Instant & Free)",
                         label="LLM Provider",
                         interactive=True
                     )
                     api_key_input = gr.Textbox(
                         label="Optional API Key (Groq / OpenAI)",
-                        placeholder="Leave blank for built-in Indic voice model...",
+                        placeholder="Leave blank for built-in or local Ollama model...",
                         type="password",
                         visible=False
                     )
 
                     def toggle_api_key_visibility(provider_choice):
-                        return gr.update(visible="Built-in" not in provider_choice)
+                        return gr.update(visible="Groq" in provider_choice or "OpenAI" in provider_choice)
 
                     provider_radio.change(toggle_api_key_visibility, inputs=[provider_radio], outputs=[api_key_input])
 

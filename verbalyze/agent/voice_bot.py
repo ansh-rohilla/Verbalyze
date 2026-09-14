@@ -71,8 +71,7 @@ DEFAULT_SYSTEM_PROMPTS = {
         "- Respond in conversational Hindi (Devanagari script or natural Hinglish)\n"
         "- Keep sentences SHORT (1-2 sentences maximum per turn) — spoken phone dialogue, not long text\n"
         "- Use natural fillers: 'haan', 'hmm', 'theek hai', 'ji'\n"
-        "- If customer promises to pay or asks to end call, be courteous, say goodbye, and invoke disconnect_tool\n"
-        "- If customer asks for online payment link, offer to send UPI link and invoke send_payment_link"
+        "- Do NOT call tools unless specifically needed: only invoke send_payment_link if customer asks for payment link or UPI, and only invoke disconnect_tool if customer explicitly says goodbye or ends the call."
     ),
     "en": (
         "You are a friendly, polite, yet professional outbound collection agent representing Muthoot Fincorp. "
@@ -82,8 +81,7 @@ DEFAULT_SYSTEM_PROMPTS = {
         "- Respond in spoken English\n"
         "- Keep sentences SHORT (1-2 sentences maximum per turn) — spoken phone dialogue, not long text\n"
         "- Use natural fillers: 'yeah', 'right', 'hmm', 'I understand'\n"
-        "- If customer promises to pay or asks to end call, be courteous, say goodbye, and invoke disconnect_tool\n"
-        "- If customer asks for payment link, invoke send_payment_link"
+        "- Do NOT call tools unless specifically needed: only invoke send_payment_link if customer asks for payment link, and only invoke disconnect_tool if customer explicitly says goodbye or ends the call."
     ),
 }
 
@@ -97,6 +95,7 @@ class VoiceAgent:
         llm_provider: str = "groq",
         api_key: Optional[str] = None,
         model_name: Optional[str] = None,
+        ollama_host: Optional[str] = None,
         voice_enabled: bool = True,
         min_human_likeness: float = 0.80
     ):
@@ -104,9 +103,19 @@ class VoiceAgent:
         self.persona = persona
         self.min_human_likeness = min_human_likeness
         self.system_prompt = system_prompt or DEFAULT_SYSTEM_PROMPTS.get(language, DEFAULT_SYSTEM_PROMPTS["hi"])
-        self.llm_provider = llm_provider
+        self.llm_provider = llm_provider.lower()
         self.api_key = api_key or os.environ.get("GROQ_API_KEY") or os.environ.get("OPENAI_API_KEY")
-        self.model_name = model_name or ("llama-3.3-70b-versatile" if llm_provider == "groq" else "gpt-4o-mini")
+        self.ollama_host = ollama_host or os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
+
+        if model_name:
+            self.model_name = model_name
+        elif self.llm_provider == "ollama":
+            self.model_name = "llama3.2:3b"
+        elif self.llm_provider == "groq":
+            self.model_name = "llama-3.3-70b-versatile"
+        else:
+            self.model_name = "gpt-4o-mini"
+
         self.voice_enabled = voice_enabled
         self.audio_engine = AudioEngine(language=language, min_human_likeness=min_human_likeness) if voice_enabled else None
 
@@ -122,12 +131,34 @@ class VoiceAgent:
 
 
     def _call_groq_or_openai(self) -> Tuple[str, Optional[Dict[str, Any]]]:
-        """Calls LLM with telephony function calling tools."""
+        """Calls LLM (Ollama, Groq, or OpenAI) with telephony function calling tools."""
         import urllib.request
 
-        url = "https://api.groq.com/openai/v1/chat/completions" if self.llm_provider == "groq" else "https://api.openai.com/v1/chat/completions"
-        if not self.api_key:
+        if self.llm_provider == "mock":
             return self._mock_llm_response()
+
+        if self.llm_provider == "ollama":
+            url = f"{self.ollama_host.rstrip('/')}/v1/chat/completions"
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer ollama"
+            }
+        elif self.llm_provider == "groq":
+            if not self.api_key:
+                return self._mock_llm_response()
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}"
+            }
+        else:
+            if not self.api_key:
+                return self._mock_llm_response()
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}"
+            }
 
         payload = {
             "model": self.model_name,
@@ -141,15 +172,12 @@ class VoiceAgent:
         req = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}"
-            },
+            headers=headers,
             method="POST"
         )
 
         try:
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with urllib.request.urlopen(req, timeout=15) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 choice = data["choices"][0]["message"]
                 content = choice.get("content") or ""
@@ -158,6 +186,8 @@ class VoiceAgent:
                 tool_call = tool_calls[0] if tool_calls else None
                 return content, tool_call
         except Exception as e:
+            if self.llm_provider == "ollama":
+                print(f"⚠️  [Ollama Notice] Failed connecting to {url}: {e}. Falling back to rule-based telephony response.")
             # Fallback to simulated telephony response
             return self._mock_llm_response()
 
@@ -242,6 +272,33 @@ class VoiceAgent:
 
         # 2. Generate assistant response
         content, tool_call = self._call_groq_or_openai()
+
+        # Clean up JSON leaks or token fragments from small local SLMs
+        if content:
+            cleaned = content.strip()
+            if cleaned.startswith("};") or (cleaned.startswith("{") and cleaned.endswith("}")):
+                content = ""
+            elif "};" in cleaned:
+                content = cleaned.split("};")[-1].strip()
+
+        # If model executed a tool, provide natural spoken confirmation if content is empty
+        if tool_call and not content:
+            fn_name = tool_call["function"]["name"]
+            if fn_name == "send_payment_link":
+                content = "हाँ बिल्कुल, मैंने आपके पंजीकृत मोबाइल नंबर पर ₹5,420 का सुरक्षित UPI पेमेंट लिंक भेज दिया है।" if self.language == "hi" else "Sure, I have dispatched the secure payment link to your registered mobile number."
+            elif fn_name == "disconnect_tool":
+                content = "जी ठीक है, आपका बहुत धन्यवाद। आपका दिन शुभ हो, नमस्कार।" if self.language == "hi" else "Thank you for your time. Have a great day ahead, goodbye."
+            elif fn_name == "schedule_callback":
+                content = "हाँ जी ठीक है, मैंने कल तक के भुगतान का वादा नोट कर लिया है। कृपया कल तक जमा कर दें।" if self.language == "hi" else "Alright, I have recorded your commitment for tomorrow. Thank you."
+
+        # If content is still empty, provide persona-specific conversational fallback
+        if not content:
+            if self.persona == "bank_kyc":
+                content = "हाँ जी, आपका खाता एक्टिव रखने के लिए री-केवाईसी वेरिफिकेशन जरूरी है।" if self.language == "hi" else "Yes, re-KYC update is needed to keep your account operational."
+            elif self.persona == "swiggy_delivery":
+                content = "जी ठीक है सर, मैं आपकी लोकेशन पर पहुँच रहा हूँ।" if self.language == "hi" else "Sure sir, I am arriving at your location."
+            else:
+                content = "हाँ जी, मैं मुथूट फिनकॉर्प से बोल रहा हूँ। क्या आप आज अपनी बकाया ईएमआई जमा कर पाएंगे?" if self.language == "hi" else "Yes, I am calling from Muthoot Fincorp regarding your overdue EMI payment."
 
         # 3. Handle assistant message
         asst_turn = {"role": "assistant", "content": content}

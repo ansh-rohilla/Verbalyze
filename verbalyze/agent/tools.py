@@ -86,8 +86,12 @@ def execute_telephony_tool(tool_name: str, arguments: Dict[str, Any]) -> Tuple[b
         return True, msg
 
     elif tool_name == "send_payment_link":
-        amount = arguments.get("amount", 0)
-        loan_id = arguments.get("loan_id", "LOAN-XXXX")
+        amount_raw = arguments.get("amount", 5420.0)
+        try:
+            amount = float(str(amount_raw).replace(",", "").replace("₹", "").strip())
+        except (ValueError, TypeError):
+            amount = 5420.0
+        loan_id = str(arguments.get("loan_id", "MUTH-8921"))
         msg = f"[Telephony Event] SMS/WhatsApp UPI link sent for Rs. {amount:,.2f} on account {loan_id}."
         return False, msg
 

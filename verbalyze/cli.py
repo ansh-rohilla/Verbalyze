@@ -46,7 +46,9 @@ def main():
     p_ag.add_argument("--mode", type=str, default="push_to_talk", choices=["push_to_talk", "auto"], help="Microphone mode ('push_to_talk' or 'auto' VAD)")
     p_ag.add_argument("--min-score", type=float, default=0.80, help="Minimum human-likeness quality threshold to accept speech audio (default: 0.80)")
     p_ag.add_argument("--no-voice", action="store_true", help="Disable audio speech synthesis playback")
-    p_ag.add_argument("--provider", type=str, default="mock", choices=["groq", "openai", "mock"], help="LLM Provider")
+    p_ag.add_argument("--provider", type=str, default="mock", choices=["groq", "openai", "ollama", "mock"], help="LLM Provider ('ollama' for 100%% offline local SLM)")
+    p_ag.add_argument("--model", type=str, default=None, help="LLM model name (default: 'llama3.2:3b' for ollama, 'llama-3.3-70b-versatile' for groq)")
+    p_ag.add_argument("--ollama-host", type=str, default="http://127.0.0.1:11434", help="Ollama host endpoint (default: http://127.0.0.1:11434)")
 
     # Command: server
     p_srv = subparsers.add_parser("server", help="Start FastAPI telephony webhook server")
@@ -103,6 +105,8 @@ def main():
             language=args.lang,
             persona=args.persona,
             llm_provider=args.provider,
+            model_name=args.model,
+            ollama_host=args.ollama_host,
             voice_enabled=not args.no_voice,
             min_human_likeness=args.min_score
         )
