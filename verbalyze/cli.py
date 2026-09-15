@@ -123,7 +123,10 @@ def main():
             import uvicorn
             from verbalyze.telephony.server import create_app
             app = create_app()
-            print(f"[Server] Starting Verbalyze Telephony Webhook Server on {args.host}:{args.port}...")
+            print(f"📞 [Server] Starting Verbalyze Telephony & Media Stream Server on {args.host}:{args.port}...")
+            print(f"   - WebSocket Audio Stream:  ws://{args.host}:{args.port}/media-stream")
+            print(f"   - Unmetered SIP Webhook:   http://{args.host}:{args.port}/webhook/sip/inbound")
+            print(f"   - Twilio Media Connector:  http://{args.host}:{args.port}/webhook/twilio/voice?stream=true")
             uvicorn.run(app, host=args.host, port=args.port)
         except ImportError as e:
             print(f"Error starting server: {e}")

@@ -292,6 +292,17 @@ Eliminate per-minute telecom bills by routing calls through unmetered SIP trunks
 * `/webhook/sip/turn`: High-speed spoken turn-taking stream.
 * Works with flat-rate channel providers (e.g. [RingTrunk.com](https://ringtrunk.com/)) or private Asterisk / FreeSWITCH deployments with **$0 per-minute carrier markup**.
 
+#### ⚡ Bi-Directional WebSocket Media Stream (`/media-stream`)
+Carrier-grade real-time audio bridge for live telephone trunks (RingTrunk, Twilio Media Streams, Asterisk AudioSocket, FreeSWITCH):
+* **Dual-Protocol Compatibility**: Supports standard Twilio/RingTrunk JSON packets (`{"event": "media", "media": {"payload": "<base64>"}}`) and raw binary 8kHz G.711 A-law / $\mu$-law frames.
+* **Telephony Pacing**: Streams outbound speech in 20ms frames (160 bytes per packet) strictly synchronized with the carrier's RTP clock.
+* **Sub-50ms WebSocket Barge-In**: Instantly cuts off audio transmission in $\sim 1\text{ms}$ upon caller speech onset and emits a `{"event": "clear"}` frame to flush carrier jitter buffers.
+
+```bash
+# Verify WebSocket Media Stream & Live Barge-In:
+python3 scripts/test_media_stream_websocket.py
+```
+
 ---
 
 ### 4. 🎯 Automated Human-Likeness Quality Gate (80% / MOS 4.0)

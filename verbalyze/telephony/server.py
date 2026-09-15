@@ -8,10 +8,11 @@ Enables real-time outbound call triggering and live voicebot turn-taking over SI
 import os
 from typing import Dict, Any, Optional
 from verbalyze.agent.voice_bot import VoiceAgent
+from verbalyze.telephony.media_stream import MediaStreamSession
 
 # Try importing FastAPI
 try:
-    from fastapi import FastAPI, Request, Response, Form
+    from fastapi import FastAPI, Request, Response, Form, WebSocket, WebSocketDisconnect
     from fastapi.responses import HTMLResponse, JSONResponse
     FASTAPI_AVAILABLE = True
 except ImportError:
@@ -42,6 +43,19 @@ def create_app() -> Any:
         form = await request.form()
         call_sid = str(form.get("CallSid", "call_mock"))
         lang = str(form.get("lang", "hi"))
+        stream_mode = str(form.get("stream", "false")).lower() == "true" or "stream" in str(request.query_params).lower()
+
+        if stream_mode:
+            # Connect call directly to real-time bi-directional WebSocket media stream
+            host = request.url.netloc
+            ws_protocol = "wss" if request.url.scheme == "https" else "ws"
+            twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Connect>
+        <Stream url="{ws_protocol}://{host}/media-stream" />
+    </Connect>
+</Response>"""
+            return Response(content=twiml, media_type="application/xml")
 
         # Instantiate agent for this specific telephone call
         agent = VoiceAgent(language=lang, voice_enabled=False)
@@ -156,12 +170,15 @@ def create_app() -> Any:
         if agent.audio_engine:
             audio_path = agent.audio_engine.synthesize(greeting)
 
+        host = request.url.netloc
+        ws_protocol = "wss" if request.url.scheme == "https" else "ws"
         return JSONResponse({
             "status": "connected",
             "trunk_type": "unmetered_sip",
             "provider": "RingTrunk / Standard SIP",
             "call_id": call_id,
             "greeting_text": greeting,
+            "media_stream_ws": f"{ws_protocol}://{host}/media-stream?lang={lang}&persona={persona}&provider={provider}",
             "audio_url": audio_path,
             "action": "play_and_listen"
         })
@@ -209,6 +226,36 @@ def create_app() -> Any:
             "hangup": terminated,
             "action": "hangup" if terminated else "play_and_listen"
         })
+
+    # --------------------------------------------------------------------------
+    # BI-DIRECTIONAL WEBSOCKET MEDIA STREAM (RingTrunk / Twilio / Asterisk)
+    # --------------------------------------------------------------------------
+
+    @app.websocket("/media-stream")
+    @app.websocket("/webhook/sip/media")
+    async def media_stream_endpoint(
+        websocket: WebSocket,
+        lang: str = "hi",
+        persona: str = "muthoot_recovery",
+        provider: str = "ollama",
+        model: Optional[str] = None,
+        codec: str = "audio/x-alaw"
+    ):
+        """
+        Real-time bi-directional audio WebSocket endpoint for live telephony trunks
+        (RingTrunk, Twilio Media Streams, Asterisk AudioSocket, FreeSWITCH).
+        Streams 20ms G.711 A-law/mu-law audio packets with sub-50ms live barge-in interruption.
+        """
+        await websocket.accept()
+        session = MediaStreamSession(
+            websocket=websocket,
+            language=lang,
+            persona=persona,
+            llm_provider=provider,
+            model_name=model,
+            codec=codec
+        )
+        await session.run()
 
     return app
 
