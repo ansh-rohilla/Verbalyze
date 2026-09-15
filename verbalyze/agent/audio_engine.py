@@ -48,6 +48,7 @@ class AudioEngine:
         self.simulate_telephony = simulate_telephony
         self.scorer = HumanLikenessScorer(min_threshold=min_human_likeness, simulate_telephony=simulate_telephony)
         self.last_quality_report: Optional[AudioQualityReport] = None
+        self._current_proc: Optional[subprocess.Popen] = None
         self._check_playback_player()
 
     def _check_playback_player(self):
@@ -176,19 +177,47 @@ class AudioEngine:
         except Exception:
             return None
 
-    def play(self, audio_path: str, block: bool = True):
-        """Plays audio file on speakers."""
+    def is_playing(self) -> bool:
+        """Returns True if audio playback is currently active."""
+        return self._current_proc is not None and self._current_proc.poll() is None
+
+    def stop_playback(self) -> bool:
+        """
+        Immediately stops active audio playback (<10ms cutoff).
+        Returns True if an active playback process was terminated.
+        """
+        if self._current_proc is not None and self._current_proc.poll() is None:
+            try:
+                self._current_proc.terminate()
+                self._current_proc.wait(timeout=0.08)
+            except Exception:
+                try:
+                    self._current_proc.kill()
+                except Exception:
+                    pass
+            self._current_proc = None
+            return True
+        self._current_proc = None
+        return False
+
+    def play(self, audio_path: str, block: bool = True) -> Optional[subprocess.Popen]:
+        """Plays audio file on speakers. Tracks process handle for barge-in interruptions."""
         if not self.player or not os.path.exists(audio_path):
-            return
+            return None
+
+        # Stop any existing playback before launching new audio
+        self.stop_playback()
 
         cmd = [self.player, audio_path]
         if self.player == "ffplay":
             cmd = ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", audio_path]
 
         try:
+            proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self._current_proc = proc
             if block:
-                subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            else:
-                subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                proc.wait()
+                self._current_proc = None
+            return proc
         except Exception:
-            pass
+            return None

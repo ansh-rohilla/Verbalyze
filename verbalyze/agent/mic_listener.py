@@ -13,6 +13,7 @@ import sys
 import time
 import wave
 import tempfile
+import select
 import threading
 from pathlib import Path
 from typing import Optional, Tuple
@@ -185,3 +186,108 @@ class MicrophoneListener:
         except Exception as e:
             # Silence error or network timeout
             return None
+
+    def monitor_barge_in_and_record(
+        self,
+        audio_engine,
+        audio_path: str,
+        mode: str = "auto",
+        silence_seconds: float = 1.0,
+        max_seconds: float = 12.0
+    ) -> Tuple[bool, Optional[str], Optional[float]]:
+        """
+        Plays audio_path through audio_engine while concurrently monitoring for customer barge-in interruption.
+
+        Returns:
+            Tuple of (interrupted: bool, user_wav_path: Optional[str], cutoff_latency_ms: Optional[float])
+        """
+        if not audio_engine or not os.path.exists(audio_path):
+            return False, None, None
+
+        # Start non-blocking playback
+        proc = audio_engine.play(audio_path, block=False)
+        if proc is None:
+            return False, None, None
+
+        if mode == "auto":
+            block_size = int(self.sample_rate * 0.03)  # 30ms blocks = 480 samples
+            buffered_frames = []
+            consecutive_speech = 0
+            interruption_threshold = 850.0  # Dynamic threshold to resist speaker acoustic bleed
+
+            try:
+                with sd.InputStream(samplerate=self.sample_rate, channels=1, dtype="int16") as stream:
+                    while audio_engine.is_playing():
+                        data, _ = stream.read(block_size)
+                        rms = float(np.sqrt(np.mean(data.astype(np.float32) ** 2)))
+
+                        if rms > interruption_threshold:
+                            consecutive_speech += 1
+                            buffered_frames.append(data.copy())
+                            if consecutive_speech >= 2:  # ~60ms sustained human speech
+                                # BARGE-IN TRIGGERED
+                                t0 = time.time()
+                                audio_engine.stop_playback()
+                                cutoff_ms = round((time.time() - t0) * 1000.0, 1)
+                                print(f"\n⚡ [Barge-In Detected! Interrupted agent in {cutoff_ms}ms]")
+                                print("🔴 [Listening to your interruption...]", end="\r", flush=True)
+
+                                # Continue recording remaining speech using VAD
+                                frames = list(buffered_frames)
+                                silence_blocks = 0
+                                silence_threshold_blocks = int(silence_seconds / 0.03)
+                                total_blocks = len(frames)
+                                max_blocks = int(max_seconds / 0.03)
+
+                                while total_blocks < max_blocks:
+                                    data_rem, _ = stream.read(block_size)
+                                    total_blocks += 1
+                                    frames.append(data_rem.copy())
+                                    rms_rem = float(np.sqrt(np.mean(data_rem.astype(np.float32) ** 2)))
+                                    if rms_rem < (interruption_threshold * 0.5):
+                                        silence_blocks += 1
+                                        if silence_blocks >= silence_threshold_blocks:
+                                            break
+                                    else:
+                                        silence_blocks = 0
+
+                                audio_data = np.concatenate(frames, axis=0)
+                                tmp_wav = tempfile.mktemp(suffix=".wav")
+                                with wave.open(tmp_wav, "wb") as wf:
+                                    wf.setnchannels(1)
+                                    wf.setsampwidth(2)
+                                    wf.setframerate(self.sample_rate)
+                                    wf.writeframes(audio_data.tobytes())
+
+                                return True, tmp_wav, cutoff_ms
+                        else:
+                            consecutive_speech = 0
+                            if len(buffered_frames) > 4:
+                                buffered_frames = buffered_frames[-2:]
+            except Exception:
+                try:
+                    proc.wait()
+                except Exception:
+                    pass
+                return False, None, None
+
+        else:
+            # push_to_talk mode: check stdin non-blocking
+            is_tty = hasattr(sys.stdin, "isatty") and sys.stdin.isatty()
+            while audio_engine.is_playing():
+                if is_tty:
+                    try:
+                        r, _, _ = select.select([sys.stdin], [], [], 0.04)
+                        if r:
+                            sys.stdin.readline()
+                            t0 = time.time()
+                            audio_engine.stop_playback()
+                            cutoff_ms = round((time.time() - t0) * 1000.0, 1)
+                            print(f"\n⚡ [Barge-In Detected! Interrupted agent in {cutoff_ms}ms]")
+                            tmp_wav = self.record_push_to_talk()
+                            return True, tmp_wav, cutoff_ms
+                    except Exception:
+                        pass
+                time.sleep(0.04)
+
+        return False, None, None

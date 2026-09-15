@@ -398,10 +398,11 @@ class VoiceAgent:
                 break
         print("\n========================================================\n")
 
-    def run_live_microphone_call(self, mode: str = "push_to_talk"):
+    def run_live_microphone_call(self, mode: str = "push_to_talk", enable_barge_in: bool = True):
         """
-        Runs a hands-free conversational voice session on Mac.
+        Runs a hands-free conversational voice session on Mac with Barge-In Interruption.
         Listens to microphone, transcribes speech, reasons, and speaks back through speakers.
+        Supports real-time interruption (<150ms cutoff) when the customer speaks during agent playback.
         """
         from verbalyze.agent.mic_listener import MicrophoneListener
 
@@ -414,6 +415,7 @@ class VoiceAgent:
         print(f"  Input:    MacBook Microphone ({listener.locale})")
         print(f"  Output:   MacBook Speakers (Neural Edge-TTS via afplay)")
         print(f"  Mode:     {'Push-to-Talk [ENTER to record]' if mode == 'push_to_talk' else 'Auto Voice Detection (VAD)'}")
+        print(f"  Barge-In: {'⚡ Active (<150ms cutoff)' if enable_barge_in else 'Disabled'}")
         print("  (Type 'q' or 'quit' at any prompt to hang up)")
         print("=" * 64 + "\n")
 
@@ -422,40 +424,59 @@ class VoiceAgent:
         print(f"📞 Agent: {initial_greeting}")
         self.messages.append({"role": "assistant", "content": initial_greeting})
 
+        pending_user_utterance = None
+
         if self.voice_enabled and self.audio_engine:
             audio_file = self.audio_engine.synthesize(initial_greeting)
             if self.audio_engine.last_quality_report:
                 q = self.audio_engine.last_quality_report
                 print(f"   🎯 [Quality Gate] Human-Likeness: {q.score*100:.1f}% (MOS {q.mos_equivalent}/5.0) ✓ Accepted")
             if audio_file:
-                self.audio_engine.play(audio_file)
-                time.sleep(0.5)
+                if enable_barge_in:
+                    interrupted, int_wav, cutoff_ms = listener.monitor_barge_in_and_record(
+                        self.audio_engine, audio_file, mode=mode
+                    )
+                    if interrupted and int_wav:
+                        int_text = listener.transcribe(int_wav)
+                        try:
+                            os.remove(int_wav)
+                        except Exception:
+                            pass
+                        if int_text and int_text.strip():
+                            pending_user_utterance = int_text
+                else:
+                    self.audio_engine.play(audio_file)
+                    time.sleep(0.5)
 
         while self.is_call_active:
             try:
                 user_utterance = None
                 wav_path = None
 
-                print("\n👤 You (Customer):")
-                if mode == "auto":
-                    wav_path = listener.record_auto_vad(silence_seconds=1.2)
+                if pending_user_utterance:
+                    user_utterance = pending_user_utterance
+                    pending_user_utterance = None
                 else:
-                    prompt = input("   👉 Press [ENTER] to speak into mic (or type text directly): ").strip()
-                    if prompt.lower() in ["q", "quit", "exit"]:
-                        print("\n[Call ended by user]")
-                        break
-                    elif prompt:
-                        user_utterance = prompt
+                    print("\n👤 You (Customer):")
+                    if mode == "auto":
+                        wav_path = listener.record_auto_vad(silence_seconds=1.2)
                     else:
-                        wav_path = listener.record_push_to_talk()
+                        prompt = input("   👉 Press [ENTER] to speak into mic (or type text directly): ").strip()
+                        if prompt.lower() in ["q", "quit", "exit"]:
+                            print("\n[Call ended by user]")
+                            break
+                        elif prompt:
+                            user_utterance = prompt
+                        else:
+                            wav_path = listener.record_push_to_talk()
 
-                if wav_path:
-                    print("⚡ Transcribing your speech...", end="\r", flush=True)
-                    user_utterance = listener.transcribe(wav_path)
-                    try:
-                        os.remove(wav_path)
-                    except Exception:
-                        pass
+                    if wav_path:
+                        print("⚡ Transcribing your speech...", end="\r", flush=True)
+                        user_utterance = listener.transcribe(wav_path)
+                        try:
+                            os.remove(wav_path)
+                        except Exception:
+                            pass
 
                 if not user_utterance or not user_utterance.strip():
                     print("⚠️  [Could not detect speech clearly. Please try again]")
@@ -477,8 +498,21 @@ class VoiceAgent:
                     print(f"   ⚙️  {res['tool_event']}")
 
                 if res.get("audio_path") and self.audio_engine:
-                    self.audio_engine.play(res["audio_path"])
-                    time.sleep(0.5)
+                    if enable_barge_in and not res.get("terminated"):
+                        interrupted, int_wav, cutoff_ms = listener.monitor_barge_in_and_record(
+                            self.audio_engine, res["audio_path"], mode=mode
+                        )
+                        if interrupted and int_wav:
+                            int_text = listener.transcribe(int_wav)
+                            try:
+                                os.remove(int_wav)
+                            except Exception:
+                                pass
+                            if int_text and int_text.strip():
+                                pending_user_utterance = int_text
+                    else:
+                        self.audio_engine.play(res["audio_path"])
+                        time.sleep(0.5)
 
                 if res.get("terminated"):
                     print("\n🔴 [CALL TERMINATED - Phone Hung Up]")

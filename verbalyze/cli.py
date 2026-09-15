@@ -50,6 +50,7 @@ def main():
     p_ag.add_argument("--model", type=str, default=None, help="LLM model name (default: 'llama3.2:3b' for ollama, 'llama-3.3-70b-versatile' for groq)")
     p_ag.add_argument("--ollama-host", type=str, default="http://127.0.0.1:11434", help="Ollama host endpoint (default: http://127.0.0.1:11434)")
     p_ag.add_argument("--telephony-sim", action="store_true", help="Simulate 8kHz G.711 A-law Indian telecom carrier line degradation in Quality Gate and audio")
+    p_ag.add_argument("--no-barge-in", action="store_true", help="Disable real-time barge-in interruption detection during audio playback")
 
     # Command: server
     p_srv = subparsers.add_parser("server", help="Start FastAPI telephony webhook server")
@@ -113,7 +114,7 @@ def main():
             simulate_telephony=args.telephony_sim
         )
         if args.mic:
-            bot.run_live_microphone_call(mode=args.mode)
+            bot.run_live_microphone_call(mode=args.mode, enable_barge_in=not args.no_barge_in)
         else:
             bot.run_interactive_terminal_call()
 
