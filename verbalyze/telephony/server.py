@@ -124,6 +124,92 @@ def create_app() -> Any:
             "call_active": not res["terminated"]
         }
 
+    # --------------------------------------------------------------------------
+    # UNMETERED SIP TRUNK ENDPOINTS (RingTrunk.com / Asterisk / FreeSWITCH)
+    # Allows flat-rate channel SIP trunking without per-minute carrier bills.
+    # --------------------------------------------------------------------------
+
+    @app.post("/webhook/sip/inbound")
+    async def sip_inbound_call(request: Request):
+        """
+        Generic SIP inbound call webhook compatible with unmetered SIP trunks (RingTrunk, Asterisk, FreeSWITCH).
+        Accepts JSON or form data with Call-ID, Caller, and Dialed Number.
+        """
+        data: Dict[str, Any] = {}
+        try:
+            data = await request.json()
+        except Exception:
+            form = await request.form()
+            data = dict(form)
+
+        call_id = str(data.get("call_id") or request.headers.get("x-call-id") or request.headers.get("call-id") or "sip_call_001")
+        lang = str(data.get("lang") or "hi")
+        persona = str(data.get("persona") or "muthoot_recovery")
+        provider = str(data.get("provider") or "ollama")
+
+        # Initialize VoiceAgent for this SIP session
+        agent = VoiceAgent(language=lang, persona=persona, llm_provider=provider, voice_enabled=True)
+        active_calls[call_id] = agent
+
+        greeting = agent.get_initial_greeting()
+        audio_path = None
+        if agent.audio_engine:
+            audio_path = agent.audio_engine.synthesize(greeting)
+
+        return JSONResponse({
+            "status": "connected",
+            "trunk_type": "unmetered_sip",
+            "provider": "RingTrunk / Standard SIP",
+            "call_id": call_id,
+            "greeting_text": greeting,
+            "audio_url": audio_path,
+            "action": "play_and_listen"
+        })
+
+    @app.post("/webhook/sip/turn")
+    async def sip_call_turn(request: Request):
+        """
+        Processes conversational spoken turns over an unmetered SIP trunk stream.
+        """
+        data: Dict[str, Any] = {}
+        try:
+            data = await request.json()
+        except Exception:
+            form = await request.form()
+            data = dict(form)
+
+        call_id = str(data.get("call_id") or "sip_call_001")
+        customer_utterance = str(data.get("transcript") or data.get("customer_input") or "").strip()
+
+        agent = active_calls.get(call_id)
+        if not agent:
+            agent = VoiceAgent(language="hi", llm_provider="ollama", voice_enabled=True)
+            active_calls[call_id] = agent
+
+        if not customer_utterance:
+            return JSONResponse({
+                "call_id": call_id,
+                "agent_response": "क्षमा करें, क्या आप दोहरा सकते हैं?",
+                "tool_event": None,
+                "hangup": False
+            })
+
+        step_res = agent.step(customer_utterance)
+        terminated = step_res["terminated"]
+
+        if terminated:
+            active_calls.pop(call_id, None)
+
+        return JSONResponse({
+            "call_id": call_id,
+            "agent_response": step_res["text"],
+            "audio_url": step_res.get("audio_path"),
+            "tool_event": step_res.get("tool_event"),
+            "quality_report": step_res.get("quality_report").to_dict() if step_res.get("quality_report") else None,
+            "hangup": terminated,
+            "action": "hangup" if terminated else "play_and_listen"
+        })
+
     return app
 
 

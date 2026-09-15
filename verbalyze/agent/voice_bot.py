@@ -97,11 +97,13 @@ class VoiceAgent:
         model_name: Optional[str] = None,
         ollama_host: Optional[str] = None,
         voice_enabled: bool = True,
-        min_human_likeness: float = 0.80
+        min_human_likeness: float = 0.80,
+        simulate_telephony: bool = False
     ):
         self.language = language
         self.persona = persona
         self.min_human_likeness = min_human_likeness
+        self.simulate_telephony = simulate_telephony
         self.system_prompt = system_prompt or DEFAULT_SYSTEM_PROMPTS.get(language, DEFAULT_SYSTEM_PROMPTS["hi"])
         self.llm_provider = llm_provider.lower()
         self.api_key = api_key or os.environ.get("GROQ_API_KEY") or os.environ.get("OPENAI_API_KEY")
@@ -117,7 +119,11 @@ class VoiceAgent:
             self.model_name = "gpt-4o-mini"
 
         self.voice_enabled = voice_enabled
-        self.audio_engine = AudioEngine(language=language, min_human_likeness=min_human_likeness) if voice_enabled else None
+        self.audio_engine = AudioEngine(
+            language=language,
+            min_human_likeness=min_human_likeness,
+            simulate_telephony=simulate_telephony
+        ) if voice_enabled else None
 
         self.messages: List[Dict[str, Any]] = [
             {"role": "system", "content": self.system_prompt}

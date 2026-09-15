@@ -173,10 +173,19 @@ def calculate_metrics_for_pred(reference: str, hypothesis: str) -> Dict[str, flo
 # Gradio Tab 1: Telephony Voicebot State
 # ==============================================================================
 class WebVoiceSession:
-    def __init__(self, language: str = "hi", persona: str = "muthoot_recovery", provider: str = "mock", api_key: str = "", min_human_likeness: float = 0.80):
+    def __init__(
+        self,
+        language: str = "hi",
+        persona: str = "muthoot_recovery",
+        provider: str = "mock",
+        api_key: str = "",
+        min_human_likeness: float = 0.80,
+        simulate_telephony: bool = False
+    ):
         self.language = language
         self.persona = persona
         self.min_human_likeness = min_human_likeness
+        self.simulate_telephony = simulate_telephony
         prov = "ollama" if "ollama" in provider.lower() else ("groq" if "groq" in provider.lower() else ("openai" if "openai" in provider.lower() else "mock"))
         self.agent = VoiceAgent(
             language=language,
@@ -184,7 +193,8 @@ class WebVoiceSession:
             llm_provider=prov,
             api_key=api_key.strip() if api_key.strip() else None,
             voice_enabled=True,
-            min_human_likeness=min_human_likeness
+            min_human_likeness=min_human_likeness,
+            simulate_telephony=simulate_telephony
         )
         self.call_history: List[Dict[str, str]] = []
         self.recent_tool_event: Optional[str] = None
@@ -269,10 +279,17 @@ class WebVoiceSession:
 # Global sessions dict per session id (or simple instance)
 GLOBAL_SESSIONS: Dict[str, WebVoiceSession] = {}
 
-def get_or_create_session(session_id: str, lang_name: str, persona_name: str, provider: str, api_key: str, min_score: float = 0.80) -> WebVoiceSession:
+def get_or_create_session(session_id: str, lang_name: str, persona_name: str, provider: str, api_key: str, min_score: float = 0.80, simulate_telephony: bool = False) -> WebVoiceSession:
     lang_code = LANGUAGE_OPTIONS.get(lang_name, "hi")
     persona_code = PERSONA_OPTIONS.get(persona_name, "muthoot_recovery")
-    sess = WebVoiceSession(language=lang_code, persona=persona_code, provider=provider, api_key=api_key, min_human_likeness=min_score)
+    sess = WebVoiceSession(
+        language=lang_code,
+        persona=persona_code,
+        provider=provider,
+        api_key=api_key,
+        min_human_likeness=min_score,
+        simulate_telephony=simulate_telephony
+    )
     GLOBAL_SESSIONS[session_id] = sess
     return sess
 
@@ -413,6 +430,12 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
                         info="Rejects or auto-tunes speech below score threshold (Default: 80% / MOS ~4.0)",
                         interactive=True
                     )
+                    telephony_sim_checkbox = gr.Checkbox(
+                        value=False,
+                        label="📞 8kHz Telecom Line Simulator (G.711 A-law)",
+                        info="Simulates real Indian PSTN 300Hz–3400Hz bandpass, A-law companding & packet jitter",
+                        interactive=True
+                    )
 
                     start_btn = gr.Button("📞 Start / Restart Call", variant="primary", size="lg")
                     
@@ -446,15 +469,15 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
                         quick_btn_4 = gr.Button("मैं अभी व्यस्त हूँ, मुझे कल कॉल कीजिए।", size="sm")
 
             # Voicebot Event handlers
-            def handle_start_call(s_id, l_name, p_name, prov, key, min_score):
-                session = get_or_create_session(s_id, l_name, p_name, prov, key, min_score)
+            def handle_start_call(s_id, l_name, p_name, prov, key, min_score, tel_sim=False):
+                session = get_or_create_session(s_id, l_name, p_name, prov, key, min_score, tel_sim)
                 history, audio, status, event, quality_badge = session.start_call()
                 event_html = f"<div class='telephony-badge'>⚡ Telephony Event: {event}</div>"
                 return history, audio, status, event_html, quality_badge
 
-            def handle_send_message(s_id, text, l_name, p_name, prov, key, min_score):
+            def handle_send_message(s_id, text, l_name, p_name, prov, key, min_score, tel_sim=False):
                 if s_id not in GLOBAL_SESSIONS:
-                    session = get_or_create_session(s_id, l_name, p_name, prov, key, min_score)
+                    session = get_or_create_session(s_id, l_name, p_name, prov, key, min_score, tel_sim)
                     session.start_call()
                 else:
                     session = GLOBAL_SESSIONS[s_id]
@@ -465,26 +488,26 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
 
             start_btn.click(
                 handle_start_call,
-                inputs=[session_state, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider],
+                inputs=[session_state, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider, telephony_sim_checkbox],
                 outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display, quality_display]
             )
 
             send_btn.click(
                 handle_send_message,
-                inputs=[session_state, user_input, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider],
+                inputs=[session_state, user_input, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider, telephony_sim_checkbox],
                 outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display, quality_display, user_input]
             )
             user_input.submit(
                 handle_send_message,
-                inputs=[session_state, user_input, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider],
+                inputs=[session_state, user_input, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider, telephony_sim_checkbox],
                 outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display, quality_display, user_input]
             )
 
             # Quick reply buttons
             for btn in [quick_btn_1, quick_btn_2, quick_btn_3, quick_btn_4]:
                 btn.click(
-                    lambda btn_text, s_id, l_name, p_name, prov, key, score: handle_send_message(s_id, btn_text, l_name, p_name, prov, key, score),
-                    inputs=[btn, session_state, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider],
+                    lambda btn_text, s_id, l_name, p_name, prov, key, score, tel_sim: handle_send_message(s_id, btn_text, l_name, p_name, prov, key, score, tel_sim),
+                    inputs=[btn, session_state, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider, telephony_sim_checkbox],
                     outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display, quality_display, user_input]
                 )
 
@@ -709,7 +732,7 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
     # Initial trigger on load
     demo.load(
         handle_start_call,
-        inputs=[session_state, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider],
+        inputs=[session_state, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider, telephony_sim_checkbox],
         outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display, quality_display]
     )
     demo.load(

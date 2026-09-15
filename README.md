@@ -257,15 +257,24 @@ python3 scripts/test_ollama_integration.py
 # Live Hands-Free Voice Mode on Mac (Speak into your microphone)
 python3 -m verbalyze.cli agent --lang hi --mic
 
+# 📞 Real-world 8kHz Indian Telecom Line Simulation Mode
+python3 -m verbalyze.cli agent --provider ollama --lang hi --telephony-sim
+
 # Push-to-talk or auto Voice Activity Detection (VAD)
 python3 -m verbalyze.cli agent --lang hi --mic --mode auto
 
 # Switch personas (Banking KYC or Swiggy delivery)
 python3 -m verbalyze.cli agent --lang hi --persona bank_kyc --mic
 
-# Start FastAPI Telephony Webhook Server for Exotel / Twilio SIP trunks
+# Start FastAPI Telephony Webhook Server for Unmetered SIP Trunks (RingTrunk) & CPaaS (Exotel / Twilio)
 python3 -m verbalyze.cli server --port 8000
 ```
+
+#### 🌐 Flat-Rate Unmetered SIP Trunking (RingTrunk.com / Asterisk)
+Eliminate per-minute telecom bills by routing calls through unmetered SIP trunks:
+* `/webhook/sip/inbound`: RFC 3261-compliant inbound SIP webhook.
+* `/webhook/sip/turn`: High-speed spoken turn-taking stream.
+* Works with flat-rate channel providers (e.g. [RingTrunk.com](https://ringtrunk.com/)) or private Asterisk / FreeSWITCH deployments with **$0 per-minute carrier markup**.
 
 ---
 
@@ -278,6 +287,18 @@ Every generated speech utterance is evaluated across 5 acoustic dimensions befor
 3. **Prosodic Dynamics (25%)**: Evaluates energy and pitch dynamics, preventing monotone robotic voices.
 4. **Harmonic Smoothness (10%)**: Analyzes frame jitter to eliminate concatenative click artifacts.
 5. **Signal Integrity (10%)**: Enforces headroom and checks against digital clipping (<0.1%).
+
+#### 📞 8kHz G.711 Telecom Line Acoustic Simulation
+To ensure speech survives real Indian telecom carrier lines (GSM, 2G, VoLTE, PSTN), the Quality Gate features a dedicated telephony channel simulator:
+* **8,000 Hz Resampling**: Enforces the telecom standard sample rate.
+* **ITU-T G.712 Bandpass Filtering (300 Hz – 3,400 Hz)**: Simulates the strict telephone ear-band frequency cutoffs.
+* **ITU-T G.711 A-law Companding ($A=87.6$)**: Exact 8-bit logarithmic companding and reconstruction used in Indian telecom switching.
+* **RTP Packet Loss Jitter**: Injects 1.5% simulated cellular packet drops to stress-test conversational resilience.
+
+```bash
+# Verify 8kHz G.711 Telephony Audio & SIP Webhooks
+python3 scripts/test_telephony_audio_gate.py
+```
 
 * **Quality Threshold**: Strict **0.80 (80% / MOS 4.0)** acceptance gate. Sub-threshold audio triggers a dynamic auto-healing loop (pace $\pm 8\%$, pitch $+2\text{Hz}$, and voice switching). Sub-threshold audio that cannot be healed is strictly rejected.
 * **CLI Option**: Adjust the gate threshold with `--min-score` (e.g. `--min-score 0.85`).

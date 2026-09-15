@@ -29,19 +29,110 @@ class AudioQualityReport:
     duration_seconds: float     # Audio length in seconds
     pause_ratio: float          # Silence frames / total frames
     feedback: str               # Actionable description
+    telephony_simulated: bool = False # True if evaluated after 8kHz G.711 telecom line degradation
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
 
+class TelephonyChannelSimulator:
+    """
+    Simulates real-world Indian PSTN / 2G / 3G / VoLTE telephony carrier line degradation:
+    1. Resampling to 8,000 Hz (telephony sampling rate).
+    2. ITU-T G.712 Bandpass filter: 300 Hz - 3400 Hz (telecom ear-band cutoffs).
+    3. ITU-T G.711 A-law companding (A=87.6) with 8-bit logarithmic quantization.
+    4. Packet loss / jitter simulation: random 1-2% RTP packet drops.
+    """
+    def __init__(self, sample_rate: int = 8000, A: float = 87.6, packet_loss_rate: float = 0.015):
+        self.sample_rate = sample_rate
+        self.A = A
+        self.packet_loss_rate = packet_loss_rate
+
+    def apply_alaw_companding(self, samples: np.ndarray) -> np.ndarray:
+        """Applies ITU-T G.711 A-law logarithmic companding and 8-bit quantization."""
+        if len(samples) == 0:
+            return samples
+        max_val = np.max(np.abs(samples)) or 1.0
+        x = samples / max_val
+        sign = np.sign(x)
+        abs_x = np.abs(x)
+
+        denom = 1.0 + np.log(self.A)
+        inv_A = 1.0 / self.A
+        compressed = np.where(
+            abs_x < inv_A,
+            (self.A * abs_x) / denom,
+            (1.0 + np.log(np.maximum(1e-12, self.A * abs_x))) / denom
+        )
+
+        # Quantize to 8-bit integer levels (-128 to 127)
+        q8 = np.round(compressed * 127.0) / 127.0
+
+        # Expansion (reconstruction)
+        expanded = np.where(
+            q8 < (1.0 / denom),
+            (q8 * denom) / self.A,
+            np.exp(q8 * denom - 1.0) / self.A
+        )
+        return (sign * expanded * max_val).astype(np.float32)
+
+    def degrade_audio(self, audio_segment: pydub.AudioSegment) -> pydub.AudioSegment:
+        """Applies full 8kHz G.711 A-law telephony line degradation pipeline."""
+        import pydub.effects
+
+        # 1. Downsample to 8,000 Hz and mono
+        seg = audio_segment.set_frame_rate(self.sample_rate).set_channels(1)
+
+        # 2. ITU-T G.712 Bandpass Filter (300 Hz - 3400 Hz)
+        try:
+            seg = pydub.effects.high_pass_filter(seg, 300)
+            seg = pydub.effects.low_pass_filter(seg, 3400)
+        except Exception:
+            pass
+
+        # 3. Apply A-law companding & 8-bit quantization on raw samples
+        samples = np.array(seg.get_array_of_samples(), dtype=np.float32)
+        degraded_samples = self.apply_alaw_companding(samples)
+
+        # 4. Simulate RTP packet jitter / packet loss (20ms packets)
+        if self.packet_loss_rate > 0.0:
+            packet_len = int(self.sample_rate * 0.02)  # 20ms = 160 samples at 8kHz
+            num_packets = len(degraded_samples) // packet_len
+            rng = np.random.RandomState(42)
+            drop_mask = rng.rand(num_packets) < self.packet_loss_rate
+            for p_idx in range(num_packets):
+                if drop_mask[p_idx]:
+                    start = p_idx * packet_len
+                    end = start + packet_len
+                    degraded_samples[start:end] *= 0.15
+
+        int16_samples = np.clip(degraded_samples, -32768, 32767).astype(np.int16)
+        return pydub.AudioSegment(
+            data=int16_samples.tobytes(),
+            sample_width=2,
+            frame_rate=self.sample_rate,
+            channels=1
+        )
+
+
 class HumanLikenessScorer:
     """Quantitative acoustic & conversational evaluator for telephony speech."""
 
-    def __init__(self, min_threshold: float = 0.80):
+    def __init__(self, min_threshold: float = 0.80, simulate_telephony: bool = False):
         self.min_threshold = min_threshold
+        self.simulate_telephony = simulate_telephony
+        self.telephony_sim = TelephonyChannelSimulator()
 
-    def evaluate(self, audio_path: str, transcript: str) -> AudioQualityReport:
-        """Evaluates an audio file against a text transcript and produces a quality report."""
+    def evaluate(
+        self,
+        audio_path: str,
+        transcript: str,
+        simulate_telephony: Optional[bool] = None
+    ) -> AudioQualityReport:
+        """
+        Evaluates an audio file against a text transcript and produces a quality report.
+        If simulate_telephony is True, degrades audio via 8kHz G.711 A-law telecom filter first.
+        """
         if not os.path.exists(audio_path):
             return AudioQualityReport(
                 score=0.0,
@@ -76,6 +167,13 @@ class HumanLikenessScorer:
                 feedback=f"Failed to decode audio: {e}"
             )
 
+        do_telephony = self.simulate_telephony if simulate_telephony is None else simulate_telephony
+        if do_telephony:
+            try:
+                seg = self.telephony_sim.degrade_audio(seg)
+            except Exception:
+                pass
+
         dur = len(seg) / 1000.0
         if dur <= 0.1:
             return AudioQualityReport(
@@ -90,7 +188,8 @@ class HumanLikenessScorer:
                 wpm=0.0,
                 duration_seconds=dur,
                 pause_ratio=0.0,
-                feedback="Audio duration is too short (empty or click)."
+                feedback="Audio duration is too short (empty or click).",
+                telephony_simulated=do_telephony
             )
 
         samples = np.array(seg.get_array_of_samples(), dtype=np.float32)
@@ -209,6 +308,8 @@ class HumanLikenessScorer:
             issues.append("Digital clipping detected")
 
         feedback = " ✓ Excellent human-likeness." if not issues else f"Issues: {', '.join(issues)}"
+        if do_telephony:
+            feedback = f"[8kHz G.711 Telephony Line] {feedback}"
 
         return AudioQualityReport(
             score=composite,
@@ -222,5 +323,6 @@ class HumanLikenessScorer:
             wpm=round(wpm, 1),
             duration_seconds=round(dur, 2),
             pause_ratio=round(pause_ratio, 3),
-            feedback=feedback
+            feedback=feedback,
+            telephony_simulated=do_telephony
         )

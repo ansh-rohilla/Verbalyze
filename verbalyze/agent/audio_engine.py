@@ -39,12 +39,14 @@ class AudioEngine:
         self,
         language: str = "hi",
         voice: Optional[str] = None,
-        min_human_likeness: float = 0.80
+        min_human_likeness: float = 0.80,
+        simulate_telephony: bool = False
     ):
         self.language = language
         self.voice = voice or NEURAL_VOICES.get(language, "hi-IN-SwaraNeural")
         self.min_human_likeness = min_human_likeness
-        self.scorer = HumanLikenessScorer(min_threshold=min_human_likeness)
+        self.simulate_telephony = simulate_telephony
+        self.scorer = HumanLikenessScorer(min_threshold=min_human_likeness, simulate_telephony=simulate_telephony)
         self.last_quality_report: Optional[AudioQualityReport] = None
         self._check_playback_player()
 
@@ -75,6 +77,16 @@ class AudioEngine:
         communicate = edge_tts.Communicate(text, v, rate=rate, pitch=pitch)
         await communicate.save(output_path)
 
+    def _apply_telephony_effect(self, path: str):
+        """Applies 8kHz G.711 A-law telephony degradation to an audio file in-place."""
+        try:
+            import pydub
+            raw_seg = pydub.AudioSegment.from_file(path)
+            deg_seg = self.scorer.telephony_sim.degrade_audio(raw_seg)
+            deg_seg.export(path, format="mp3")
+        except Exception:
+            pass
+
     def synthesize(
         self,
         text: str,
@@ -98,7 +110,9 @@ class AudioEngine:
         try:
             import edge_tts
             asyncio.run(self._synthesize_edge_tts(text, dest_path))
-            report = self.scorer.evaluate(dest_path, text)
+            if self.simulate_telephony:
+                self._apply_telephony_effect(dest_path)
+            report = self.scorer.evaluate(dest_path, text, simulate_telephony=False if self.simulate_telephony else None)
             self.last_quality_report = report
 
             if report.score >= threshold:
@@ -116,7 +130,9 @@ class AudioEngine:
                 target_pitch = "+2Hz" if report.prosody_score < 0.85 else "+0Hz"
                 heal_path = tempfile.mktemp(suffix=".mp3")
                 asyncio.run(self._synthesize_edge_tts(text, heal_path, rate=target_rate, pitch=target_pitch))
-                heal_report = self.scorer.evaluate(heal_path, text)
+                if self.simulate_telephony:
+                    self._apply_telephony_effect(heal_path)
+                heal_report = self.scorer.evaluate(heal_path, text, simulate_telephony=False if self.simulate_telephony else None)
 
                 if heal_report.score >= threshold:
                     shutil.move(heal_path, dest_path)
@@ -128,7 +144,9 @@ class AudioEngine:
                     alt_voice = "hi-IN-MadhurNeural" if "Swara" in self.voice else "hi-IN-SwaraNeural"
                     alt_path = tempfile.mktemp(suffix=".mp3")
                     asyncio.run(self._synthesize_edge_tts(text, alt_path, voice=alt_voice, rate=target_rate))
-                    alt_report = self.scorer.evaluate(alt_path, text)
+                    if self.simulate_telephony:
+                        self._apply_telephony_effect(alt_path)
+                    alt_report = self.scorer.evaluate(alt_path, text, simulate_telephony=False if self.simulate_telephony else None)
 
                     if alt_report.score >= threshold:
                         shutil.move(alt_path, dest_path)

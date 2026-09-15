@@ -49,6 +49,7 @@ def main():
     p_ag.add_argument("--provider", type=str, default="mock", choices=["groq", "openai", "ollama", "mock"], help="LLM Provider ('ollama' for 100%% offline local SLM)")
     p_ag.add_argument("--model", type=str, default=None, help="LLM model name (default: 'llama3.2:3b' for ollama, 'llama-3.3-70b-versatile' for groq)")
     p_ag.add_argument("--ollama-host", type=str, default="http://127.0.0.1:11434", help="Ollama host endpoint (default: http://127.0.0.1:11434)")
+    p_ag.add_argument("--telephony-sim", action="store_true", help="Simulate 8kHz G.711 A-law Indian telecom carrier line degradation in Quality Gate and audio")
 
     # Command: server
     p_srv = subparsers.add_parser("server", help="Start FastAPI telephony webhook server")
@@ -108,7 +109,8 @@ def main():
             model_name=args.model,
             ollama_host=args.ollama_host,
             voice_enabled=not args.no_voice,
-            min_human_likeness=args.min_score
+            min_human_likeness=args.min_score,
+            simulate_telephony=args.telephony_sim
         )
         if args.mic:
             bot.run_live_microphone_call(mode=args.mode)
