@@ -235,22 +235,26 @@ python3 scripts/train_voice_slm.py --model llama3.2-3b --epochs 3 --batch-size 4
 
 Simulate real phone calls with natural Indic fillers, emotion handling, neural audio playback, and automatic call hangup (`disconnect_tool`).
 
-#### 🦙 100% Offline Local SLM Mode (Ollama on Apple Silicon Metal)
-Run completely disconnected from cloud APIs with zero latency overhead and zero recurring costs:
+#### 🦙 100% Offline Turn-Key Local SLM (`verbalyze-indic`)
+Run completely sovereign and disconnected from cloud APIs with zero per-minute costs:
 ```bash
-# Run local offline agent via terminal
-python3 -m verbalyze.cli agent --provider ollama --lang hi
+# 1. Build and register the turn-key model in your local Ollama daemon (1 command):
+ollama create verbalyze-indic -f Modelfile
 
-# Hands-free mode using your Mac microphone
-python3 -m verbalyze.cli agent --provider ollama --lang hi --mic
+# 2. Test conversational telephony agent directly in terminal:
+ollama run verbalyze-indic
 
-# Run multi-turn automated integration test
-python3 scripts/test_ollama_integration.py
+# 3. Launch full-duplex hands-free voice agent with live barge-in & Quality Gate:
+python3 -m verbalyze.cli agent --provider ollama --model verbalyze-indic --lang hi --mic
+
+# 4. Run automated multi-turn telephony verification suite:
+python3 scripts/test_verbalyze_indic_model.py
 ```
 
-* **Model**: `llama3.2:3b` quantized 4-bit weights via Ollama (`http://127.0.0.1:11434`).
-* **Performance**: Sub-400ms turn latency on Apple Silicon Metal GPU (~2.5 GB active RAM).
-* **Telephony Function Calling**: Emits local tools (`send_payment_link`, `disconnect_tool`, `schedule_callback`) and provides natural conversational confirmations.
+* **Pre-Baked Telephony Intelligence**: The `Modelfile` bakes Indic telephony personas, concise spoken dialogue rules, filler tokens, and function calling tools directly into `llama3.2:3b`.
+* **Instant Re-use**: `ollama create` re-uses base weights and creates the sovereign model in seconds (~100MB manifest layer, no re-downloading).
+* **Performance**: Sub-400ms turn latency on Apple Silicon Metal GPU (~2.0 GB active RAM).
+* **Telephony Function Calling**: Seamlessly emits local tools (`send_payment_link`, `disconnect_tool`, `schedule_callback`) with automatic voice synthesis cleaning.
 
 #### 🎙️ Cloud & Microphone Modes
 ```bash

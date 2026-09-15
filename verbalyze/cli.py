@@ -47,7 +47,7 @@ def main():
     p_ag.add_argument("--min-score", type=float, default=0.80, help="Minimum human-likeness quality threshold to accept speech audio (default: 0.80)")
     p_ag.add_argument("--no-voice", action="store_true", help="Disable audio speech synthesis playback")
     p_ag.add_argument("--provider", type=str, default="mock", choices=["groq", "openai", "ollama", "mock"], help="LLM Provider ('ollama' for 100%% offline local SLM)")
-    p_ag.add_argument("--model", type=str, default=None, help="LLM model name (default: 'llama3.2:3b' for ollama, 'llama-3.3-70b-versatile' for groq)")
+    p_ag.add_argument("--model", type=str, default=None, help="LLM model name (default: 'verbalyze-indic' for ollama, 'llama-3.3-70b-versatile' for groq)")
     p_ag.add_argument("--ollama-host", type=str, default="http://127.0.0.1:11434", help="Ollama host endpoint (default: http://127.0.0.1:11434)")
     p_ag.add_argument("--telephony-sim", action="store_true", help="Simulate 8kHz G.711 A-law Indian telecom carrier line degradation in Quality Gate and audio")
     p_ag.add_argument("--no-barge-in", action="store_true", help="Disable real-time barge-in interruption detection during audio playback")

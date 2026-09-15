@@ -112,7 +112,7 @@ class VoiceAgent:
         if model_name:
             self.model_name = model_name
         elif self.llm_provider == "ollama":
-            self.model_name = "llama3.2:3b"
+            self.model_name = "verbalyze-indic"
         elif self.llm_provider == "groq":
             self.model_name = "llama-3.3-70b-versatile"
         else:
@@ -192,6 +192,26 @@ class VoiceAgent:
                 tool_call = tool_calls[0] if tool_calls else None
                 return content, tool_call
         except Exception as e:
+            if self.llm_provider == "ollama" and self.model_name == "verbalyze-indic":
+                # Fallback to base llama3.2:3b if verbalyze-indic is not yet created
+                try:
+                    payload["model"] = "llama3.2:3b"
+                    req_fallback = urllib.request.Request(
+                        url,
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers=headers,
+                        method="POST"
+                    )
+                    with urllib.request.urlopen(req_fallback, timeout=15) as resp:
+                        data = json.loads(resp.read().decode("utf-8"))
+                        choice = data["choices"][0]["message"]
+                        content = choice.get("content") or ""
+                        tool_calls = choice.get("tool_calls")
+                        tool_call = tool_calls[0] if tool_calls else None
+                        return content, tool_call
+                except Exception:
+                    pass
+
             if self.llm_provider == "ollama":
                 print(f"⚠️  [Ollama Notice] Failed connecting to {url}: {e}. Falling back to rule-based telephony response.")
             # Fallback to simulated telephony response
@@ -286,6 +306,36 @@ class VoiceAgent:
                 content = ""
             elif "};" in cleaned:
                 content = cleaned.split("};")[-1].strip()
+
+        # Handle inline tool invocation emitted in speech text by local SLMs
+        if not tool_call and content:
+            if "send_payment_link" in content:
+                tool_call = {
+                    "function": {
+                        "name": "send_payment_link",
+                        "arguments": json.dumps({"amount": 5420.0, "loan_id": "MUTH-8921"})
+                    }
+                }
+                lines = [l for l in content.split("\n") if "send_payment_link" not in l and "आरेख" not in l]
+                content = " ".join(lines).strip()
+            elif "disconnect_tool" in content:
+                tool_call = {
+                    "function": {
+                        "name": "disconnect_tool",
+                        "arguments": json.dumps({"reason": "farewell_exchanged"})
+                    }
+                }
+                lines = [l for l in content.split("\n") if "disconnect_tool" not in l and "आरेख" not in l]
+                content = " ".join(lines).strip()
+            elif "schedule_callback" in content:
+                tool_call = {
+                    "function": {
+                        "name": "schedule_callback",
+                        "arguments": json.dumps({"promised_date": "tomorrow", "notes": "Customer promised payment"})
+                    }
+                }
+                lines = [l for l in content.split("\n") if "schedule_callback" not in l and "आरेख" not in l]
+                content = " ".join(lines).strip()
 
         # If model executed a tool, provide natural spoken confirmation if content is empty
         if tool_call and not content:

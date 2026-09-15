@@ -404,7 +404,7 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
                         interactive=True
                     )
                     provider_radio = gr.Radio(
-                        choices=["Built-in Indic Voice Engine (Instant & Free)", "Ollama (Local 100% Offline 3B SLM)", "Groq (Llama-3.3-70B)", "OpenAI (GPT-4o-mini)"],
+                        choices=["Built-in Indic Voice Engine (Instant & Free)", "Ollama (Local verbalyze-indic 3B SLM)", "Groq (Llama-3.3-70B)", "OpenAI (GPT-4o-mini)"],
                         value="Built-in Indic Voice Engine (Instant & Free)",
                         label="LLM Provider",
                         interactive=True
