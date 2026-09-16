@@ -76,7 +76,7 @@ class AudioEngine:
         import edge_tts
         v = voice or self.voice
         communicate = edge_tts.Communicate(text, v, rate=rate, pitch=pitch)
-        await communicate.save(output_path)
+        await asyncio.wait_for(communicate.save(output_path), timeout=6.0)
 
     def _apply_telephony_effect(self, path: str):
         """Applies 8kHz G.711 A-law telephony degradation to an audio file in-place."""
@@ -88,7 +88,7 @@ class AudioEngine:
         except Exception:
             pass
 
-    def synthesize(
+    async def synthesize_async(
         self,
         text: str,
         output_path: Optional[str] = None,
@@ -96,10 +96,8 @@ class AudioEngine:
         auto_heal: bool = True
     ) -> Optional[str]:
         """
-        Synthesizes spoken text into an audio file (.mp3).
-        Enforces a verified human-likeness quality threshold (default: >= 0.80 / MOS >= 4.2).
-        Automatically attempts cadence & prosody auto-tuning if candidate audio falls below threshold.
-        Rejects and drops audio if quality criteria cannot be satisfied.
+        Asynchronously synthesizes spoken text into an audio file (.mp3).
+        Safe to call directly within FastAPI, async streaming generators, or WebSocket event loops.
         """
         if not text.strip():
             return None
@@ -110,7 +108,7 @@ class AudioEngine:
         # Attempt 1: Standard synthesis
         try:
             import edge_tts
-            asyncio.run(self._synthesize_edge_tts(text, dest_path))
+            await self._synthesize_edge_tts(text, dest_path)
             if self.simulate_telephony:
                 self._apply_telephony_effect(dest_path)
             report = self.scorer.evaluate(dest_path, text, simulate_telephony=False if self.simulate_telephony else None)
@@ -121,7 +119,6 @@ class AudioEngine:
 
             # Attempt 2: Auto-healing if threshold was not reached
             if auto_heal:
-                # Determine auto-tuning parameters based on report feedback
                 target_rate = "+0%"
                 if report.wpm > 155:
                     target_rate = "-8%"  # Slow down rushed speech
@@ -130,7 +127,7 @@ class AudioEngine:
 
                 target_pitch = "+2Hz" if report.prosody_score < 0.85 else "+0Hz"
                 heal_path = tempfile.mktemp(suffix=".mp3")
-                asyncio.run(self._synthesize_edge_tts(text, heal_path, rate=target_rate, pitch=target_pitch))
+                await self._synthesize_edge_tts(text, heal_path, rate=target_rate, pitch=target_pitch)
                 if self.simulate_telephony:
                     self._apply_telephony_effect(heal_path)
                 heal_report = self.scorer.evaluate(heal_path, text, simulate_telephony=False if self.simulate_telephony else None)
@@ -144,7 +141,7 @@ class AudioEngine:
                 if self.language == "hi":
                     alt_voice = "hi-IN-MadhurNeural" if "Swara" in self.voice else "hi-IN-SwaraNeural"
                     alt_path = tempfile.mktemp(suffix=".mp3")
-                    asyncio.run(self._synthesize_edge_tts(text, alt_path, voice=alt_voice, rate=target_rate))
+                    await self._synthesize_edge_tts(text, alt_path, voice=alt_voice, rate=target_rate)
                     if self.simulate_telephony:
                         self._apply_telephony_effect(alt_path)
                     alt_report = self.scorer.evaluate(alt_path, text, simulate_telephony=False if self.simulate_telephony else None)
@@ -160,7 +157,7 @@ class AudioEngine:
 
         except ImportError:
             pass
-        except Exception as e:
+        except Exception:
             pass
 
         # Fallback to gTTS if Edge-TTS failed
@@ -176,6 +173,35 @@ class AudioEngine:
             return None
         except Exception:
             return None
+
+    def synthesize(
+        self,
+        text: str,
+        output_path: Optional[str] = None,
+        min_human_likeness: Optional[float] = None,
+        auto_heal: bool = True
+    ) -> Optional[str]:
+        """
+        Synchronous wrapper for synthesize_async.
+        Safe to call from sync functions, threads, or inside running event loops.
+        """
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    return pool.submit(
+                        asyncio.run,
+                        self.synthesize_async(text, output_path, min_human_likeness, auto_heal)
+                    ).result()
+            else:
+                return loop.run_until_complete(
+                    self.synthesize_async(text, output_path, min_human_likeness, auto_heal)
+                )
+        except RuntimeError:
+            return asyncio.run(
+                self.synthesize_async(text, output_path, min_human_likeness, auto_heal)
+            )
 
     def is_playing(self) -> bool:
         """Returns True if audio playback is currently active."""

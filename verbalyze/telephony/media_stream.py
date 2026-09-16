@@ -179,7 +179,7 @@ class MediaStreamSession:
             return
 
         # 1. Synthesize audio file (verified by 80% MOS Quality Gate)
-        audio_path = self.agent.audio_engine.synthesize(text)
+        audio_path = await self.agent.audio_engine.synthesize_async(text)
         if not audio_path or not PYDUB_AVAILABLE:
             return
 
@@ -197,8 +197,33 @@ class MediaStreamSession:
         except Exception as e:
             print(f"Error streaming audio to carrier: {e}")
 
+    async def synthesize_and_stream_clause(self, clause_text: str):
+        """Synthesizes a single clause and streams 20ms packets down the socket."""
+        if not clause_text or not self.agent.audio_engine:
+            return
+        if self.cancel_playback_event.is_set():
+            return
+
+        audio_path = await self.agent.audio_engine.synthesize_async(clause_text)
+        if not audio_path or not PYDUB_AVAILABLE:
+            return
+        if self.cancel_playback_event.is_set():
+            return
+
+        try:
+            seg = pydub.AudioSegment.from_file(audio_path)
+            seg = seg.set_frame_rate(8000).set_channels(1).set_sample_width(2)
+            raw_pcm = seg.raw_data
+
+            self.current_playback_task = asyncio.create_task(
+                self.stream_audio_to_carrier(raw_pcm)
+            )
+            await self.current_playback_task
+        except Exception as e:
+            print(f"Error streaming clause audio to carrier: {e}")
+
     async def process_caller_turn(self):
-        """Transcribes accumulated inbound PCM buffer and triggers agent step."""
+        """Transcribes accumulated inbound PCM buffer and triggers streaming pipelined agent step."""
         if not self.inbound_pcm_buffer:
             return
 
@@ -217,19 +242,38 @@ class MediaStreamSession:
             return
 
         print(f"📞 [Caller Turn Transcribed]: '{user_text}'")
+        print(f"⚡ [Streaming Pipeline] Beginning token-to-TTS pipeline for low-latency response...")
 
-        # Step agent
-        step_res = self.agent.step(user_text)
-        reply_text = step_res["text"]
-        print(f"🤖 [Agent Reply]: '{reply_text}'")
+        self.cancel_playback_event.clear()
+        self.is_agent_streaming = True
+        accumulated_reply = []
 
-        # Stream voice back to caller
-        await self.synthesize_and_play_reply(reply_text)
+        try:
+            async for chunk in self.agent.step_stream(user_text):
+                if self.cancel_playback_event.is_set():
+                    print("⚡ [Streaming Pipeline] Discarded remaining clauses due to caller barge-in.")
+                    break
 
-        # If call was terminated by tool (e.g. disconnect_tool), hang up
-        if step_res.get("terminated"):
-            print("📞 [Call Terminated]: Agent hung up.")
-            self.is_active = False
+                if chunk["type"] == "clause":
+                    clause_text = chunk["text"]
+                    accumulated_reply.append(clause_text)
+                    print(f"🗣️ [Agent Clause {chunk.get('index', 0)}]: '{clause_text}'")
+                    await self.synthesize_and_stream_clause(clause_text)
+
+                elif chunk["type"] == "tool_call":
+                    print(f"🔧 [Telephony Tool Triggered]: {chunk.get('tool_event')}")
+
+                elif chunk["type"] == "final":
+                    full_text = chunk.get("full_text") or " ".join(accumulated_reply)
+                    print(f"🤖 [Agent Full Turn Completed]: '{full_text}'")
+                    if chunk.get("terminated"):
+                        print("📞 [Call Terminated]: Agent hung up.")
+                        self.is_active = False
+
+        except Exception as e:
+            print(f"⚠️ [Streaming Turn Error]: {e}")
+        finally:
+            self.is_agent_streaming = False
 
     async def _transcribe_pcm_audio(self, pcm_8k_bytes: bytes) -> str:
         """Converts 8kHz PCM to speech transcript using STT recognizer or fallback."""

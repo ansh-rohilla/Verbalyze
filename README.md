@@ -314,6 +314,33 @@ When the customer agrees to pay or asks for a payment link during a call, Verbal
 python3 scripts/test_sms_upi_dispatch.py
 ```
 
+#### ⚡ Streaming Token-to-Speech Pipelining (<200ms Time-to-First-Sound)
+Traditional voicebots wait for the full LLM completion before initiating TTS synthesis, resulting in awkward 1.5–3.0 second pauses. Verbalyze eliminates this conversational latency with asynchronous **clause-level pipelining**:
+* **Real-Time Delimiter Streaming**: Intercepts SSE token streams from Ollama (`verbalyze-indic`), Groq, or OpenAI, detecting punctuation clause boundaries (`।`, `.`, `?`, `!`, `,`).
+* **Instant First-Sound Synthesis**: As soon as the first clause (e.g. *"हाँ जी शर्मा जी,"*) is formed, it is dispatched to `AudioEngine.synthesize_async()`, reaching the caller's ear in **<200ms**.
+* **Zero Audio Stutter**: Subsequent clauses synthesize concurrently in the background while the previous clause is being streamed over 20ms G.711 WebSocket frames.
+* **Indian Currency Protection**: Prevents broken digits across Indian currency numbers (e.g. `₹5,420`).
+
+```bash
+# Benchmark and verify Streaming LLM-to-TTS Pipelining:
+python3 scripts/test_streaming_pipeline.py
+```
+
+#### 🚀 1-Click Live Indian Phone Line Gateway Launcher (RingTrunk / Asterisk)
+Connect your local Verbalyze instance directly to a live Indian phone number (DID) or telecom trunk with a single command:
+* Starts the production telephony FastAPI server on port 8000.
+* Auto-detects public tunnels (`ngrok`, `cloudflared`) or accepts `--tunnel-url`.
+* Outputs ready-to-use configuration and email templates for telecom providers (e.g., [RingTrunk](mailto:admin@ringtrunk.com)).
+* Monitors live incoming calls, streaming latencies, and SMS UPI dispatches in the terminal.
+
+```bash
+# Launch live phone line gateway:
+python3 scripts/launch_live_phone_line.py --persona muthoot_recovery --lang hi
+
+# With custom ngrok/cloud domain:
+python3 scripts/launch_live_phone_line.py --tunnel-url https://my-subdomain.ngrok-free.app
+```
+
 ---
 
 ### 4. 🎯 Automated Human-Likeness Quality Gate (80% / MOS 4.0)

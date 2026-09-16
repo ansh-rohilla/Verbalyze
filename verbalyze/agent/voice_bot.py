@@ -13,7 +13,8 @@ import re
 import sys
 import json
 import time
-from typing import Dict, List, Any, Optional, Tuple
+import asyncio
+from typing import Dict, List, Any, Optional, Tuple, AsyncGenerator
 from verbalyze.agent.tools import TELEPHONY_TOOLS_SCHEMA, execute_telephony_tool
 from verbalyze.agent.audio_engine import AudioEngine
 
@@ -394,6 +395,288 @@ class VoiceAgent:
             "quality_report": quality_report,
             "tool_event": tool_status if tool_call else None,
             "tool_data": tool_data if tool_call else None,
+            "terminated": not self.is_call_active
+        }
+
+    async def step_stream(self, user_utterance: str) -> AsyncGenerator[Dict[str, Any], None]:
+        """
+        Processes a conversational turn with token streaming and clause-level pipelining.
+        Yields:
+        - {"type": "clause", "text": clause_str, "index": int}
+        - {"type": "tool_call", "tool_name": str, "tool_event": str, "tool_data": Any, "terminated": bool}
+        - {"type": "final", "full_text": str, "terminated": bool}
+        """
+        if not self.is_call_active:
+            yield {"type": "final", "full_text": "[Call already disconnected]", "terminated": True}
+            return
+
+        # 1. Record user turn
+        self.messages.append({"role": "user", "content": user_utterance})
+
+        clause_delimiters = ["\n", "।", ".", "?", "!", ";"]
+        clause_buffer = ""
+        clause_index = 0
+        accumulated_content = ""
+        accumulated_tool_calls: Dict[int, Dict[str, Any]] = {}
+
+        # If provider is mock, simulate streaming from _mock_llm_response
+        if self.llm_provider == "mock":
+            mock_content, mock_tool_call = self._mock_llm_response()
+            # Split mock_content into natural clauses (preserving currency commas like ₹5,420)
+            raw_clauses = [c.strip() for c in re.split(r'(?<=[।?!.\n])\s*|(?<=,)(?!\d)\s*', mock_content) if c.strip()]
+            if not raw_clauses:
+                raw_clauses = [mock_content]
+
+            for clause in raw_clauses:
+                clause_index += 1
+                accumulated_content += (" " if accumulated_content else "") + clause
+                yield {
+                    "type": "clause",
+                    "text": clause,
+                    "index": clause_index
+                }
+                await asyncio.sleep(0.02)
+
+            # Handle tool call
+            tool_status = ""
+            tool_data = None
+            terminated = False
+            if mock_tool_call:
+                fn_name = mock_tool_call["function"]["name"]
+                try:
+                    fn_args = json.loads(mock_tool_call["function"]["arguments"])
+                except Exception:
+                    fn_args = {}
+                res = execute_telephony_tool(fn_name, fn_args, caller_phone=self.caller_phone)
+                if len(res) == 3:
+                    terminated, tool_status, tool_data = res
+                else:
+                    terminated, tool_status = res
+                if terminated:
+                    self.is_call_active = False
+
+                yield {
+                    "type": "tool_call",
+                    "tool_name": fn_name,
+                    "tool_event": tool_status,
+                    "tool_data": tool_data,
+                    "terminated": terminated
+                }
+
+            asst_turn = {"role": "assistant", "content": accumulated_content}
+            if mock_tool_call:
+                asst_turn["tool_calls"] = [mock_tool_call]
+            self.messages.append(asst_turn)
+
+            yield {
+                "type": "final",
+                "full_text": accumulated_content,
+                "terminated": not self.is_call_active
+            }
+            return
+
+        # Real streaming call to Ollama, Groq, or OpenAI
+        if self.llm_provider == "ollama":
+            url = f"{self.ollama_host.rstrip('/')}/v1/chat/completions"
+            headers = {"Content-Type": "application/json", "Authorization": "Bearer ollama"}
+        elif self.llm_provider == "groq":
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
+        else:
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
+
+        payload = {
+            "model": self.model_name,
+            "messages": self.messages,
+            "tools": TELEPHONY_TOOLS_SCHEMA,
+            "tool_choice": "auto",
+            "temperature": 0.6,
+            "max_tokens": 150,
+            "stream": True
+        }
+
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                async with client.stream("POST", url, json=payload, headers=headers) as response:
+                    async for line in response.aiter_lines():
+                        line = line.strip()
+                        if not line or not line.startswith("data:"):
+                            continue
+                        data_str = line[5:].strip()
+                        if data_str == "[DONE]":
+                            break
+                        try:
+                            chunk = json.loads(data_str)
+                            choices = chunk.get("choices", [])
+                            if not choices:
+                                continue
+                            delta = choices[0].get("delta", {})
+
+                            # Content delta
+                            token = delta.get("content") or ""
+                            if token:
+                                clause_buffer += token
+                                accumulated_content += token
+
+                                # Check for clause break
+                                split_pos = -1
+                                for d in clause_delimiters:
+                                    pos = clause_buffer.find(d)
+                                    if pos != -1 and (split_pos == -1 or pos < split_pos):
+                                        split_pos = pos
+
+                                # Comma delimiter only if clause has sufficient substance (>= 14 chars) and not inside a number
+                                comma_pos = clause_buffer.find(",")
+                                if comma_pos != -1 and len(clause_buffer[:comma_pos].strip()) >= 14:
+                                    is_num_comma = (comma_pos + 1 < len(clause_buffer) and clause_buffer[comma_pos + 1].isdigit())
+                                    if not is_num_comma:
+                                        if split_pos == -1 or comma_pos < split_pos:
+                                            split_pos = comma_pos
+
+                                if split_pos != -1:
+                                    clause_text = clause_buffer[:split_pos + 1].strip()
+                                    clause_buffer = clause_buffer[split_pos + 1:].lstrip()
+                                    if clause_text:
+                                        clause_index += 1
+                                        yield {
+                                            "type": "clause",
+                                            "text": clause_text,
+                                            "index": clause_index
+                                        }
+
+                            # Tool call delta
+                            t_calls = delta.get("tool_calls")
+                            if t_calls:
+                                for tc in t_calls:
+                                    idx = tc.get("index", 0)
+                                    if idx not in accumulated_tool_calls:
+                                        accumulated_tool_calls[idx] = {
+                                            "id": tc.get("id", f"call_{idx}"),
+                                            "function": {"name": "", "arguments": ""}
+                                        }
+                                    fn = tc.get("function", {})
+                                    if fn.get("name"):
+                                        accumulated_tool_calls[idx]["function"]["name"] += fn["name"]
+                                    if fn.get("arguments"):
+                                        accumulated_tool_calls[idx]["function"]["arguments"] += fn["arguments"]
+
+                        except Exception:
+                            continue
+
+        except Exception as e:
+            # If Ollama / Groq connection fails, fallback to mock response
+            print(f"⚠️  [Streaming LLM Notice] Streaming failed ({e}). Falling back to rule-based telephony.")
+            mock_content, mock_tool_call = self._mock_llm_response()
+            clause_index += 1
+            accumulated_content = mock_content
+            yield {
+                "type": "clause",
+                "text": mock_content,
+                "index": clause_index
+            }
+            if mock_tool_call:
+                accumulated_tool_calls[0] = mock_tool_call
+
+        # Flush any remaining text in clause_buffer
+        if clause_buffer.strip():
+            clause_index += 1
+            yield {
+                "type": "clause",
+                "text": clause_buffer.strip(),
+                "index": clause_index
+            }
+
+        # Check for inline tool calls in accumulated content (common with local SLMs)
+        resolved_tool_call = None
+        if accumulated_tool_calls:
+            resolved_tool_call = accumulated_tool_calls[0]
+        elif accumulated_content:
+            if "send_payment_link" in accumulated_content:
+                resolved_tool_call = {
+                    "function": {"name": "send_payment_link", "arguments": json.dumps({"amount": 5420.0, "loan_id": "MUTH-8921"})}
+                }
+            elif "disconnect_tool" in accumulated_content:
+                resolved_tool_call = {
+                    "function": {"name": "disconnect_tool", "arguments": json.dumps({"reason": "farewell_exchanged"})}
+                }
+            elif "schedule_callback" in accumulated_content:
+                resolved_tool_call = {
+                    "function": {"name": "schedule_callback", "arguments": json.dumps({"promised_date": "tomorrow", "notes": "Customer promised payment"})}
+                }
+
+        # If tool call was invoked without spoken content, emit spoken confirmation clause
+        if resolved_tool_call and (not accumulated_content.strip() or "send_payment_link" in accumulated_content or "disconnect_tool" in accumulated_content):
+            fn_name = resolved_tool_call["function"]["name"]
+            if fn_name == "send_payment_link":
+                spoken = "हाँ बिल्कुल, मैंने आपके पंजीकृत मोबाइल नंबर पर ₹5,420 का सुरक्षित UPI पेमेंट लिंक भेज दिया है।" if self.language == "hi" else "Sure, I have dispatched the secure payment link to your registered mobile number."
+            elif fn_name == "disconnect_tool":
+                spoken = "जी ठीक है, आपका बहुत धन्यवाद। आपका दिन शुभ हो, नमस्कार।" if self.language == "hi" else "Thank you for your time. Have a great day ahead, goodbye."
+            elif fn_name == "schedule_callback":
+                spoken = "हाँ जी ठीक है, मैंने कल तक के भुगतान का वादा नोट कर लिया है। कृपया कल तक जमा कर दें।" if self.language == "hi" else "Alright, I have recorded your commitment for tomorrow. Thank you."
+            else:
+                spoken = "हाँ जी, मैंने आपका अनुरोध प्रोसेस कर दिया है।"
+            clause_index += 1
+            accumulated_content = spoken
+            yield {
+                "type": "clause",
+                "text": spoken,
+                "index": clause_index
+            }
+
+        # If still empty, provide persona conversational fallback
+        if not accumulated_content.strip():
+            if self.persona == "bank_kyc":
+                fallback = "हाँ जी, आपका खाता एक्टिव रखने के लिए री-केवाईसी वेरिफिकेशन जरूरी है।" if self.language == "hi" else "Yes, re-KYC update is needed to keep your account operational."
+            elif self.persona == "swiggy_delivery":
+                fallback = "जी ठीक है सर, मैं आपकी लोकेशन पर पहुँच रहा हूँ।" if self.language == "hi" else "Sure sir, I am arriving at your location."
+            else:
+                fallback = "हाँ जी, मैं मुथूट फिनकॉर्प से बोल रहा हूँ। क्या आप आज अपनी बकाया ईएमआई जमा कर पाएंगे?" if self.language == "hi" else "Yes, I am calling from Muthoot Fincorp regarding your overdue EMI payment."
+            clause_index += 1
+            accumulated_content = fallback
+            yield {
+                "type": "clause",
+                "text": fallback,
+                "index": clause_index
+            }
+
+        # Execute tool call if any
+        tool_status = ""
+        tool_data = None
+        terminated = False
+        if resolved_tool_call:
+            fn_name = resolved_tool_call["function"]["name"]
+            try:
+                fn_args = json.loads(resolved_tool_call["function"]["arguments"])
+            except Exception:
+                fn_args = {}
+            res = execute_telephony_tool(fn_name, fn_args, caller_phone=self.caller_phone)
+            if len(res) == 3:
+                terminated, tool_status, tool_data = res
+            else:
+                terminated, tool_status = res
+            if terminated:
+                self.is_call_active = False
+
+            yield {
+                "type": "tool_call",
+                "tool_name": fn_name,
+                "tool_event": tool_status,
+                "tool_data": tool_data,
+                "terminated": terminated
+            }
+
+        # Record assistant turn in messages
+        asst_turn = {"role": "assistant", "content": accumulated_content}
+        if resolved_tool_call:
+            asst_turn["tool_calls"] = [resolved_tool_call]
+        self.messages.append(asst_turn)
+
+        # Final yield
+        yield {
+            "type": "final",
+            "full_text": accumulated_content,
             "terminated": not self.is_call_active
         }
 
