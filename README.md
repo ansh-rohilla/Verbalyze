@@ -8,6 +8,113 @@
 
 A unified suite for Indic Voice AI: 172.8k scenario-weighted STT benchmark, 16.3k multi-turn telephony conversations with function calling, low-latency Voice SLM fine-tuning recipes, and real-time SIP voicebots across 12 Indian languages.
 
+---
+
+## 🏛️ System Architecture
+
+Verbalyze is designed as a carrier-grade, full-duplex conversational voice AI suite tailored for Indian telecom trunks (RingTrunk, Asterisk, FreeSWITCH, Twilio) and local Indic SLMs:
+
+```mermaid
+flowchart TD
+    subgraph Telecom["Telecom Carrier & PSTN"]
+        Caller["📱 Indian Phone Line / Mobile Caller"]
+        Carrier["🌐 Carrier Trunk (RingTrunk / Twilio / Asterisk)"]
+        Caller <-->|"GSM / PSTN Call"| Carrier
+    end
+
+    subgraph Gateway["Telephony Gateway & Ingestion"]
+        WS["⚡ Bi-Directional WebSocket (/media-stream)<br/>8kHz ITU-T G.711 A-law / Linear PCM"]
+        VAD["🎙️ 20ms Frame VAD &<br/>Sub-50ms Barge-In Cutoff ('clear' event)"]
+        STT["📝 Speech-to-Text Transcriber<br/>(Indic Multi-Lingual)"]
+        Carrier <-->|"20ms Audio Frames"| WS
+        WS -->|"Inbound Audio"| VAD
+        VAD -->|"Filtered Speech"| STT
+    end
+
+    subgraph Intelligence["Conversational Intelligence"]
+        SLM["🧠 verbalyze-indic (Ollama 3B) / Groq / OpenAI<br/>(Indic Banking & Debt Recovery Personas)"]
+        Streamer["⚡ Token-to-Speech Clause Pipeliner<br/>(। , ? ! . Delimiters | &lt;200ms TTFS)"]
+        STT -->|"User Utterance"| SLM
+        SLM -->|"Streaming Tokens"| Streamer
+    end
+
+    subgraph Actions["Action Dispatch & Audio Synthesis"]
+        Tools["🔧 Telephony Tool Executor<br/>(send_payment_link, disconnect)"]
+        SMS["📱 Live SMS & NPCI UPI Intent<br/>(Fast2SMS / Twilio / upi://pay)"]
+        TTS["🗣️ Neural Audio Engine<br/>(Edge-TTS / Indic Accents)"]
+        Gate["🎯 Human-Likeness Quality Gate<br/>(&ge;80% MOS | 8kHz G.712 Bandpass)"]
+        
+        Streamer -->|"Tool Calls"| Tools
+        Tools -->|"Dispatches"| SMS
+        SMS -->|"Instant UPI Link"| Caller
+
+        Streamer -->|"Speech Clauses"| TTS
+        TTS -->|"Raw Audio"| Gate
+        Gate -->|"20ms G.711 Frames"| WS
+    end
+```
+
+<details>
+<summary><b>View ASCII Architecture Diagram</b></summary>
+
+```
+                              ┌───────────────────────────────────────────────┐
+                              │         Incoming Indian Phone Call            │
+                              │    (RingTrunk / Asterisk / Twilio / SIP)      │
+                              └───────────────────────┬───────────────────────┘
+                                                      │
+                                                      ▼
+                              ┌───────────────────────────────────────────────┐
+                              │  Bi-directional WebSocket (/media-stream)     │
+                              │   8kHz ITU-T G.711 A-law / Linear 16-bit PCM  │
+                              └───────┬───────────────────────────────▲───────┘
+                                      │                               │
+                      [Inbound 20ms Frames]              [Outbound 20ms Frames]
+                                      │                               │
+                                      ▼                               │
+                       ┌─────────────────────────────┐                │
+                       │   Microphone VAD & Engine   │                │
+                       │   Sub-50ms Barge-In Cutoff  │                │
+                       └──────────────┬──────────────┘                │
+                                      │                               │
+                                      ▼                               │
+                       ┌─────────────────────────────┐                │
+                       │  Speech-to-Text Transcriber │                │
+                       └──────────────┬──────────────┘                │
+                                      │                               │
+                                      ▼                               │
+                       ┌─────────────────────────────┐                │
+                       │  verbalyze-indic SLM Engine │                │
+                       │  (Ollama 3B / Groq / OpenAI)│                │
+                       └──────────────┬──────────────┘                │
+                                      │ (Streaming SSE Tokens)        │
+                                      ▼                               │
+                       ┌─────────────────────────────┐                │
+                       │  Clause-Level Stream Parser │                │
+                       │    (। , ? ! . Delimiters)   │                │
+                       └──────────────┬──────────────┘                │
+                                      │                               │
+                    ┌─────────────────┴─────────────────┐             │
+                    │                                   │             │
+                    ▼                                   ▼             │
+      ┌───────────────────────────┐       ┌───────────────────────────┤
+      │  Telephony Tool Execution │       │  Neural TTS Audio Engine  │
+      │   (NPCI UPI / Live SMS)   │       │   (synthesize_async <40ms)│
+      └─────────────┬─────────────┘       └─────────────┬─────────────┘
+                    │                                   │
+                    ▼                                   ▼
+      ┌───────────────────────────┐       ┌───────────────────────────┐
+      │  Live SMS + UPI Deep-Link │       │ Human-Likeness Quality    │
+      │  (Fast2SMS / Twilio)      │       │ Gate (80% MOS Acceptance) │
+      └───────────────────────────┘       └─────────────┬─────────────┘
+                                                        │
+                                                        └─────────────┘
+```
+
+</details>
+
+---
+
 ## Supported Languages (12)
 
 You can generate data for any of the following languages:
