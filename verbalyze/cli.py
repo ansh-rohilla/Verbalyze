@@ -59,6 +59,8 @@ def main():
     p_srv = subparsers.add_parser("server", help="Start FastAPI telephony webhook server")
     p_srv.add_argument("--port", type=int, default=8000, help="Server port (default: 8000)")
     p_srv.add_argument("--host", type=str, default="0.0.0.0", help="Server host (default: 0.0.0.0)")
+    p_srv.add_argument("--auth-token", type=str, default=None, help="Authentication token for webhooks and WebSocket (default: env TELEPHONY_AUTH_TOKEN)")
+    p_srv.add_argument("--strict-sovereignty", action="store_true", help="Enforce 100% strict data sovereignty (zero cloud STT egress)")
 
     # Command: live-line
     p_live = subparsers.add_parser("live-line", help="1-Click Live Indian Phone Line Gateway (RingTrunk/SIP/WebSockets)")
@@ -72,6 +74,8 @@ def main():
     p_live.add_argument("--sms-provider", type=str, default="mock", choices=["mock", "fast2sms", "twilio", "webhook"], help="SMS Gateway Provider")
     p_live.add_argument("--stt-provider", type=str, default="local", choices=["local", "faster-whisper", "google", "mock"], help="Speech-to-Text provider (default: local)")
     p_live.add_argument("--stt-model", type=str, default="tiny", help="Whisper STT model size (default: tiny, choices: tiny, base, small)")
+    p_live.add_argument("--auth-token", type=str, default=None, help="Authentication token for webhooks and WebSocket (default: env TELEPHONY_AUTH_TOKEN)")
+    p_live.add_argument("--strict-sovereignty", action="store_true", help="Enforce 100% strict data sovereignty (zero cloud STT egress)")
     p_live.add_argument("--no-server", action="store_true", help="Print config and instructions without launching server")
 
     # Command: publish-hf
@@ -140,8 +144,12 @@ def main():
         try:
             import uvicorn
             from verbalyze.telephony.server import create_app
-            app = create_app()
+            if args.strict_sovereignty:
+                os.environ["STRICT_SOVEREIGNTY"] = "1"
+            app = create_app(auth_token=args.auth_token)
             print(f"📞 [Server] Starting Verbalyze Telephony & Media Stream Server on {args.host}:{args.port}...")
+            print(f"   - Auth Protected:          {'Enabled' if args.auth_token or os.environ.get('TELEPHONY_AUTH_TOKEN') else 'Disabled (Open Dev Mode)'}")
+            print(f"   - Strict Data Sovereignty: {'Enabled (Zero Cloud STT Egress)' if args.strict_sovereignty or os.environ.get('STRICT_SOVEREIGNTY') == '1' else 'Disabled'}")
             print(f"   - WebSocket Audio Stream:  ws://{args.host}:{args.port}/media-stream")
             print(f"   - Unmetered SIP Webhook:   http://{args.host}:{args.port}/webhook/sip/inbound")
             print(f"   - Twilio Media Connector:  http://{args.host}:{args.port}/webhook/twilio/voice?stream=true")

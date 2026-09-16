@@ -14,12 +14,14 @@ import audioop
 import base64
 import io
 import json
+import os
 import time
 import wave
 from typing import Dict, Any, Optional, List, Callable
 
 from verbalyze.agent.voice_bot import VoiceAgent
 from verbalyze.agent.stt_engine import SovereignSTTEngine
+from verbalyze.security import PIIRedactor
 
 try:
     import pydub
@@ -45,25 +47,32 @@ class MediaStreamSession:
         silence_timeout_ms: int = 600, # Trailing silence before turn completion
         caller_phone: Optional[str] = None,
         stt_provider: str = "local",
-        stt_model: str = "tiny"
+        stt_model: str = "tiny",
+        strict_sovereignty: Optional[bool] = None
     ):
         self.websocket = websocket
         self.language = language
         self.persona = persona
         self.llm_provider = llm_provider
         self.model_name = model_name
-        self.caller_phone = caller_phone
         self.codec = codec.lower()
         self.speech_threshold = speech_threshold
         self.silence_timeout_frames = int(silence_timeout_ms / 20)  # 20ms per frame
+        self.caller_phone = caller_phone
         self.stt_provider = stt_provider
         self.stt_model = stt_model
+        self.strict_sovereignty = (
+            strict_sovereignty
+            if strict_sovereignty is not None
+            else os.environ.get("STRICT_SOVEREIGNTY", "0").lower() in ("1", "true", "yes")
+        )
 
-        # Sovereign STT Engine
+        # Sovereign STT Engine with strict data residency enforcement
         self.stt_engine = SovereignSTTEngine(
             model_size=stt_model,
             language=language,
-            provider=stt_provider
+            provider=stt_provider,
+            strict_sovereignty=self.strict_sovereignty
         )
 
         # Call identifiers
@@ -253,7 +262,9 @@ class MediaStreamSession:
         if not user_text:
             return
 
-        print(f"📞 [Caller Turn Transcribed]: '{user_text}'")
+        caller_tag = PIIRedactor.mask_phone(self.caller_phone) if self.caller_phone else "Unknown"
+        redacted_user_text = PIIRedactor.redact_text(user_text)
+        print(f"📞 [Caller {caller_tag} Turn Transcribed]: '{redacted_user_text}'")
         print(f"⚡ [Streaming Pipeline] Beginning token-to-TTS pipeline for low-latency response...")
 
         self.cancel_playback_event.clear()
@@ -406,5 +417,7 @@ class MediaStreamSession:
                 print(f"WebSocket session closed: {e}")
         finally:
             self.is_active = False
+            self.inbound_pcm_buffer.clear()
+            self.silence_frames_count = 0
             if self.current_playback_task and not self.current_playback_task.done():
                 self.current_playback_task.cancel()

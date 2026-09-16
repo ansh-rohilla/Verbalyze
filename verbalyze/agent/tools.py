@@ -10,6 +10,12 @@ Telephony tools executable by the Voice Agent during telephone calls:
 import json
 from typing import Dict, Any, Tuple, Optional
 from verbalyze.telephony.sms_dispatch import dispatch_payment_sms
+from verbalyze.security import (
+    validate_amount,
+    validate_loan_id,
+    validate_indian_phone,
+    PIIRedactor
+)
 
 
 TELEPHONY_TOOLS_SCHEMA = [
@@ -81,7 +87,7 @@ def execute_telephony_tool(
     caller_phone: Optional[str] = None
 ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
     """
-    Executes a telephony function call.
+    Executes a telephony function call with end-to-end security and validation.
     Returns:
         (is_call_terminated: bool, status_message: str, event_data: Optional[Dict[str, Any]])
     """
@@ -91,27 +97,38 @@ def execute_telephony_tool(
         return True, msg, {"reason": reason, "action": "hangup"}
 
     elif tool_name == "send_payment_link":
-        amount_raw = arguments.get("amount", 5420.0)
-        try:
-            amount = float(str(amount_raw).replace(",", "").replace("₹", "").strip())
-        except (ValueError, TypeError):
-            amount = 5420.0
-        loan_id = str(arguments.get("loan_id") or "MUTH-8921")
+        # 1. Validate Amount
+        is_amt_valid, valid_amount, amt_err = validate_amount(arguments.get("amount", 5420.0))
+        if not is_amt_valid:
+            return False, f"[Security Violation] Rejected payment link: {amt_err}", None
+
+        # 2. Validate Loan ID
+        is_loan_valid, valid_loan_id, loan_err = validate_loan_id(arguments.get("loan_id", "MUTH-8921"))
+        if not is_loan_valid:
+            return False, f"[Security Violation] Rejected payment link: {loan_err}", None
+
+        # 3. Validate Target Phone Number
+        target_phone = caller_phone or "9876543210"
+        is_phone_valid, valid_phone, phone_err = validate_indian_phone(target_phone)
+        if not is_phone_valid:
+            return False, f"[Security Violation] Rejected payment link: {phone_err}", None
 
         # Dispatch real SMS with embedded NPCI UPI intent link
-        target_phone = caller_phone or "9876543210"
-        dispatch_res = dispatch_payment_sms(phone_number=target_phone, amount=amount, loan_id=loan_id)
+        dispatch_res = dispatch_payment_sms(phone_number=valid_phone, amount=valid_amount, loan_id=valid_loan_id)
 
+        masked_phone = PIIRedactor.mask_phone(valid_phone)
+        masked_upi = PIIRedactor.mask_upi_url(dispatch_res.get("upi_url", ""))
         msg = (
-            f"[Telephony Event] SMS/UPI link sent to {dispatch_res.get('phone', target_phone)} "
-            f"for Rs. {amount:,.2f} on account {loan_id}. (UPI: {dispatch_res.get('upi_url')})"
+            f"[Telephony Event] SMS/UPI link sent to {masked_phone} "
+            f"for Rs. {valid_amount:,.2f} on account {valid_loan_id}. (UPI: {masked_upi})"
         )
         return False, msg, dispatch_res
 
     elif tool_name == "schedule_callback":
         date = arguments.get("promised_date", "next week")
         notes = arguments.get("notes", "")
-        msg = f"[Telephony Event] Promise to pay logged for {date}. Note: {notes}"
-        return False, msg, {"promised_date": date, "notes": notes, "action": "callback"}
+        redacted_notes = PIIRedactor.redact_text(notes)
+        msg = f"[Telephony Event] Promise to pay logged for {date}. Note: {redacted_notes}"
+        return False, msg, {"promised_date": date, "notes": redacted_notes, "action": "callback"}
 
     return False, f"[Telephony Event] Unknown tool call: {tool_name}", None

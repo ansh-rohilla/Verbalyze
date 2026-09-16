@@ -60,6 +60,8 @@ def main():
     parser.add_argument("--sms-provider", type=str, default="mock", choices=["mock", "fast2sms", "twilio", "webhook"], help="SMS Gateway Provider")
     parser.add_argument("--stt-provider", type=str, default="local", choices=["local", "faster-whisper", "google", "mock"], help="Speech-to-Text provider (default: local)")
     parser.add_argument("--stt-model", type=str, default="tiny", help="Whisper STT model size (default: tiny, choices: tiny, base, small)")
+    parser.add_argument("--auth-token", type=str, default=None, help="Authentication token for webhooks and WebSocket (default: env TELEPHONY_AUTH_TOKEN)")
+    parser.add_argument("--strict-sovereignty", action="store_true", help="Enforce 100% strict data sovereignty (zero cloud STT egress)")
     parser.add_argument("--no-server", action="store_true", help="Print config and instructions without launching server")
 
     args = parser.parse_args()
@@ -120,9 +122,13 @@ def main():
         ws_url = f"wss://{tunnel_url}"
         http_url = f"https://{tunnel_url}"
 
-    sip_inbound_url = f"{http_url}/webhook/sip/inbound"
-    sip_turn_url = f"{http_url}/webhook/sip/turn"
-    media_stream_url = f"{ws_url}/media-stream?lang={args.lang}&persona={args.persona}&provider={args.provider}&stt_provider={args.stt_provider}&stt_model={args.stt_model}"
+    token_val = args.auth_token or os.environ.get("TELEPHONY_AUTH_TOKEN")
+    auth_param = f"&token={token_val}" if token_val else ""
+    strict_param = "&strict_sovereignty=true" if args.strict_sovereignty else ""
+
+    sip_inbound_url = f"{http_url}/webhook/sip/inbound{('?token=' + token_val) if token_val else ''}"
+    sip_turn_url = f"{http_url}/webhook/sip/turn{('?token=' + token_val) if token_val else ''}"
+    media_stream_url = f"{ws_url}/media-stream?lang={args.lang}&persona={args.persona}&provider={args.provider}&stt_provider={args.stt_provider}&stt_model={args.stt_model}{auth_param}{strict_param}"
 
     print("--------------------------------------------------------------------------------")
     print("📋 READY-TO-USE TELEPHONY CONFIGURATION FOR RINGTRUNK:")
@@ -134,6 +140,8 @@ def main():
     print(f"  • Active Telephony Persona : {args.persona.upper()}")
     print(f"  • Language & Voice Codec   : {args.lang.upper()} | ITU-T G.711 A-law (8kHz PCMA)")
     print(f"  • Sovereign Local STT      : {args.stt_provider.upper()} ({args.stt_model}) [On-Premises]")
+    print(f"  • Strict Data Sovereignty  : {'Enabled (Zero Cloud STT Egress)' if args.strict_sovereignty else 'Disabled'}")
+    print(f"  • Auth Protection          : {'Enabled (Bearer / Token Guard)' if token_val else 'Disabled (Open Dev Mode)'}")
     print(f"  • LLM Engine               : {args.provider.upper()} ({args.model})")
     print(f"  • SMS / NPCI UPI Gateway   : {args.sms_provider.upper()}")
     print("--------------------------------------------------------------------------------")
@@ -191,7 +199,9 @@ Verbalyze Voice AI Team
         import uvicorn
         from verbalyze.telephony.server import create_app
 
-        app = create_app()
+        if args.strict_sovereignty:
+            os.environ["STRICT_SOVEREIGNTY"] = "1"
+        app = create_app(auth_token=args.auth_token)
         uvicorn.run(app, host=args.host, port=port, log_level="info")
     except KeyboardInterrupt:
         print("\n🛑 Shutting down Verbalyze Live Phone Line Gateway. Goodbye!")

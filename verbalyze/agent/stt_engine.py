@@ -10,11 +10,14 @@ Sovereign On-Premises Streaming Speech-to-Text (STT) Engine:
 """
 
 import io
+import os
 import time
 import wave
 import audioop
 import numpy as np
 from typing import Optional, Tuple, Dict, Any
+
+from verbalyze.security import PIIRedactor
 
 # Global model cache to prevent re-loading weights between turns
 _MODEL_CACHE: Dict[str, Any] = {}
@@ -32,13 +35,19 @@ class SovereignSTTEngine:
         language: str = "hi",
         provider: str = "local",
         device: str = "cpu",
-        compute_type: str = "int8"
+        compute_type: str = "int8",
+        strict_sovereignty: Optional[bool] = None
     ):
         self.model_size = model_size
         self.language = language
         self.provider = provider.lower()
         self.device = device
         self.compute_type = compute_type
+        self.strict_sovereignty = (
+            strict_sovereignty
+            if strict_sovereignty is not None
+            else os.environ.get("STRICT_SOVEREIGNTY", "0").lower() in ("1", "true", "yes")
+        )
         self._model = None
 
         if self.provider in ["local", "faster-whisper", "sovereign"]:
@@ -110,34 +119,37 @@ class SovereignSTTEngine:
             except Exception as e:
                 print(f"⚠️  [Local STT Error] Inference failed: {e}. Falling back...")
 
-        # 2. Secondary: Cloud Google Speech Recognition Fallback
+        # 2. Secondary: Cloud Google Speech Recognition Fallback (Blocked in strict sovereignty mode)
         if self.provider != "mock":
-            try:
-                import speech_recognition as sr
-                r = sr.Recognizer()
+            if self.strict_sovereignty:
+                print("🔒 [Strict Sovereignty] External cloud STT blocked to protect data sovereignty (RBI Compliance). Returning local offline response.")
+            else:
+                try:
+                    import speech_recognition as sr
+                    r = sr.Recognizer()
 
-                # Resample to 16kHz
-                if sample_rate != 16000:
-                    pcm_16k = audioop.ratecv(pcm_bytes, 2, 1, sample_rate, 16000, None)[0]
-                else:
-                    pcm_16k = pcm_bytes
+                    # Resample to 16kHz
+                    if sample_rate != 16000:
+                        pcm_16k = audioop.ratecv(pcm_bytes, 2, 1, sample_rate, 16000, None)[0]
+                    else:
+                        pcm_16k = pcm_bytes
 
-                # In-memory WAV container
-                wav_buf = io.BytesIO()
-                with wave.open(wav_buf, "wb") as wf:
-                    wf.setnchannels(1)
-                    wf.setsampwidth(2)
-                    wf.setframerate(16000)
-                    wf.writeframes(pcm_16k)
-                wav_buf.seek(0)
+                    # In-memory WAV container
+                    wav_buf = io.BytesIO()
+                    with wave.open(wav_buf, "wb") as wf:
+                        wf.setnchannels(1)
+                        wf.setsampwidth(2)
+                        wf.setframerate(16000)
+                        wf.writeframes(pcm_16k)
+                    wav_buf.seek(0)
 
-                with sr.AudioFile(wav_buf) as source:
-                    audio_data = r.record(source)
-                    transcript = r.recognize_google(audio_data, language=f"{lang}-IN")
-                    elapsed_ms = (time.time() - t0) * 1000.0
-                    return transcript.strip(), elapsed_ms
-            except Exception:
-                pass
+                    with sr.AudioFile(wav_buf) as source:
+                        audio_data = r.record(source)
+                        transcript = r.recognize_google(audio_data, language=f"{lang}-IN")
+                        elapsed_ms = (time.time() - t0) * 1000.0
+                        return transcript.strip(), elapsed_ms
+                except Exception:
+                    pass
 
         # 3. Tertiary: Deterministic Telephony Fallback
         elapsed_ms = (time.time() - t0) * 1000.0
@@ -168,13 +180,18 @@ class SovereignSTTEngine:
             except Exception:
                 pass
 
-        # Fallback via SpeechRecognition AudioFile
-        try:
-            import speech_recognition as sr
-            r = sr.Recognizer()
-            with sr.AudioFile(audio_path) as source:
-                audio_data = r.record(source)
-            text = r.recognize_google(audio_data, language=f"{lang}-IN")
-            return text.strip(), (time.time() - t0) * 1000.0
-        except Exception:
-            return "हाँ जी, मैं सुन रहा हूँ।", (time.time() - t0) * 1000.0
+        # Fallback via SpeechRecognition AudioFile (Blocked in strict sovereignty mode)
+        if not self.strict_sovereignty:
+            try:
+                import speech_recognition as sr
+                r = sr.Recognizer()
+                with sr.AudioFile(audio_path) as source:
+                    audio_data = r.record(source)
+                text = r.recognize_google(audio_data, language=f"{lang}-IN")
+                return text.strip(), (time.time() - t0) * 1000.0
+            except Exception:
+                pass
+        else:
+            print("🔒 [Strict Sovereignty] External cloud STT blocked for file transcription.")
+
+        return "हाँ जी, मैं सुन रहा हूँ।", (time.time() - t0) * 1000.0

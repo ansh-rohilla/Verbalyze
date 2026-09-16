@@ -9,6 +9,7 @@ import os
 from typing import Dict, Any, Optional
 from verbalyze.agent.voice_bot import VoiceAgent
 from verbalyze.telephony.media_stream import MediaStreamSession
+from verbalyze.security import verify_auth_token, PIIRedactor
 
 # Try importing FastAPI
 try:
@@ -19,8 +20,8 @@ except ImportError:
     FASTAPI_AVAILABLE = False
 
 
-def create_app() -> Any:
-    """Creates the FastAPI telephony application."""
+def create_app(auth_token: Optional[str] = None) -> Any:
+    """Creates the FastAPI telephony application with end-to-end security guards."""
     if not FASTAPI_AVAILABLE:
         raise ImportError("FastAPI is required to run the telephony server. Run: pip install fastapi uvicorn")
 
@@ -30,16 +31,51 @@ def create_app() -> Any:
         version="0.2.0"
     )
 
+    # Authentication token: passed directly, or via environment TELEPHONY_AUTH_TOKEN / VERBALYZE_API_KEY
+    expected_token = (
+        auth_token
+        or os.environ.get("TELEPHONY_AUTH_TOKEN")
+        or os.environ.get("VERBALYZE_API_KEY")
+    )
+
+    def _verify_request(request: Request) -> bool:
+        """Validates inbound HTTP requests against configured authentication token."""
+        if not expected_token:
+            return True
+        # 1. Bearer token in Authorization header
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.lower().startswith("bearer "):
+            token = auth_header[7:].strip()
+            if verify_auth_token(token, expected_token):
+                return True
+        # 2. X-Verbalyze-Token or X-Auth-Token
+        x_token = request.headers.get("x-verbalyze-token") or request.headers.get("x-auth-token")
+        if x_token and verify_auth_token(x_token, expected_token):
+            return True
+        # 3. Query parameter ?token=...
+        q_token = request.query_params.get("token")
+        if q_token and verify_auth_token(q_token, expected_token):
+            return True
+        return False
+
     # In-memory call session store: call_sid -> VoiceAgent
     active_calls: Dict[str, VoiceAgent] = {}
 
     @app.get("/health")
     def health():
-        return {"status": "ok", "active_calls": len(active_calls), "engine": "Verbalyze Telephony v0.2.0"}
+        return {
+            "status": "ok",
+            "active_calls": len(active_calls),
+            "auth_enabled": bool(expected_token),
+            "engine": "Verbalyze Telephony v0.2.0"
+        }
 
     @app.post("/webhook/twilio/voice")
     async def twilio_incoming_call(request: Request):
         """Initial webhook when an outbound/inbound call connects on Twilio."""
+        if not _verify_request(request):
+            return Response(content='<Response><Reject reason="rejected"/></Response>', media_type="application/xml", status_code=401)
+
         form = await request.form()
         call_sid = str(form.get("CallSid", "call_mock"))
         lang = str(form.get("lang", "hi"))
@@ -49,10 +85,11 @@ def create_app() -> Any:
             # Connect call directly to real-time bi-directional WebSocket media stream
             host = request.url.netloc
             ws_protocol = "wss" if request.url.scheme == "https" else "ws"
+            token_query = f"?token={expected_token}" if expected_token else ""
             twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
     <Connect>
-        <Stream url="{ws_protocol}://{host}/media-stream" />
+        <Stream url="{ws_protocol}://{host}/media-stream{token_query}" />
     </Connect>
 </Response>"""
             return Response(content=twiml, media_type="application/xml")
@@ -80,6 +117,9 @@ def create_app() -> Any:
     @app.post("/webhook/twilio/turn")
     async def twilio_call_turn(request: Request, call_sid: Optional[str] = None):
         """Processes each spoken turn from the customer via Twilio Speech Recognition."""
+        if not _verify_request(request):
+            return Response(content='<Response><Reject reason="rejected"/></Response>', media_type="application/xml", status_code=401)
+
         form = await request.form()
         call_sid = call_sid or str(form.get("CallSid", "call_mock"))
         speech_result = str(form.get("SpeechResult", "")).strip()
@@ -122,8 +162,11 @@ def create_app() -> Any:
         return Response(content=twiml, media_type="application/xml")
 
     @app.post("/call/simulate")
-    async def simulate_call_api(customer_input: str, call_id: str = "test_call", lang: str = "hi"):
+    async def simulate_call_api(request: Request, customer_input: str, call_id: str = "test_call", lang: str = "hi"):
         """REST API testing endpoint for programmatic call turn-taking."""
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+
         agent = active_calls.get(call_id)
         if not agent:
             agent = VoiceAgent(language=lang, voice_enabled=False)
@@ -151,6 +194,9 @@ def create_app() -> Any:
         Generic SIP inbound call webhook compatible with unmetered SIP trunks (RingTrunk, Asterisk, FreeSWITCH).
         Accepts JSON or form data with Call-ID, Caller, and Dialed Number.
         """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+
         data: Dict[str, Any] = {}
         try:
             data = await request.json()
@@ -162,6 +208,7 @@ def create_app() -> Any:
         lang = str(data.get("lang") or "hi")
         persona = str(data.get("persona") or "muthoot_recovery")
         provider = str(data.get("provider") or "ollama")
+        strict_sovereignty = str(data.get("strict_sovereignty", "")).lower() in ("true", "1") or os.environ.get("STRICT_SOVEREIGNTY", "0") in ("1", "true")
 
         caller_phone = str(data.get("caller_phone") or data.get("from") or data.get("caller_id") or request.headers.get("x-caller-phone") or "")
 
@@ -176,13 +223,15 @@ def create_app() -> Any:
 
         host = request.url.netloc
         ws_protocol = "wss" if request.url.scheme == "https" else "ws"
+        token_param = f"&token={expected_token}" if expected_token else ""
+        strict_param = "&strict_sovereignty=true" if strict_sovereignty else ""
         return JSONResponse({
             "status": "connected",
             "trunk_type": "unmetered_sip",
             "provider": "RingTrunk / Standard SIP",
             "call_id": call_id,
             "greeting_text": greeting,
-            "media_stream_ws": f"{ws_protocol}://{host}/media-stream?lang={lang}&persona={persona}&provider={provider}",
+            "media_stream_ws": f"{ws_protocol}://{host}/media-stream?lang={lang}&persona={persona}&provider={provider}{token_param}{strict_param}",
             "audio_url": audio_path,
             "action": "play_and_listen"
         })
@@ -192,6 +241,9 @@ def create_app() -> Any:
         """
         Processes conversational spoken turns over an unmetered SIP trunk stream.
         """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+
         data: Dict[str, Any] = {}
         try:
             data = await request.json()
@@ -239,6 +291,7 @@ def create_app() -> Any:
     @app.websocket("/webhook/sip/media")
     async def media_stream_endpoint(
         websocket: WebSocket,
+        token: Optional[str] = None,
         lang: str = "hi",
         persona: str = "muthoot_recovery",
         provider: str = "ollama",
@@ -246,13 +299,26 @@ def create_app() -> Any:
         codec: str = "audio/x-alaw",
         caller_phone: Optional[str] = None,
         stt_provider: str = "local",
-        stt_model: str = "tiny"
+        stt_model: str = "tiny",
+        strict_sovereignty: bool = False
     ):
         """
-        Real-time bi-directional audio WebSocket endpoint for live telephony trunks
-        (RingTrunk, Twilio Media Streams, Asterisk AudioSocket, FreeSWITCH).
+        Real-time bi-directional audio WebSocket endpoint with timing-attack resistant authentication guard.
         Streams 20ms G.711 A-law/mu-law audio packets with sub-50ms live barge-in interruption.
         """
+        # Verify Token before accepting handshake
+        ws_token = token or websocket.query_params.get("token")
+        if not ws_token:
+            auth_header = websocket.headers.get("authorization", "")
+            if auth_header.lower().startswith("bearer "):
+                ws_token = auth_header[7:].strip()
+            else:
+                ws_token = websocket.headers.get("x-verbalyze-token") or websocket.headers.get("x-auth-token")
+
+        if expected_token and not verify_auth_token(ws_token, expected_token):
+            await websocket.close(code=1008, reason="Policy Violation: Unauthorized")
+            return
+
         await websocket.accept()
         session = MediaStreamSession(
             websocket=websocket,
@@ -263,7 +329,8 @@ def create_app() -> Any:
             codec=codec,
             caller_phone=caller_phone,
             stt_provider=stt_provider,
-            stt_model=stt_model
+            stt_model=stt_model,
+            strict_sovereignty=strict_sovereignty
         )
         await session.run()
 

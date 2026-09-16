@@ -228,18 +228,24 @@ class SMSDispatcher:
 
     def _send_mock(self, phone: str, text: str, upi_url: str, amount: float, loan_id: str) -> Dict[str, Any]:
         """Mock sandbox dispatcher that formats realistic NPCI UPI link without API credentials."""
+        from verbalyze.security import PIIRedactor
+        masked_phone = PIIRedactor.mask_phone(phone)
+        masked_upi = PIIRedactor.mask_upi_url(upi_url)
+        redacted_text = PIIRedactor.redact_text(text)
+        print(f"📱 [Live SMS Dispatcher] Sent to {masked_phone}:")
+        print(f"   • Message: '{redacted_text}'")
+        print(f"   • UPI Deep-Link: '{masked_upi}'")
         formatted_phone = f"+91 {phone[:5]} {phone[5:]}"
-        print(f"📱 [Live SMS Dispatcher] Sent to {formatted_phone}:")
-        print(f"   • Message: '{text}'")
-        print(f"   • UPI Deep-Link: '{upi_url}'")
         return {
             "status": "delivered_mock",
             "provider": "mock_sandbox",
             "phone": f"+91{phone}",
             "formatted_phone": formatted_phone,
+            "masked_phone": masked_phone,
             "amount": amount,
             "loan_id": loan_id,
             "upi_url": upi_url,
+            "masked_upi_url": masked_upi,
             "message": text,
             "web_link": f"https://pay.muthootfincorp.com/pay/{loan_id}"
         }

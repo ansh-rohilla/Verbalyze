@@ -123,6 +123,12 @@ async def test_mediastream_streaming_pipeline():
         return "नमस्ते, मैं शर्मा बोल रहा हूँ"
     session._transcribe_pcm_audio = mock_transcribe
 
+    # Hermetic mock for outbound synthesis to ensure test runs 100% offline without cloud TTS
+    sample_file = PROJECT_ROOT / "samples" / "tts" / "1_edgetts_swara_hindi.mp3"
+    async def hermetic_synthesize_async(text, *args, **kwargs):
+        return str(sample_file)
+    session.agent.audio_engine.synthesize_async = hermetic_synthesize_async
+
     # 2. Process caller turn with streaming pipeline
     t0 = time.time()
     await session.process_caller_turn()

@@ -17,6 +17,7 @@ import asyncio
 from typing import Dict, List, Any, Optional, Tuple, AsyncGenerator
 from verbalyze.agent.tools import TELEPHONY_TOOLS_SCHEMA, execute_telephony_tool
 from verbalyze.agent.audio_engine import AudioEngine
+from verbalyze.security import detect_prompt_injection, PIIRedactor
 
 INITIAL_GREETINGS = {
     "muthoot_recovery": {
@@ -296,6 +297,23 @@ class VoiceAgent:
         if not self.is_call_active:
             return {"text": "[Call already disconnected]", "terminated": True}
 
+        # 0. Conversational Prompt Injection Defense
+        is_injection, reason = detect_prompt_injection(user_utterance)
+        if is_injection:
+            print(f"[Security Guard] Blocked prompt injection: {reason}")
+            safe_reply = (
+                "क्षमा करें, मैं केवल आपके लोन खाते और ईएमआई भुगतान के संबंध में सहायता कर सकती हूँ।"
+                if self.language == "hi"
+                else "I apologize, but I am only authorized to assist with your loan account and EMI payments."
+            )
+            return {
+                "text": safe_reply,
+                "terminated": False,
+                "tool_event": None,
+                "audio_path": self.audio_engine.synthesize(safe_reply) if self.audio_engine else None,
+                "security_block": True
+            }
+
         # 1. Record user turn
         self.messages.append({"role": "user", "content": user_utterance})
 
@@ -408,6 +426,27 @@ class VoiceAgent:
         """
         if not self.is_call_active:
             yield {"type": "final", "full_text": "[Call already disconnected]", "terminated": True}
+            return
+
+        # 0. Conversational Prompt Injection Defense
+        is_injection, reason = detect_prompt_injection(user_utterance)
+        if is_injection:
+            print(f"[Security Guard] Blocked prompt injection in stream: {reason}")
+            safe_reply = (
+                "क्षमा करें, मैं केवल आपके लोन खाते और ईएमआई भुगतान के संबंध में सहायता कर सकती हूँ।"
+                if self.language == "hi"
+                else "I apologize, but I am only authorized to assist with your loan account and EMI payments."
+            )
+            yield {
+                "type": "clause",
+                "text": safe_reply,
+                "index": 1
+            }
+            yield {
+                "type": "final",
+                "full_text": safe_reply,
+                "terminated": False
+            }
             return
 
         # 1. Record user turn

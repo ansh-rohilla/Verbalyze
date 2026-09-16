@@ -1,9 +1,9 @@
 # Verbalyze: Indic Voice AI & Synthetic Data Suite
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ansh-rohilla/Verbalyze/blob/main/notebooks/train_indic_voice_slm.ipynb)
-[![Hugging Face Spaces](https://img.shields.io/badge/🤗%20Hugging%20Face-verbalyze--demo-yellow)](https://huggingface.co/spaces/ansh-rohilla/verbalyze-demo)
-[![Hugging Face Dialogues](https://img.shields.io/badge/🤗%20Hugging%20Face-verbalyze--dialogues-blue)](https://huggingface.co/datasets/ansh-rohilla/verbalyze-dialogues)
-[![Hugging Face STT Benchmark](https://img.shields.io/badge/🤗%20Hugging%20Face-verbalyze--stt--bench-green)](https://huggingface.co/datasets/ansh-rohilla/verbalyze-stt-bench)
+[![Hugging Face Spaces](https://img.shields.io/badge/Hugging%20Face-verbalyze--demo-yellow)](https://huggingface.co/spaces/ansh-rohilla/verbalyze-demo)
+[![Hugging Face Dialogues](https://img.shields.io/badge/Hugging%20Face-verbalyze--dialogues-blue)](https://huggingface.co/datasets/ansh-rohilla/verbalyze-dialogues)
+[![Hugging Face STT Benchmark](https://img.shields.io/badge/Hugging%20Face-verbalyze--stt--bench-green)](https://huggingface.co/datasets/ansh-rohilla/verbalyze-stt-bench)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A unified suite for Indic Voice AI: 172.8k scenario-weighted STT benchmark, 16.3k multi-turn telephony conversations with function calling, low-latency Voice SLM fine-tuning recipes, and real-time SIP voicebots across 12 Indian languages.
@@ -267,6 +267,9 @@ A modular framework converting Verbalyze synthetic data into production benchmar
 
 ```
 verbalyze/
+├── security/
+│   ├── __init__.py           # Security exports
+│   └── pii_redactor.py       # PII redactor (DPDP/RBI), HMAC token auth, tool sanitizers, injection guard
 ├── pipeline/
 │   ├── stt_exporter.py       # Packages 172.8k STT dataset for Hugging Face Hub
 │   └── dialogue_exporter.py  # Formats 16.3k conversations into ChatML & ShareGPT
@@ -274,15 +277,22 @@ verbalyze/
 │   ├── evaluator.py          # ASR evaluation harness across 11 scenarios
 │   └── metrics.py            # WER, CER, Digit Accuracy, Acronym Retention
 ├── agent/
-│   ├── audio_quality.py      # 🎯 5-dimension HumanLikenessScorer & MOS Gate
-│   ├── audio_engine.py       # Edge-TTS neural audio synthesis + Auto-Healing loop
-│   ├── voice_bot.py          # Telephony collection agent (Ollama / Groq / OpenAI)
+│   ├── stt_engine.py         # SovereignSTTEngine: faster-whisper + strict_sovereignty zero-cloud egress
+│   ├── audio_quality.py      # 5-dimension HumanLikenessScorer & MOS Gate
+│   ├── audio_engine.py       # Edge-TTS neural audio synthesis + Auto-Healing loop + 0600 permissions
+│   ├── voice_bot.py          # Telephony collection agent (Ollama / Groq / OpenAI) + prompt injection guard
 │   ├── mic_listener.py       # Mac hands-free microphone input & VAD
-│   └── tools.py              # Telephony tools (disconnect_tool, payment links)
+│   └── tools.py              # Telephony tools (EMI bounds check, loan regex sanitization, payment links)
 ├── telephony/
-│   └── server.py             # FastAPI Exotel/Twilio SIP webhook bridge
+│   ├── media_stream.py       # Bi-directional WebSocket MediaStreamSession + memory buffer scrubbing
+│   ├── sms_dispatch.py       # NPCI UPI generator + Fast2SMS, Twilio & PII-masked logging
+│   └── server.py             # FastAPI Exotel/Twilio SIP webhook bridge & token auth guards
 app.py                        # Interactive Gradio Web App with Quality Gate
 scripts/
+├── launch_live_phone_line.py # 1-Click Live Indian Phone Line Gateway Launcher (--auth-token)
+├── test_end_to_end_security.py # Comprehensive End-to-End Security Verification Suite (8/8)
+├── test_sovereign_stt.py     # Sovereign On-Prem STT Engine (<200ms) verification suite
+├── test_streaming_pipeline.py # Streaming LLM-to-TTS (<200ms TTFS) verification suite
 ├── show_leaderboard.py       # Terminal benchmark comparison leaderboard
 └── test_ollama_integration.py # 100% offline local SLM test harness
 ```
@@ -460,6 +470,20 @@ python3 scripts/launch_live_phone_line.py --persona muthoot_recovery --lang hi
 
 # With custom ngrok/cloud domain:
 python3 scripts/launch_live_phone_line.py --tunnel-url https://my-subdomain.ngrok-free.app
+```
+
+#### End-to-End Security Architecture (RBI & DPDP Act 2023 Compliance)
+To support production deployments in regulated banking, financial services, and debt recovery environments, Verbalyze incorporates five layers of defense-in-depth security:
+* **Indian PII Redaction & Data Masking Engine**: Automatically intercepts and masks Personally Identifiable Information across logs, console output, and telemetry streams. Masks Indian mobile numbers (`+91*****3210`), UIDAI Aadhaar numbers (`****-****-9012`), PAN cards (`ABCDE****F`), bank account numbers (`********9012`), and UPI deep-link URLs (`upi://pay?pa=m***p@icici...`).
+* **Constant-Time HMAC Token Verification**: All inbound webhooks (`/webhook/sip/*`, `/webhook/twilio/*`) and `/media-stream` WebSocket endpoints require token validation using timing-attack resistant `hmac.compare_digest`. Unauthorized requests receive HTTP 401, while unauthorized WebSockets are immediately rejected with Policy Violation Code 1008.
+* **Strict Data Sovereignty (Zero Cloud Egress)**: When enabled via `--strict-sovereignty` or `STRICT_SOVEREIGNTY=1`, customer voice audio is strictly forbidden from being sent to external cloud STT APIs (e.g. Google), guaranteeing complete data residency compliance under RBI mandates.
+* **Temporary File Hardening**: Replaced deprecated `tempfile.mktemp()` with atomic `tempfile.mkstemp()` enforced with `0600` permissions (owner read/write only). Temporary audio files are cleaned up upon completion.
+* **Tool Input Sanitization & Bounds Checking**: Enforces monetary bounds on EMI amounts (Re. 1.00 to Rs. 5,00,000.00), sanitizes loan IDs against script tags and path traversal (`^[A-Za-z0-9\-_]{3,30}$`), and validates Indian mobile phone formats.
+* **Conversational Prompt Injection Guard**: Inspects incoming speech transcripts for prompt injection, system prompt override, or jailbreak attempts, neutralizing adversarial attacks before they reach the language model.
+
+```bash
+# Verify End-to-End Security & Privacy Guardrails:
+python3 scripts/test_end_to_end_security.py
 ```
 
 ---
