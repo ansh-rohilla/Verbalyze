@@ -180,10 +180,12 @@ class WebVoiceSession:
         provider: str = "mock",
         api_key: str = "",
         min_human_likeness: float = 0.80,
-        simulate_telephony: bool = False
+        simulate_telephony: bool = False,
+        caller_phone: str = "+919876543210"
     ):
         self.language = language
         self.persona = persona
+        self.caller_phone = caller_phone
         self.min_human_likeness = min_human_likeness
         self.simulate_telephony = simulate_telephony
         prov = "ollama" if "ollama" in provider.lower() else ("groq" if "groq" in provider.lower() else ("openai" if "openai" in provider.lower() else "mock"))
@@ -194,10 +196,12 @@ class WebVoiceSession:
             api_key=api_key.strip() if api_key.strip() else None,
             voice_enabled=True,
             min_human_likeness=min_human_likeness,
-            simulate_telephony=simulate_telephony
+            simulate_telephony=simulate_telephony,
+            caller_phone=caller_phone
         )
         self.call_history: List[Dict[str, str]] = []
         self.recent_tool_event: Optional[str] = None
+        self.recent_tool_data: Optional[Dict[str, Any]] = None
         self.recent_quality_badge: Optional[str] = None
         self.is_connected: bool = True
 
@@ -256,6 +260,10 @@ class WebVoiceSession:
         else:
             status_text = "🟢 **IN CALL** (SIP Stream Active)"
 
+        tool_data = res.get("tool_data")
+        if tool_data:
+            self.recent_tool_data = tool_data
+
         event_text = tool_event if tool_event else ("🗣️ Spoken turn processed" if not terminated else "🔴 Call Hung Up")
         self.recent_tool_event = event_text
 
@@ -279,7 +287,7 @@ class WebVoiceSession:
 # Global sessions dict per session id (or simple instance)
 GLOBAL_SESSIONS: Dict[str, WebVoiceSession] = {}
 
-def get_or_create_session(session_id: str, lang_name: str, persona_name: str, provider: str, api_key: str, min_score: float = 0.80, simulate_telephony: bool = False) -> WebVoiceSession:
+def get_or_create_session(session_id: str, lang_name: str, persona_name: str, provider: str, api_key: str, min_score: float = 0.80, simulate_telephony: bool = False, caller_phone: str = "+919876543210") -> WebVoiceSession:
     lang_code = LANGUAGE_OPTIONS.get(lang_name, "hi")
     persona_code = PERSONA_OPTIONS.get(persona_name, "muthoot_recovery")
     sess = WebVoiceSession(
@@ -288,7 +296,8 @@ def get_or_create_session(session_id: str, lang_name: str, persona_name: str, pr
         provider=provider,
         api_key=api_key,
         min_human_likeness=min_score,
-        simulate_telephony=simulate_telephony
+        simulate_telephony=simulate_telephony,
+        caller_phone=caller_phone
     )
     GLOBAL_SESSIONS[session_id] = sess
     return sess
@@ -436,6 +445,12 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
                         info="Simulates real Indian PSTN 300Hz–3400Hz bandpass, A-law companding & packet jitter",
                         interactive=True
                     )
+                    caller_phone_input = gr.Textbox(
+                        value="+91 98765 43210",
+                        label="📱 Caller Mobile Number (for Real SMS/UPI Dispatch)",
+                        placeholder="+91 98765 43210",
+                        interactive=True
+                    )
 
                     start_btn = gr.Button("📞 Start / Restart Call", variant="primary", size="lg")
                     
@@ -469,45 +484,58 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
                         quick_btn_4 = gr.Button("मैं अभी व्यस्त हूँ, मुझे कल कॉल कीजिए।", size="sm")
 
             # Voicebot Event handlers
-            def handle_start_call(s_id, l_name, p_name, prov, key, min_score, tel_sim=False):
-                session = get_or_create_session(s_id, l_name, p_name, prov, key, min_score, tel_sim)
+            def handle_start_call(s_id, l_name, p_name, prov, key, min_score, tel_sim=False, phone="+919876543210"):
+                session = get_or_create_session(s_id, l_name, p_name, prov, key, min_score, tel_sim, caller_phone=phone)
                 history, audio, status, event, quality_badge = session.start_call()
                 event_html = f"<div class='telephony-badge'>⚡ Telephony Event: {event}</div>"
                 return history, audio, status, event_html, quality_badge
 
-            def handle_send_message(s_id, text, l_name, p_name, prov, key, min_score, tel_sim=False):
+            def handle_send_message(s_id, text, l_name, p_name, prov, key, min_score, tel_sim=False, phone="+919876543210"):
                 if s_id not in GLOBAL_SESSIONS:
-                    session = get_or_create_session(s_id, l_name, p_name, prov, key, min_score, tel_sim)
+                    session = get_or_create_session(s_id, l_name, p_name, prov, key, min_score, tel_sim, caller_phone=phone)
                     session.start_call()
                 else:
                     session = GLOBAL_SESSIONS[s_id]
+                    if phone:
+                        session.caller_phone = phone
+                        session.agent.caller_phone = phone
 
                 history, audio, status, event, quality_badge = session.send_turn(text)
-                event_html = f"<div class='telephony-badge'>⚡ Telephony Event: {event}</div>"
+                if session.recent_tool_data and session.recent_tool_data.get("upi_url"):
+                    d = session.recent_tool_data
+                    event_html = (
+                        f"<div class='telephony-badge' style='background:#e8f5e9;border-left:4px solid #2e7d32;color:#1b5e20;padding:8px 12px;margin:4px 0;'>"
+                        f"📱 <b>Live SMS & UPI Link Sent</b> to <b>{d.get('phone')}</b><br/>"
+                        f"• <b>Amount:</b> ₹{d.get('amount', 5420):,.2f} | <b>Account:</b> {d.get('loan_id', 'MUTH-8921')}<br/>"
+                        f"• <b>NPCI Intent:</b> <a href='{d.get('upi_url')}' target='_blank' style='color:#1565c0;text-decoration:underline;'>⚡ Click to Pay via UPI (GPay/PhonePe)</a>"
+                        f"</div>"
+                    )
+                else:
+                    event_html = f"<div class='telephony-badge'>⚡ Telephony Event: {event}</div>"
                 return history, audio, status, event_html, quality_badge, ""
 
             start_btn.click(
                 handle_start_call,
-                inputs=[session_state, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider, telephony_sim_checkbox],
+                inputs=[session_state, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider, telephony_sim_checkbox, caller_phone_input],
                 outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display, quality_display]
             )
 
             send_btn.click(
                 handle_send_message,
-                inputs=[session_state, user_input, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider, telephony_sim_checkbox],
+                inputs=[session_state, user_input, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider, telephony_sim_checkbox, caller_phone_input],
                 outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display, quality_display, user_input]
             )
             user_input.submit(
                 handle_send_message,
-                inputs=[session_state, user_input, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider, telephony_sim_checkbox],
+                inputs=[session_state, user_input, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider, telephony_sim_checkbox, caller_phone_input],
                 outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display, quality_display, user_input]
             )
 
             # Quick reply buttons
             for btn in [quick_btn_1, quick_btn_2, quick_btn_3, quick_btn_4]:
                 btn.click(
-                    lambda btn_text, s_id, l_name, p_name, prov, key, score, tel_sim: handle_send_message(s_id, btn_text, l_name, p_name, prov, key, score, tel_sim),
-                    inputs=[btn, session_state, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider, telephony_sim_checkbox],
+                    lambda btn_text, s_id, l_name, p_name, prov, key, score, tel_sim, phone: handle_send_message(s_id, btn_text, l_name, p_name, prov, key, score, tel_sim, phone),
+                    inputs=[btn, session_state, lang_dropdown, persona_dropdown, provider_radio, api_key_input, min_score_slider, telephony_sim_checkbox, caller_phone_input],
                     outputs=[chatbot_ui, bot_audio_output, status_display, telemetry_display, quality_display, user_input]
                 )
 

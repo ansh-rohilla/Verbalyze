@@ -51,6 +51,7 @@ def main():
     p_ag.add_argument("--ollama-host", type=str, default="http://127.0.0.1:11434", help="Ollama host endpoint (default: http://127.0.0.1:11434)")
     p_ag.add_argument("--telephony-sim", action="store_true", help="Simulate 8kHz G.711 A-law Indian telecom carrier line degradation in Quality Gate and audio")
     p_ag.add_argument("--no-barge-in", action="store_true", help="Disable real-time barge-in interruption detection during audio playback")
+    p_ag.add_argument("--caller-phone", type=str, default="+919876543210", help="Caller mobile phone number for real SMS & UPI payment link dispatch (default: +919876543210)")
 
     # Command: server
     p_srv = subparsers.add_parser("server", help="Start FastAPI telephony webhook server")
@@ -111,7 +112,8 @@ def main():
             ollama_host=args.ollama_host,
             voice_enabled=not args.no_voice,
             min_human_likeness=args.min_score,
-            simulate_telephony=args.telephony_sim
+            simulate_telephony=args.telephony_sim,
+            caller_phone=args.caller_phone
         )
         if args.mic:
             bot.run_live_microphone_call(mode=args.mode, enable_barge_in=not args.no_barge_in)

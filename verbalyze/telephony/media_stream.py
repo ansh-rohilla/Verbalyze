@@ -42,12 +42,14 @@ class MediaStreamSession:
         codec: str = "audio/x-alaw",  # "audio/x-alaw", "audio/x-mulaw", "audio/l16"
         speech_threshold: int = 650,  # 16-bit linear PCM RMS energy threshold
         silence_timeout_ms: int = 600, # Trailing silence before turn completion
+        caller_phone: Optional[str] = None
     ):
         self.websocket = websocket
         self.language = language
         self.persona = persona
         self.llm_provider = llm_provider
         self.model_name = model_name
+        self.caller_phone = caller_phone
         self.codec = codec.lower()
         self.speech_threshold = speech_threshold
         self.silence_timeout_frames = int(silence_timeout_ms / 20)  # 20ms per frame
@@ -62,7 +64,8 @@ class MediaStreamSession:
             persona=persona,
             llm_provider=llm_provider,
             model_name=model_name,
-            voice_enabled=True
+            voice_enabled=True,
+            caller_phone=caller_phone
         )
 
         # Inbound VAD state

@@ -303,6 +303,17 @@ Carrier-grade real-time audio bridge for live telephone trunks (RingTrunk, Twili
 python3 scripts/test_media_stream_websocket.py
 ```
 
+#### 📱 Live SMS & Real NPCI UPI Payment Gateway Dispatch
+When the customer agrees to pay or asks for a payment link during a call, Verbalyze automatically executes the `send_payment_link` tool and dispatches a live SMS with an NPCI-compliant UPI deep-link directly to the caller's mobile device:
+* **NPCI-Compliant UPI Deep-Links**: Constructs compliant `upi://pay?pa=muthootfincorp@icici&am=5420.00...` URIs that directly launch Google Pay, PhonePe, Paytm, or BHIM when tapped on mobile.
+* **Pluggable SMS Adapters**: Supports **Fast2SMS** (`FAST2SMS_API_KEY`), **Twilio SMS** (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`), generic enterprise webhooks (`SMS_WEBHOOK_URL`), and a zero-config sandbox mode.
+* **Carrier Caller-ID Auto-Binding**: Automatically extracts incoming phone numbers from SIP trunks/Twilio (`From` / `Caller`) to send payment links without asking the caller to spell out their phone number.
+
+```bash
+# Verify Live SMS & UPI Payment Gateway Dispatch:
+python3 scripts/test_sms_upi_dispatch.py
+```
+
 ---
 
 ### 4. 🎯 Automated Human-Likeness Quality Gate (80% / MOS 4.0)

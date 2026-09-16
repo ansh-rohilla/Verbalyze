@@ -98,10 +98,12 @@ class VoiceAgent:
         ollama_host: Optional[str] = None,
         voice_enabled: bool = True,
         min_human_likeness: float = 0.80,
-        simulate_telephony: bool = False
+        simulate_telephony: bool = False,
+        caller_phone: Optional[str] = None
     ):
         self.language = language
         self.persona = persona
+        self.caller_phone = caller_phone
         self.min_human_likeness = min_human_likeness
         self.simulate_telephony = simulate_telephony
         self.system_prompt = system_prompt or DEFAULT_SYSTEM_PROMPTS.get(language, DEFAULT_SYSTEM_PROMPTS["hi"])
@@ -364,13 +366,18 @@ class VoiceAgent:
 
         # 4. Execute tool call if triggered
         tool_status = ""
+        tool_data = None
         if tool_call:
             fn_name = tool_call["function"]["name"]
             try:
                 fn_args = json.loads(tool_call["function"]["arguments"])
             except Exception:
                 fn_args = {}
-            terminated, tool_status = execute_telephony_tool(fn_name, fn_args)
+            res = execute_telephony_tool(fn_name, fn_args, caller_phone=self.caller_phone)
+            if len(res) == 3:
+                terminated, tool_status, tool_data = res
+            else:
+                terminated, tool_status = res
             if terminated:
                 self.is_call_active = False
 
@@ -386,6 +393,7 @@ class VoiceAgent:
             "audio_path": audio_path,
             "quality_report": quality_report,
             "tool_event": tool_status if tool_call else None,
+            "tool_data": tool_data if tool_call else None,
             "terminated": not self.is_call_active
         }
 

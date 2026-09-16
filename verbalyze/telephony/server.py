@@ -57,8 +57,10 @@ def create_app() -> Any:
 </Response>"""
             return Response(content=twiml, media_type="application/xml")
 
+        from_phone = str(form.get("From") or form.get("Caller") or "")
+
         # Instantiate agent for this specific telephone call
-        agent = VoiceAgent(language=lang, voice_enabled=False)
+        agent = VoiceAgent(language=lang, voice_enabled=False, caller_phone=from_phone)
         active_calls[call_sid] = agent
 
         greeting = (
@@ -161,8 +163,10 @@ def create_app() -> Any:
         persona = str(data.get("persona") or "muthoot_recovery")
         provider = str(data.get("provider") or "ollama")
 
+        caller_phone = str(data.get("caller_phone") or data.get("from") or data.get("caller_id") or request.headers.get("x-caller-phone") or "")
+
         # Initialize VoiceAgent for this SIP session
-        agent = VoiceAgent(language=lang, persona=persona, llm_provider=provider, voice_enabled=True)
+        agent = VoiceAgent(language=lang, persona=persona, llm_provider=provider, voice_enabled=True, caller_phone=caller_phone)
         active_calls[call_id] = agent
 
         greeting = agent.get_initial_greeting()
@@ -239,7 +243,8 @@ def create_app() -> Any:
         persona: str = "muthoot_recovery",
         provider: str = "ollama",
         model: Optional[str] = None,
-        codec: str = "audio/x-alaw"
+        codec: str = "audio/x-alaw",
+        caller_phone: Optional[str] = None
     ):
         """
         Real-time bi-directional audio WebSocket endpoint for live telephony trunks
@@ -253,7 +258,8 @@ def create_app() -> Any:
             persona=persona,
             llm_provider=provider,
             model_name=model,
-            codec=codec
+            codec=codec,
+            caller_phone=caller_phone
         )
         await session.run()
 

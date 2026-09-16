@@ -8,7 +8,8 @@ Telephony tools executable by the Voice Agent during telephone calls:
 """
 
 import json
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional
+from verbalyze.telephony.sms_dispatch import dispatch_payment_sms
 
 
 TELEPHONY_TOOLS_SCHEMA = [
@@ -74,16 +75,20 @@ TELEPHONY_TOOLS_SCHEMA = [
 ]
 
 
-def execute_telephony_tool(tool_name: str, arguments: Dict[str, Any]) -> Tuple[bool, str]:
+def execute_telephony_tool(
+    tool_name: str,
+    arguments: Dict[str, Any],
+    caller_phone: Optional[str] = None
+) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
     """
     Executes a telephony function call.
     Returns:
-        (is_call_terminated: bool, status_message: str)
+        (is_call_terminated: bool, status_message: str, event_data: Optional[Dict[str, Any]])
     """
     if tool_name == "disconnect_tool":
         reason = arguments.get("reason", "normal_hangup")
         msg = f"[Telephony Event] CALL DISCONNECTED: {reason}"
-        return True, msg
+        return True, msg, {"reason": reason, "action": "hangup"}
 
     elif tool_name == "send_payment_link":
         amount_raw = arguments.get("amount", 5420.0)
@@ -91,14 +96,22 @@ def execute_telephony_tool(tool_name: str, arguments: Dict[str, Any]) -> Tuple[b
             amount = float(str(amount_raw).replace(",", "").replace("₹", "").strip())
         except (ValueError, TypeError):
             amount = 5420.0
-        loan_id = str(arguments.get("loan_id", "MUTH-8921"))
-        msg = f"[Telephony Event] SMS/WhatsApp UPI link sent for Rs. {amount:,.2f} on account {loan_id}."
-        return False, msg
+        loan_id = str(arguments.get("loan_id") or "MUTH-8921")
+
+        # Dispatch real SMS with embedded NPCI UPI intent link
+        target_phone = caller_phone or "9876543210"
+        dispatch_res = dispatch_payment_sms(phone_number=target_phone, amount=amount, loan_id=loan_id)
+
+        msg = (
+            f"[Telephony Event] SMS/UPI link sent to {dispatch_res.get('phone', target_phone)} "
+            f"for Rs. {amount:,.2f} on account {loan_id}. (UPI: {dispatch_res.get('upi_url')})"
+        )
+        return False, msg, dispatch_res
 
     elif tool_name == "schedule_callback":
         date = arguments.get("promised_date", "next week")
         notes = arguments.get("notes", "")
         msg = f"[Telephony Event] Promise to pay logged for {date}. Note: {notes}"
-        return False, msg
+        return False, msg, {"promised_date": date, "notes": notes, "action": "callback"}
 
-    return False, f"[Telephony Event] Unknown tool call: {tool_name}"
+    return False, f"[Telephony Event] Unknown tool call: {tool_name}", None
