@@ -299,15 +299,15 @@ python3 -m verbalyze.cli export-stt --output-dir data/stt_bench
 python3 scripts/show_leaderboard.py
 ```
 
-#### 🏆 Indic Speech & Telephony Benchmark Leaderboard
+#### Indic Speech & Telephony Benchmark Leaderboard
 
 | Model / System | Target Focus | Code-Mixed WER (%) | Spoken Digit Accuracy (%) | Acronym Retention (%) | Latency (TTFT) |
 |---|---|:---:|:---:|:---:|:---:|
-| **🟢 Verbalyze SLM (Fine-Tuned)** | Telephony Outbound | **3.8%** | **94.2%** | **88.5%** | **~180ms** |
-| **🔹 Sarvam AI (Indic ASR)** | Native Indic Audio | **4.2%** | **91.6%** | **86.0%** | **~350ms** |
-| **🔸 Google Cloud Speech-to-Text** | Enterprise General | **7.8%** | **85.0%** | **78.4%** | **~410ms** |
-| **🔸 OpenAI Whisper-Large-v3** | Global Multilingual | **9.6%** | **82.4%** | **71.2%** | **~620ms** |
-| **🔻 OpenAI Whisper-Base** | Lightweight General | **14.2%** | **76.1%** | **64.0%** | **~240ms** |
+| **Verbalyze SLM (Fine-Tuned)** | Telephony Outbound | **3.8%** | **94.2%** | **88.5%** | **~180ms** |
+| **Sarvam AI (Indic ASR)** | Native Indic Audio | **4.2%** | **91.6%** | **86.0%** | **~350ms** |
+| **Google Cloud Speech-to-Text** | Enterprise General | **7.8%** | **85.0%** | **78.4%** | **~410ms** |
+| **OpenAI Whisper-Large-v3** | Global Multilingual | **9.6%** | **82.4%** | **71.2%** | **~620ms** |
+| **OpenAI Whisper-Base** | Lightweight General | **14.2%** | **76.1%** | **64.0%** | **~240ms** |
 
 ---
 
@@ -315,7 +315,7 @@ python3 scripts/show_leaderboard.py
 
 Fine-tune low-latency 1B–3B models (Llama 3.2 / Qwen 2.5) on 16,370 telephony conversations directly using Hugging Face datasets:
 
-#### ⚡ Option A: 1-Click Google Colab Notebook (Recommended)
+#### Option A: 1-Click Google Colab Notebook (Recommended)
 Train in ~35 minutes on a Google Colab GPU (T4 / A100) and automatically push your adapter to Hugging Face Hub:
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ansh-rohilla/Verbalyze/blob/main/notebooks/train_indic_voice_slm.ipynb)
@@ -324,7 +324,7 @@ Train in ~35 minutes on a Google Colab GPU (T4 / A100) and automatically push yo
 * Supports `meta-llama/Llama-3.2-3B-Instruct` and `Qwen/Qwen2.5-3B-Instruct`
 * Built-in multi-turn evaluation + automatic push to your HF profile
 
-#### 💻 Option B: Local / Cluster GPU Training (`scripts/train_voice_slm.py`)
+#### Option B: Local / Cluster GPU Training (`scripts/train_voice_slm.py`)
 ```bash
 # 1. Compile conversations into ChatML & ShareGPT splits
 python3 -m verbalyze.cli export-dialogues --output-dir data/dialogues
@@ -342,7 +342,7 @@ python3 scripts/train_voice_slm.py --model llama3.2-3b --epochs 3 --batch-size 4
 
 Simulate real phone calls with natural Indic fillers, emotion handling, neural audio playback, and automatic call hangup (`disconnect_tool`).
 
-#### 🦙 100% Offline Turn-Key Local SLM (`verbalyze-indic`)
+#### 100% Offline Turn-Key Local SLM (`verbalyze-indic`)
 Run completely sovereign and disconnected from cloud APIs with zero per-minute costs:
 ```bash
 # 1. Build and register the turn-key model in your local Ollama daemon (1 command):
@@ -363,15 +363,15 @@ python3 scripts/test_verbalyze_indic_model.py
 * **Performance**: Sub-400ms turn latency on Apple Silicon Metal GPU (~2.0 GB active RAM).
 * **Telephony Function Calling**: Seamlessly emits local tools (`send_payment_link`, `disconnect_tool`, `schedule_callback`) with automatic voice synthesis cleaning.
 
-#### 🎙️ Cloud & Microphone Modes
+#### Cloud & Microphone Modes
 ```bash
 # Live Hands-Free Voice Mode on Mac (Speak into your microphone with Barge-In enabled)
 python3 -m verbalyze.cli agent --lang hi --mic
 
-# ⚡ Hands-Free Auto VAD with Live Barge-In Interruption (<150ms cutoff)
+# Hands-Free Auto VAD with Live Barge-In Interruption (<150ms cutoff)
 python3 -m verbalyze.cli agent --provider ollama --lang hi --mic --mode auto
 
-# 📞 Real-world 8kHz Indian Telecom Line Simulation Mode
+# Real-world 8kHz Indian Telecom Line Simulation Mode
 python3 -m verbalyze.cli agent --provider ollama --lang hi --telephony-sim
 
 # Switch personas (Banking KYC or Swiggy delivery)
@@ -381,7 +381,7 @@ python3 -m verbalyze.cli agent --lang hi --persona bank_kyc --mic
 python3 -m verbalyze.cli server --port 8000
 ```
 
-#### ⚡ Real-Time "Barge-In" Interruption Engine (<150ms Cutoff)
+#### Real-Time "Barge-In" Interruption Engine (<150ms Cutoff)
 Enables callers to naturally interrupt the voice agent while it is speaking:
 * **Sub-150ms Playback Cutoff**: Benchmarked at **~4ms** atomic termination speed via process-level audio management.
 * **Concurrent VAD Monitoring**: Listens to the microphone stream in 30ms frames while audio plays through speakers.
@@ -393,13 +393,13 @@ Enables callers to naturally interrupt the voice agent while it is speaking:
 python3 scripts/test_barge_in_engine.py
 ```
 
-#### 🌐 Flat-Rate Unmetered SIP Trunking (RingTrunk.com / Asterisk)
+#### Flat-Rate Unmetered SIP Trunking (RingTrunk.com / Asterisk)
 Eliminate per-minute telecom bills by routing calls through unmetered SIP trunks:
 * `/webhook/sip/inbound`: RFC 3261-compliant inbound SIP webhook.
 * `/webhook/sip/turn`: High-speed spoken turn-taking stream.
 * Works with flat-rate channel providers (e.g. [RingTrunk.com](https://ringtrunk.com/)) or private Asterisk / FreeSWITCH deployments with **$0 per-minute carrier markup**.
 
-#### ⚡ Bi-Directional WebSocket Media Stream (`/media-stream`)
+#### Bi-Directional WebSocket Media Stream (`/media-stream`)
 Carrier-grade real-time audio bridge for live telephone trunks (RingTrunk, Twilio Media Streams, Asterisk AudioSocket, FreeSWITCH):
 * **Dual-Protocol Compatibility**: Supports standard Twilio/RingTrunk JSON packets (`{"event": "media", "media": {"payload": "<base64>"}}`) and raw binary 8kHz G.711 A-law / $\mu$-law frames.
 * **Telephony Pacing**: Streams outbound speech in 20ms frames (160 bytes per packet) strictly synchronized with the carrier's RTP clock.
@@ -410,7 +410,7 @@ Carrier-grade real-time audio bridge for live telephone trunks (RingTrunk, Twili
 python3 scripts/test_media_stream_websocket.py
 ```
 
-#### 📱 Live SMS & Real NPCI UPI Payment Gateway Dispatch
+#### Live SMS & Real NPCI UPI Payment Gateway Dispatch
 When the customer agrees to pay or asks for a payment link during a call, Verbalyze automatically executes the `send_payment_link` tool and dispatches a live SMS with an NPCI-compliant UPI deep-link directly to the caller's mobile device:
 * **NPCI-Compliant UPI Deep-Links**: Constructs compliant `upi://pay?pa=muthootfincorp@icici&am=5420.00...` URIs that directly launch Google Pay, PhonePe, Paytm, or BHIM when tapped on mobile.
 * **Pluggable SMS Adapters**: Supports **Fast2SMS** (`FAST2SMS_API_KEY`), **Twilio SMS** (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`), generic enterprise webhooks (`SMS_WEBHOOK_URL`), and a zero-config sandbox mode.
@@ -421,7 +421,7 @@ When the customer agrees to pay or asks for a payment link during a call, Verbal
 python3 scripts/test_sms_upi_dispatch.py
 ```
 
-#### ⚡ Streaming Token-to-Speech Pipelining (<200ms Time-to-First-Sound)
+#### Streaming Token-to-Speech Pipelining (<200ms Time-to-First-Sound)
 Traditional voicebots wait for the full LLM completion before initiating TTS synthesis, resulting in awkward 1.5–3.0 second pauses. Verbalyze eliminates this conversational latency with asynchronous **clause-level pipelining**:
 * **Real-Time Delimiter Streaming**: Intercepts SSE token streams from Ollama (`verbalyze-indic`), Groq, or OpenAI, detecting punctuation clause boundaries (`।`, `.`, `?`, `!`, `,`).
 * **Instant First-Sound Synthesis**: As soon as the first clause (e.g. *"हाँ जी शर्मा जी,"*) is formed, it is dispatched to `AudioEngine.synthesize_async()`, reaching the caller's ear in **<200ms**.
@@ -433,7 +433,7 @@ Traditional voicebots wait for the full LLM completion before initiating TTS syn
 python3 scripts/test_streaming_pipeline.py
 ```
 
-#### 🚀 1-Click Live Indian Phone Line Gateway Launcher (RingTrunk / Asterisk)
+#### 1-Click Live Indian Phone Line Gateway Launcher (RingTrunk / Asterisk)
 Connect your local Verbalyze instance directly to a live Indian phone number (DID) or telecom trunk with a single command:
 * Starts the production telephony FastAPI server on port 8000.
 * Auto-detects public tunnels (`ngrok`, `cloudflared`) or accepts `--tunnel-url`.
@@ -450,7 +450,7 @@ python3 scripts/launch_live_phone_line.py --tunnel-url https://my-subdomain.ngro
 
 ---
 
-### 4. 🎯 Automated Human-Likeness Quality Gate (80% / MOS 4.0)
+### 4. Automated Human-Likeness Quality Gate (80% / MOS 4.0)
 
 Every generated speech utterance is evaluated across 5 acoustic dimensions before being accepted or played over the phone:
 
@@ -460,7 +460,7 @@ Every generated speech utterance is evaluated across 5 acoustic dimensions befor
 4. **Harmonic Smoothness (10%)**: Analyzes frame jitter to eliminate concatenative click artifacts.
 5. **Signal Integrity (10%)**: Enforces headroom and checks against digital clipping (<0.1%).
 
-#### 📞 8kHz G.711 Telecom Line Acoustic Simulation
+#### 8kHz G.711 Telecom Line Acoustic Simulation
 To ensure speech survives real Indian telecom carrier lines (GSM, 2G, VoLTE, PSTN), the Quality Gate features a dedicated telephony channel simulator:
 * **8,000 Hz Resampling**: Enforces the telecom standard sample rate.
 * **ITU-T G.712 Bandpass Filtering (300 Hz – 3,400 Hz)**: Simulates the strict telephone ear-band frequency cutoffs.
@@ -480,7 +480,7 @@ python3 scripts/test_telephony_audio_gate.py
 ### 5. Interactive Web Application & Space (`verbalyze ui`)
 Launch the full-duplex telephony voicebot, STT benchmark arena, and multi-lingual dataset visualizer:
 
-[![Hugging Face Spaces](https://img.shields.io/badge/🤗%20Hugging%20Face-verbalyze--demo-yellow)](https://huggingface.co/spaces/ansh-rohilla/verbalyze-demo)
+[![Hugging Face Spaces](https://img.shields.io/badge/Hugging%20Face-verbalyze--demo-yellow)](https://huggingface.co/spaces/ansh-rohilla/verbalyze-demo)
 
 ```bash
 # Launch interactive Gradio Web App locally on http://localhost:7860
@@ -495,14 +495,14 @@ python3 -m verbalyze.cli deploy-space
 
 ---
 
-## Live on Hugging Face Hub 🤗
+## Live on Hugging Face Hub
 
 Both datasets are publicly indexed and ready to use in the Hugging Face `datasets` library:
 
 | Dataset | Samples | Formats | Link |
 |---|:---:|:---:|:---:|
-| **Verbalyze Dialogues** | **16,370** | ChatML, ShareGPT | [🤗 ansh-rohilla/verbalyze-dialogues](https://huggingface.co/datasets/ansh-rohilla/verbalyze-dialogues) |
-| **Verbalyze STT Benchmark** | **172,800** | JSONL, Parquet | [🤗 ansh-rohilla/verbalyze-stt-bench](https://huggingface.co/datasets/ansh-rohilla/verbalyze-stt-bench) |
+| **Verbalyze Dialogues** | **16,370** | ChatML, ShareGPT | [ansh-rohilla/verbalyze-dialogues](https://huggingface.co/datasets/ansh-rohilla/verbalyze-dialogues) |
+| **Verbalyze STT Benchmark** | **172,800** | JSONL, Parquet | [ansh-rohilla/verbalyze-stt-bench](https://huggingface.co/datasets/ansh-rohilla/verbalyze-stt-bench) |
 
 ### Quickstart with Python:
 ```python

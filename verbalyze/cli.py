@@ -58,6 +58,18 @@ def main():
     p_srv.add_argument("--port", type=int, default=8000, help="Server port (default: 8000)")
     p_srv.add_argument("--host", type=str, default="0.0.0.0", help="Server host (default: 0.0.0.0)")
 
+    # Command: live-line
+    p_live = subparsers.add_parser("live-line", help="1-Click Live Indian Phone Line Gateway (RingTrunk/SIP/WebSockets)")
+    p_live.add_argument("--port", type=int, default=8000, help="Server port (default: 8000)")
+    p_live.add_argument("--host", type=str, default="0.0.0.0", help="Server host (default: 0.0.0.0)")
+    p_live.add_argument("--tunnel-url", type=str, default=None, help="Public HTTPS tunnel URL (e.g. https://my-subdomain.ngrok-free.app)")
+    p_live.add_argument("--persona", type=str, default="muthoot_recovery", choices=["muthoot_recovery", "bank_kyc", "swiggy_delivery"], help="Telephony persona")
+    p_live.add_argument("--lang", type=str, default="hi", help="Language code")
+    p_live.add_argument("--provider", type=str, default="ollama", choices=["ollama", "groq", "openai", "mock"], help="LLM Provider")
+    p_live.add_argument("--model", type=str, default="verbalyze-indic", help="LLM Model name")
+    p_live.add_argument("--sms-provider", type=str, default="mock", choices=["mock", "fast2sms", "twilio", "webhook"], help="SMS Gateway Provider")
+    p_live.add_argument("--no-server", action="store_true", help="Print config and instructions without launching server")
+
     # Command: publish-hf
     p_hf = subparsers.add_parser("publish-hf", help="Publish datasets to Hugging Face Hub")
     p_hf.add_argument("--target", type=str, default="all", choices=["all", "dialogues", "stt"],
@@ -171,6 +183,12 @@ def main():
     elif args.command == "deploy-space":
         from scripts.deploy_space import deploy
         deploy(repo_id=args.repo_id)
+
+    elif args.command == "live-line":
+        import scripts.launch_live_phone_line as launcher
+        # Pass parsed arguments directly to launcher logic
+        sys.argv = [sys.argv[0]] + sys.argv[2:]
+        launcher.main()
 
 
 if __name__ == "__main__":
