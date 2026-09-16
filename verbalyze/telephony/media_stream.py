@@ -19,6 +19,7 @@ import wave
 from typing import Dict, Any, Optional, List, Callable
 
 from verbalyze.agent.voice_bot import VoiceAgent
+from verbalyze.agent.stt_engine import SovereignSTTEngine
 
 try:
     import pydub
@@ -42,7 +43,9 @@ class MediaStreamSession:
         codec: str = "audio/x-alaw",  # "audio/x-alaw", "audio/x-mulaw", "audio/l16"
         speech_threshold: int = 650,  # 16-bit linear PCM RMS energy threshold
         silence_timeout_ms: int = 600, # Trailing silence before turn completion
-        caller_phone: Optional[str] = None
+        caller_phone: Optional[str] = None,
+        stt_provider: str = "local",
+        stt_model: str = "tiny"
     ):
         self.websocket = websocket
         self.language = language
@@ -53,6 +56,15 @@ class MediaStreamSession:
         self.codec = codec.lower()
         self.speech_threshold = speech_threshold
         self.silence_timeout_frames = int(silence_timeout_ms / 20)  # 20ms per frame
+        self.stt_provider = stt_provider
+        self.stt_model = stt_model
+
+        # Sovereign STT Engine
+        self.stt_engine = SovereignSTTEngine(
+            model_size=stt_model,
+            language=language,
+            provider=stt_provider
+        )
 
         # Call identifiers
         self.stream_sid: str = "stream_default"
@@ -276,29 +288,27 @@ class MediaStreamSession:
             self.is_agent_streaming = False
 
     async def _transcribe_pcm_audio(self, pcm_8k_bytes: bytes) -> str:
-        """Converts 8kHz PCM to speech transcript using STT recognizer or fallback."""
+        """Converts 8kHz PCM to speech transcript using Sovereign STT engine with fallback."""
         try:
-            import speech_recognition as sr
-            r = sr.Recognizer()
-            # Convert 8kHz PCM to 16kHz for better STT accuracy
-            resampled_16k = audioop.ratecv(pcm_8k_bytes, 2, 1, 8000, 16000, None)[0]
+            transcript, latency_ms = await asyncio.to_thread(
+                self.stt_engine.transcribe_pcm,
+                pcm_8k_bytes,
+                8000,
+                self.language
+            )
+            if transcript:
+                print(f"🎙️ [Sovereign STT Transcribed in {latency_ms:.1f}ms]: '{transcript}'")
+                return transcript
+        except Exception as e:
+            print(f"⚠️ [STT Error]: {e}")
 
-            # Build in-memory WAV container
-            wav_buf = io.BytesIO()
-            with wave.open(wav_buf, "wb") as wf:
-                wf.setnchannels(1)
-                wf.setsampwidth(2)
-                wf.setframerate(16000)
-                wf.writeframes(resampled_16k)
-            wav_buf.seek(0)
-
-            with sr.AudioFile(wav_buf) as source:
-                audio_data = r.record(source)
-                transcript = r.recognize_google(audio_data, language=f"{self.language}-IN")
-                return transcript.strip()
-        except Exception:
-            # If Google STT fails or is unreachable, use rule-based conversational turn
-            return "हाँ जी, मैं सुन रहा हूँ।"
+        fallback_map = {
+            "hi": "हाँ जी, मैं सुन रहा हूँ।",
+            "en": "Yes, I am listening.",
+            "gu": "હા, હું સાંભળી રહ્યો છું.",
+            "mr": "हो, मी ऐकत आहे."
+        }
+        return fallback_map.get(self.language, "हाँ जी, मैं सुन रहा हूँ।")
 
     async def handle_inbound_frame(self, raw_frame_bytes: bytes):
         """

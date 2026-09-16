@@ -154,7 +154,17 @@ class MicrophoneListener:
         if not wav_path or not os.path.exists(wav_path):
             return None
 
-        # 1. Try Groq Whisper if API key is present (sub-200ms latency)
+        # 1. Try Sovereign On-Prem local faster-whisper engine (sovereign, offline, low latency)
+        try:
+            from verbalyze.agent.stt_engine import SovereignSTTEngine
+            stt = SovereignSTTEngine(model_size="tiny", language=self.language, provider="local")
+            text, lat = stt.transcribe_file(wav_path, language=self.language)
+            if text and text != "हाँ जी, मैं सुन रहा हूँ।":
+                return text
+        except Exception:
+            pass
+
+        # 2. Try Groq Whisper if API key is present (sub-200ms latency)
         groq_api_key = os.environ.get("GROQ_API_KEY")
         if groq_api_key:
             try:
@@ -175,7 +185,7 @@ class MicrophoneListener:
             except Exception:
                 pass
 
-        # 2. Fallback to Google Speech Recognition (free, built-in, 100% reliable across Indic languages)
+        # 3. Fallback to Google Speech Recognition (free, built-in, 100% reliable across Indic languages)
         try:
             with sr.AudioFile(wav_path) as source:
                 audio = self.recognizer.record(source)

@@ -52,6 +52,8 @@ def main():
     p_ag.add_argument("--telephony-sim", action="store_true", help="Simulate 8kHz G.711 A-law Indian telecom carrier line degradation in Quality Gate and audio")
     p_ag.add_argument("--no-barge-in", action="store_true", help="Disable real-time barge-in interruption detection during audio playback")
     p_ag.add_argument("--caller-phone", type=str, default="+919876543210", help="Caller mobile phone number for real SMS & UPI payment link dispatch (default: +919876543210)")
+    p_ag.add_argument("--stt-provider", type=str, default="local", choices=["local", "faster-whisper", "google", "mock"], help="Speech-to-Text provider (default: local)")
+    p_ag.add_argument("--stt-model", type=str, default="tiny", help="Whisper STT model size (default: tiny, choices: tiny, base, small)")
 
     # Command: server
     p_srv = subparsers.add_parser("server", help="Start FastAPI telephony webhook server")
@@ -68,6 +70,8 @@ def main():
     p_live.add_argument("--provider", type=str, default="ollama", choices=["ollama", "groq", "openai", "mock"], help="LLM Provider")
     p_live.add_argument("--model", type=str, default="verbalyze-indic", help="LLM Model name")
     p_live.add_argument("--sms-provider", type=str, default="mock", choices=["mock", "fast2sms", "twilio", "webhook"], help="SMS Gateway Provider")
+    p_live.add_argument("--stt-provider", type=str, default="local", choices=["local", "faster-whisper", "google", "mock"], help="Speech-to-Text provider (default: local)")
+    p_live.add_argument("--stt-model", type=str, default="tiny", help="Whisper STT model size (default: tiny, choices: tiny, base, small)")
     p_live.add_argument("--no-server", action="store_true", help="Print config and instructions without launching server")
 
     # Command: publish-hf

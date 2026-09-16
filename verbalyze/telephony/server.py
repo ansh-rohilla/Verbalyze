@@ -244,7 +244,9 @@ def create_app() -> Any:
         provider: str = "ollama",
         model: Optional[str] = None,
         codec: str = "audio/x-alaw",
-        caller_phone: Optional[str] = None
+        caller_phone: Optional[str] = None,
+        stt_provider: str = "local",
+        stt_model: str = "tiny"
     ):
         """
         Real-time bi-directional audio WebSocket endpoint for live telephony trunks
@@ -259,7 +261,9 @@ def create_app() -> Any:
             llm_provider=provider,
             model_name=model,
             codec=codec,
-            caller_phone=caller_phone
+            caller_phone=caller_phone,
+            stt_provider=stt_provider,
+            stt_model=stt_model
         )
         await session.run()
 

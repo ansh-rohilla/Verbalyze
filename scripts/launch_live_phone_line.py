@@ -58,6 +58,8 @@ def main():
     parser.add_argument("--provider", type=str, default="ollama", choices=["ollama", "groq", "openai", "mock"], help="LLM Provider")
     parser.add_argument("--model", type=str, default="verbalyze-indic", help="LLM Model name")
     parser.add_argument("--sms-provider", type=str, default="mock", choices=["mock", "fast2sms", "twilio", "webhook"], help="SMS Gateway Provider")
+    parser.add_argument("--stt-provider", type=str, default="local", choices=["local", "faster-whisper", "google", "mock"], help="Speech-to-Text provider (default: local)")
+    parser.add_argument("--stt-model", type=str, default="tiny", help="Whisper STT model size (default: tiny, choices: tiny, base, small)")
     parser.add_argument("--no-server", action="store_true", help="Print config and instructions without launching server")
 
     args = parser.parse_args()
@@ -120,7 +122,7 @@ def main():
 
     sip_inbound_url = f"{http_url}/webhook/sip/inbound"
     sip_turn_url = f"{http_url}/webhook/sip/turn"
-    media_stream_url = f"{ws_url}/media-stream?lang={args.lang}&persona={args.persona}&provider={args.provider}"
+    media_stream_url = f"{ws_url}/media-stream?lang={args.lang}&persona={args.persona}&provider={args.provider}&stt_provider={args.stt_provider}&stt_model={args.stt_model}"
 
     print("--------------------------------------------------------------------------------")
     print("📋 READY-TO-USE TELEPHONY CONFIGURATION FOR RINGTRUNK:")
@@ -131,6 +133,7 @@ def main():
     print(f"  • ⚡ WebSocket Media Stream : {media_stream_url}")
     print(f"  • Active Telephony Persona : {args.persona.upper()}")
     print(f"  • Language & Voice Codec   : {args.lang.upper()} | ITU-T G.711 A-law (8kHz PCMA)")
+    print(f"  • Sovereign Local STT      : {args.stt_provider.upper()} ({args.stt_model}) [On-Premises]")
     print(f"  • LLM Engine               : {args.provider.upper()} ({args.model})")
     print(f"  • SMS / NPCI UPI Gateway   : {args.sms_provider.upper()}")
     print("--------------------------------------------------------------------------------")
@@ -165,6 +168,7 @@ Audio Specs:
 - Packet Pacing: 20ms frames (160 bytes / packet)
 - Interruption: Real-time buffer flush enabled via 'clear' event
 - Turn-around: Token-to-TTS streaming (<200ms Time-to-First-Sound)
+- STT Decoder: Sovereign On-Premises ({args.stt_provider.upper()}, in-memory 8kHz PCM)
 
 Best regards,
 Verbalyze Voice AI Team

@@ -26,6 +26,8 @@ setup(
         "sounddevice>=0.5.0",
         "SpeechRecognition>=3.14.0",
         "pydub>=0.25.1",
+        "faster-whisper>=1.0.0",
+        "ctranslate2>=4.0.0",
         "fastapi>=0.110.0",
         "uvicorn>=0.28.0",
         "httpx>=0.27.0",
