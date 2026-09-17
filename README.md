@@ -267,6 +267,12 @@ A modular framework converting Verbalyze synthetic data into production benchmar
 
 ```
 verbalyze/
+├── campaign/
+│   ├── __init__.py           # Campaign exports
+│   ├── models.py             # Lead, LeadStatus, CallDisposition, AMDResult, CDR, CampaignSummary
+│   ├── trai_compliance.py   # TRAI 9am-7pm IST calling window, DND registry, 3-call daily cap
+│   ├── amd.py                # Dual-stage AMD: cadence analysis, beep tone detection, operator phrases
+│   └── dialer.py             # Concurrent campaign batch dialer, retry backoff, PII-masked CDR export
 ├── security/
 │   ├── __init__.py           # Security exports
 │   └── pii_redactor.py       # PII redactor (DPDP/RBI), HMAC token auth, tool sanitizers, injection guard
@@ -290,6 +296,7 @@ verbalyze/
 app.py                        # Interactive Gradio Web App with Quality Gate
 scripts/
 ├── launch_live_phone_line.py # 1-Click Live Indian Phone Line Gateway Launcher (--auth-token)
+├── test_campaign_dialer_amd.py # Comprehensive Outbound Campaign & AMD Verification Suite (8/8)
 ├── test_end_to_end_security.py # Comprehensive End-to-End Security Verification Suite (8/8)
 ├── test_sovereign_stt.py     # Sovereign On-Prem STT Engine (<200ms) verification suite
 ├── test_streaming_pipeline.py # Streaming LLM-to-TTS (<200ms TTFS) verification suite
@@ -484,6 +491,23 @@ To support production deployments in regulated banking, financial services, and 
 ```bash
 # Verify End-to-End Security & Privacy Guardrails:
 python3 scripts/test_end_to_end_security.py
+```
+
+#### Outbound Campaign Batch Dialer & Answering Machine Detection (AMD)
+For banking institutions and loan recovery operations dialing customer accounts concurrently, Verbalyze includes an asynchronous campaign dialer and answering machine detection engine:
+* **TRAI Calling Hours Window (09:00 - 19:00 IST)**: Enforces lawful tele-calling hours under TRAI and RBI Fair Practices Code for loan recovery. Outside this window, calls are deferred (bypassable with `--ignore-calling-window` for testing).
+* **NCPR / DND Registry Filtering**: Rejects calls to numbers registered on the National Customer Preference Register.
+* **Daily Frequency Capping**: Strictly enforces a maximum of 3 call attempts per customer per calendar day.
+* **Dual-Stage Answering Machine Detection (AMD)**: Classifies human vs voicemail vs operator announcements within 800ms - 1500ms using acoustic cadence analysis (burst duration, pause ratios, 1000Hz voicemail beep detection) and fast lexical parsing for Indian carrier announcements ("switched off", "out of coverage", "vyast").
+* **Concurrent Channel Queue**: Managed via `asyncio.Semaphore` channels with automated exponential backoff retries on `BUSY` and `NO_ANSWER`.
+* **DPDP-Sanitized Call Detail Records (CDRs)**: Exports complete turn-by-turn logs and disposition statistics in JSON and CSV format with all PII masked.
+
+```bash
+# Run Outbound Campaign & AMD Verification Suite (8/8):
+python3 scripts/test_campaign_dialer_amd.py
+
+# Launch CLI Campaign across 5 concurrent channels:
+python3 -m verbalyze.cli campaign --csv leads.csv --channels 5 --persona muthoot_recovery --lang hi --ignore-calling-window
 ```
 
 ---

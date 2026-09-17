@@ -6,10 +6,17 @@ Enables real-time outbound call triggering and live voicebot turn-taking over SI
 """
 
 import os
+import uuid
+import asyncio
 from typing import Dict, Any, Optional
 from verbalyze.agent.voice_bot import VoiceAgent
 from verbalyze.telephony.media_stream import MediaStreamSession
 from verbalyze.security import verify_auth_token, PIIRedactor
+from verbalyze.campaign import (
+    CampaignDialer,
+    CampaignConfig,
+    AMDClassifier,
+)
 
 # Try importing FastAPI
 try:
@@ -60,12 +67,15 @@ def create_app(auth_token: Optional[str] = None) -> Any:
 
     # In-memory call session store: call_sid -> VoiceAgent
     active_calls: Dict[str, VoiceAgent] = {}
+    active_campaigns: Dict[str, CampaignDialer] = {}
+    amd_engine = AMDClassifier()
 
     @app.get("/health")
     def health():
         return {
             "status": "ok",
             "active_calls": len(active_calls),
+            "active_campaigns": len(active_campaigns),
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -333,6 +343,131 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             strict_sovereignty=strict_sovereignty
         )
         await session.run()
+
+    # --------------------------------------------------------------------------
+    # OUTBOUND CAMPAIGN & AMD REST ENDPOINTS
+    # --------------------------------------------------------------------------
+
+    @app.post("/campaign/start")
+    async def start_campaign(request: Request):
+        """
+        Initiates an automated outbound batch campaign across concurrent channels.
+        Requires authentication guard verification.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+
+        payload = {}
+        try:
+            payload = await request.json()
+        except Exception:
+            form = await request.form()
+            payload = dict(form)
+
+        campaign_id = str(payload.get("campaign_id") or f"CAMP_{uuid.uuid4().hex[:8].upper()}")
+        persona = str(payload.get("persona") or "muthoot_recovery")
+        language = str(payload.get("language") or payload.get("lang") or "hi")
+        provider = str(payload.get("provider") or payload.get("llm_provider") or "ollama")
+        model = payload.get("model") or payload.get("model_name")
+        channels = int(payload.get("channels") or payload.get("max_concurrent_channels") or 5)
+        enforce_hours = str(payload.get("enforce_calling_hours", "true")).lower() in ("true", "1")
+        enforce_dnd = str(payload.get("enforce_dnd", "true")).lower() in ("true", "1")
+
+        config = CampaignConfig(
+            campaign_id=campaign_id,
+            campaign_name=str(payload.get("campaign_name") or f"Campaign {campaign_id}"),
+            persona=persona,
+            language=language,
+            llm_provider=provider,
+            model_name=model,
+            max_concurrent_channels=channels,
+            enforce_trai_calling_hours=enforce_hours,
+            enforce_dnd_check=enforce_dnd,
+        )
+
+        dialer = CampaignDialer(config=config)
+
+        # Ingest leads
+        raw_leads = payload.get("leads", [])
+        if isinstance(raw_leads, str):
+            accepted, rejected, errors = dialer.ingest_csv(raw_leads)
+        elif isinstance(raw_leads, list):
+            accepted, rejected, errors = dialer.ingest_leads_from_list(raw_leads)
+        else:
+            accepted, rejected, errors = 0, 0, ["No valid leads provided"]
+
+        if accepted == 0:
+            return JSONResponse({
+                "status": "rejected",
+                "campaign_id": campaign_id,
+                "error": "No valid leads accepted for dialing.",
+                "rejected_count": rejected,
+                "rejection_errors": errors[:5],
+            }, status_code=400)
+
+        active_campaigns[campaign_id] = dialer
+
+        # Launch campaign in background task
+        asyncio.create_task(dialer.run_campaign())
+
+        return JSONResponse({
+            "status": "started",
+            "campaign_id": campaign_id,
+            "accepted_leads": accepted,
+            "rejected_leads": rejected,
+            "max_channels": channels,
+            "enforce_trai_hours": enforce_hours,
+        })
+
+    @app.get("/campaign/status/{campaign_id}")
+    def get_campaign_status(request: Request, campaign_id: str):
+        """Returns real-time progress, dispositions, and statistics for a campaign."""
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+
+        dialer = active_campaigns.get(campaign_id)
+        if not dialer:
+            return JSONResponse({"error": f"Campaign '{campaign_id}' not found."}, status_code=404)
+
+        return JSONResponse(dialer.summary.to_dict())
+
+    @app.get("/campaign/cdr/{campaign_id}")
+    def get_campaign_cdrs(request: Request, campaign_id: str, mask_pii: bool = True):
+        """Exports PII-sanitized Call Detail Records (CDRs) for an outbound campaign."""
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+
+        dialer = active_campaigns.get(campaign_id)
+        if not dialer:
+            return JSONResponse({"error": f"Campaign '{campaign_id}' not found."}, status_code=404)
+
+        cdrs = [c.to_dict(mask_pii=mask_pii) for c in dialer.cdrs]
+        return JSONResponse({
+            "campaign_id": campaign_id,
+            "count": len(cdrs),
+            "pii_masked": mask_pii,
+            "call_detail_records": cdrs,
+        })
+
+    @app.post("/telephony/amd")
+    async def analyze_amd_endpoint(request: Request):
+        """Standalone Answering Machine Detection endpoint for telephony webhook hooks."""
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+
+        data = await request.json()
+        transcript = str(data.get("transcript", ""))
+        duration = float(data.get("speech_duration_sec", 1.0))
+        silence_ratio = float(data.get("silence_ratio", 0.0))
+        silence_after = float(data.get("silence_after_burst_sec", 0.0))
+
+        result = amd_engine.classify(
+            audio_duration_sec=duration,
+            transcript=transcript,
+            silence_after_burst_sec=silence_after,
+            silence_ratio=silence_ratio,
+        )
+        return JSONResponse(result.to_dict())
 
     return app
 

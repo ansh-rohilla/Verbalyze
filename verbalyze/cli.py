@@ -95,6 +95,21 @@ def main():
     p_sp = subparsers.add_parser("deploy-space", help="Deploy web application to Hugging Face Spaces")
     p_sp.add_argument("--repo-id", type=str, default="ansh-rohilla/verbalyze-demo", help="Target Space repo ID")
 
+    # Command: campaign
+    p_camp = subparsers.add_parser("campaign", help="Run automated outbound batch dialer campaign with AMD & TRAI compliance")
+    p_camp.add_argument("--csv", type=str, default=None, help="Path to lead CSV file")
+    p_camp.add_argument("--json", type=str, default=None, help="Path to lead JSON file")
+    p_camp.add_argument("--channels", type=int, default=5, help="Concurrent call channels (default: 5)")
+    p_camp.add_argument("--persona", type=str, default="muthoot_recovery", help="Telephony persona")
+    p_camp.add_argument("--lang", type=str, default="hi", help="Language code (default: hi)")
+    p_camp.add_argument("--provider", type=str, default="ollama", choices=["ollama", "groq", "openai", "mock"], help="LLM Provider")
+    p_camp.add_argument("--model", type=str, default=None, help="LLM Model name")
+    p_camp.add_argument("--ignore-calling-window", action="store_true", help="Bypass TRAI 9am-7pm IST calling window (for testing/simulation)")
+    p_camp.add_argument("--ignore-dnd", action="store_true", help="Bypass DND registry check (for testing/simulation)")
+    p_camp.add_argument("--max-retries", type=int, default=2, help="Max retries on BUSY/NO_ANSWER (default: 2)")
+    p_camp.add_argument("--export-cdr-json", type=str, default=None, help="Path to export PII-sanitized CDR JSON")
+    p_camp.add_argument("--export-cdr-csv", type=str, default=None, help="Path to export PII-sanitized CDR CSV")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -147,7 +162,7 @@ def main():
             if args.strict_sovereignty:
                 os.environ["STRICT_SOVEREIGNTY"] = "1"
             app = create_app(auth_token=args.auth_token)
-            print(f"📞 [Server] Starting Verbalyze Telephony & Media Stream Server on {args.host}:{args.port}...")
+            print(f"[Server] Starting Verbalyze Telephony & Media Stream Server on {args.host}:{args.port}...")
             print(f"   - Auth Protected:          {'Enabled' if args.auth_token or os.environ.get('TELEPHONY_AUTH_TOKEN') else 'Disabled (Open Dev Mode)'}")
             print(f"   - Strict Data Sovereignty: {'Enabled (Zero Cloud STT Egress)' if args.strict_sovereignty or os.environ.get('STRICT_SOVEREIGNTY') == '1' else 'Disabled'}")
             print(f"   - WebSocket Audio Stream:  ws://{args.host}:{args.port}/media-stream")
@@ -180,7 +195,7 @@ def main():
             else:
                 publish_all(token=args.token, private=args.private)
         except Exception as e:
-            print(f"\n❌ Error publishing to Hugging Face: {e}")
+            print(f"\n[ERROR] Error publishing to Hugging Face: {e}")
             sys.exit(1)
 
     elif args.command == "ui":
@@ -189,12 +204,75 @@ def main():
             print(f"[UI] Starting Verbalyze Interactive Web App on http://localhost:{args.port}...")
             app.demo.launch(server_name="0.0.0.0", server_port=args.port, share=args.share)
         except Exception as e:
-            print(f"❌ Error launching web application: {e}")
+            print(f"[ERROR] Error launching web application: {e}")
             sys.exit(1)
 
     elif args.command == "deploy-space":
         from scripts.deploy_space import deploy
         deploy(repo_id=args.repo_id)
+
+    elif args.command == "campaign":
+        import asyncio
+        from verbalyze.campaign import CampaignDialer, CampaignConfig
+
+        if not args.csv and not args.json:
+            print("[ERROR] Please specify either --csv <path> or --json <path> containing lead records.")
+            sys.exit(1)
+
+        config = CampaignConfig(
+            persona=args.persona,
+            language=args.lang,
+            llm_provider=args.provider,
+            model_name=args.model,
+            max_concurrent_channels=args.channels,
+            enforce_trai_calling_hours=not args.ignore_calling_window,
+            enforce_dnd_check=not args.ignore_dnd,
+            max_retries_per_lead=args.max_retries,
+        )
+
+        dialer = CampaignDialer(config=config)
+        if args.csv:
+            accepted, rejected, errors = dialer.ingest_csv(args.csv)
+        else:
+            accepted, rejected, errors = dialer.ingest_json(args.json)
+
+        print(f"[CAMPAIGN] Initialized: {config.campaign_name}")
+        print(f"[CAMPAIGN] Accepted Leads: {accepted}, Rejected Leads: {rejected}")
+        if errors:
+            for err in errors[:3]:
+                print(f"  [REJECT] {err}")
+
+        if accepted == 0:
+            print("[ERROR] No valid leads found to execute campaign.")
+            sys.exit(1)
+
+        print(f"[CAMPAIGN] Launching across {args.channels} concurrent channels...")
+        summary = asyncio.run(dialer.run_campaign())
+
+        print("\n" + "=" * 60)
+        print("CAMPAIGN EXECUTION SUMMARY")
+        print("=" * 60)
+        print(f"Total Leads:          {summary.total_leads}")
+        print(f"Dialed Calls:         {summary.dialed_count}")
+        print(f"Connected Calls:      {summary.connected_count}")
+        print(f"Human Answered:       {summary.human_answered_count}")
+        print(f"Voicemail (AMD):      {summary.voicemail_count}")
+        print(f"Operator Announce:    {summary.operator_announcement_count}")
+        print(f"Busy / No Answer:     {summary.busy_or_no_answer_count}")
+        print(f"DND Blocked:          {summary.dnd_blocked_count}")
+        print(f"TRAI Hours Blocked:   {summary.hours_blocked_count}")
+        print(f"Promises to Pay:      {summary.promise_to_pay_count}")
+        print(f"Payment Links Sent:   {summary.payment_link_sent_count}")
+        print(f"Total Recovered:      Rs. {summary.total_amount_recovered:,.2f}")
+        print("=" * 60)
+
+        if args.export_cdr_json:
+            dialer.export_cdr_json(args.export_cdr_json, mask_pii=True)
+            print(f"[CDR] Exported JSON: {args.export_cdr_json}")
+
+        if args.export_cdr_csv:
+            dialer.export_cdr_csv(args.export_cdr_csv, mask_pii=True)
+            print(f"[CDR] Exported CSV: {args.export_cdr_csv}")
 
     elif args.command == "live-line":
         import scripts.launch_live_phone_line as launcher
