@@ -77,6 +77,35 @@ TELEPHONY_TOOLS_SCHEMA = [
                 "required": ["promised_date"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "transfer_to_human",
+            "description": "Transfers the phone call to a human supervisor or senior branch officer when the customer is agitated, disputes the loan, alleges fraud/harassment, or requests human intervention.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "reason": {
+                        "type": "string",
+                        "description": "Specific reason for human escalation (e.g. 'customer_dispute', 'customer_agitation', 'fraud_allegation', 'demands_supervisor')"
+                    },
+                    "customer_sentiment": {
+                        "type": "string",
+                        "description": "Customer emotional state (e.g. 'agitated', 'distressed', 'confused', 'hostile')"
+                    },
+                    "summary": {
+                        "type": "string",
+                        "description": "Brief briefing summary for the receiving human agent"
+                    },
+                    "target_department": {
+                        "type": "string",
+                        "description": "Target department queue (e.g. 'supervisor', 'disputes', 'branch_officer')"
+                    }
+                },
+                "required": ["reason", "summary"]
+            }
+        }
     }
 ]
 
@@ -130,5 +159,22 @@ def execute_telephony_tool(
         redacted_notes = PIIRedactor.redact_text(notes)
         msg = f"[Telephony Event] Promise to pay logged for {date}. Note: {redacted_notes}"
         return False, msg, {"promised_date": date, "notes": redacted_notes, "action": "callback"}
+
+    elif tool_name == "transfer_to_human":
+        reason = arguments.get("reason", "customer_escalation")
+        sentiment = arguments.get("customer_sentiment", "agitated")
+        raw_summary = arguments.get("summary", "Customer requested human supervisor")
+        dept = arguments.get("target_department", "supervisor")
+        redacted_summary = PIIRedactor.redact_text(raw_summary)
+
+        msg = f"[Telephony Event] TRANSFER TO HUMAN ({dept}): {reason}. Briefing: {redacted_summary}"
+        event_data = {
+            "action": "transfer",
+            "reason": reason,
+            "sentiment": sentiment,
+            "summary": redacted_summary,
+            "department": dept,
+        }
+        return True, msg, event_data
 
     return False, f"[Telephony Event] Unknown tool call: {tool_name}", None

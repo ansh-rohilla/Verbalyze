@@ -301,7 +301,7 @@ class CampaignDialer:
         # Stage 4: Conversational VoiceAgent Execution
         # ----------------------------------------------------------------------
         self.summary.human_answered_count += 1
-        call_turns, tool_events, final_disp, payment_sent = await self._conduct_conversation(
+        call_turns, tool_events, final_disp, payment_sent, peak_agitation, detected_dispute = await self._conduct_conversation(
             lead=lead,
             initial_transcript=early_transcript,
         )
@@ -318,6 +318,8 @@ class CampaignDialer:
             self.summary.promise_to_pay_count += 1
             self.summary.payment_link_sent_count += 1
             self.summary.total_amount_recovered += lead.amount_due
+        elif final_disp in (CallDisposition.TRANSFERRED_TO_SUPERVISOR, CallDisposition.LEGAL_DISPUTE_ESCALATED):
+            self.summary.transferred_to_supervisor_count += 1
 
         # Record disposition breakdown
         disp_key = final_disp.value
@@ -336,6 +338,8 @@ class CampaignDialer:
             duration_seconds=duration,
             amd_result=amd_res,
             final_disposition=final_disp,
+            agitation_score=peak_agitation,
+            dispute_type=detected_dispute,
             payment_link_sent=payment_sent,
             amount_recovered_or_promised=lead.amount_due if payment_sent else 0.0,
             turns_count=len(call_turns),
@@ -403,7 +407,7 @@ class CampaignDialer:
         self,
         lead: Lead,
         initial_transcript: str
-    ) -> Tuple[List[Dict[str, str]], List[Dict[str, Any]], CallDisposition, bool]:
+    ) -> Tuple[List[Dict[str, str]], List[Dict[str, Any]], CallDisposition, bool, float, str]:
         """
         Orchestrates multi-turn conversation between VoiceAgent and borrower.
         """
@@ -420,6 +424,8 @@ class CampaignDialer:
         tool_events: List[Dict[str, Any]] = []
         payment_link_sent = False
         final_disp = CallDisposition.PROMISE_TO_PAY
+        peak_agitation = 0.0
+        detected_dispute = "NONE"
 
         # Initial Agent Greeting
         greeting = agent.get_initial_greeting()
@@ -431,19 +437,47 @@ class CampaignDialer:
 
         res_1 = agent.step(cust_turn_1)
         turns.append({"role": "assistant", "content": res_1["text"]})
+
+        if res_1.get("sentiment"):
+            peak_agitation = max(peak_agitation, res_1["sentiment"].get("composite_agitation", 0.0))
+            if res_1["sentiment"].get("dispute_type") != "NONE":
+                detected_dispute = res_1["sentiment"].get("dispute_type")
+
         if res_1.get("tool_event"):
             tool_events.append(res_1["tool_event"])
-            payment_link_sent = True
+            if res_1.get("tool_data") and res_1["tool_data"].get("action") == "transfer":
+                final_disp = (
+                    CallDisposition.LEGAL_DISPUTE_ESCALATED
+                    if detected_dispute == "LEGAL_THREAT"
+                    else CallDisposition.TRANSFERRED_TO_SUPERVISOR
+                )
+                return turns, tool_events, final_disp, False, peak_agitation, detected_dispute
+            else:
+                payment_link_sent = True
 
-        # Turn 2: Customer agrees or asks for link
-        cust_turn_2 = "हाँ, मुझे पेमेंट लिंक एसएमएस पर भेज दीजिए, मैं अभी कर देता हूँ।"
+        # Turn 2: Customer responds or escalates
+        cust_turn_2 = lead.custom_metadata.get("second_turn") or "हाँ, मुझे पेमेंट लिंक एसएमएस पर भेज दीजिए, मैं अभी कर देता हूँ।"
         turns.append({"role": "user", "content": cust_turn_2})
 
         res_2 = agent.step(cust_turn_2)
         turns.append({"role": "assistant", "content": res_2["text"]})
+
+        if res_2.get("sentiment"):
+            peak_agitation = max(peak_agitation, res_2["sentiment"].get("composite_agitation", 0.0))
+            if res_2["sentiment"].get("dispute_type") != "NONE":
+                detected_dispute = res_2["sentiment"].get("dispute_type")
+
         if res_2.get("tool_event"):
             tool_events.append(res_2["tool_event"])
-            payment_link_sent = True
+            if res_2.get("tool_data") and res_2["tool_data"].get("action") == "transfer":
+                final_disp = (
+                    CallDisposition.LEGAL_DISPUTE_ESCALATED
+                    if detected_dispute == "LEGAL_THREAT"
+                    else CallDisposition.TRANSFERRED_TO_SUPERVISOR
+                )
+                return turns, tool_events, final_disp, False, peak_agitation, detected_dispute
+            else:
+                payment_link_sent = True
 
         if payment_link_sent:
             final_disp = CallDisposition.PAYMENT_LINK_SENT
@@ -452,7 +486,7 @@ class CampaignDialer:
         else:
             final_disp = CallDisposition.PROMISE_TO_PAY
 
-        return turns, tool_events, final_disp, payment_link_sent
+        return turns, tool_events, final_disp, payment_link_sent, peak_agitation, detected_dispute
 
     # --------------------------------------------------------------------------
     # RETRY LOGIC & DISPOSITION HANDLERS

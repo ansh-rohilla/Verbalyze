@@ -8,6 +8,7 @@ Enables real-time outbound call triggering and live voicebot turn-taking over SI
 import os
 import uuid
 import asyncio
+import base64
 from typing import Dict, Any, Optional
 from verbalyze.agent.voice_bot import VoiceAgent
 from verbalyze.telephony.media_stream import MediaStreamSession
@@ -16,6 +17,16 @@ from verbalyze.campaign import (
     CampaignDialer,
     CampaignConfig,
     AMDClassifier,
+)
+from verbalyze.agent.sentiment import (
+    UnifiedSentimentEngine,
+    SentimentResult,
+    DisputeType,
+    SentimentCategory,
+)
+from verbalyze.telephony.transfer import (
+    SIPTransferDispatcher,
+    TransferContext,
 )
 
 # Try importing FastAPI
@@ -35,7 +46,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
     app = FastAPI(
         title="Verbalyze Telephony Voicebot Server",
         description="Production webhook bridge connecting Exotel & Twilio SIP trunks to Verbalyze Indic Voice SLMs.",
-        version="0.2.0"
+        version="0.3.0"
     )
 
     # Authentication token: passed directly, or via environment TELEPHONY_AUTH_TOKEN / VERBALYZE_API_KEY
@@ -69,6 +80,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
     active_calls: Dict[str, VoiceAgent] = {}
     active_campaigns: Dict[str, CampaignDialer] = {}
     amd_engine = AMDClassifier()
+    sentiment_engine = UnifiedSentimentEngine()
 
     @app.get("/health")
     def health():
@@ -152,6 +164,26 @@ def create_app(auth_token: Optional[str] = None) -> Any:
         # Step the agent
         step_res = agent.step(speech_result)
         agent_reply = step_res["text"]
+        tool_data = step_res.get("tool_data") or {}
+
+        if tool_data.get("action") == "transfer":
+            active_calls.pop(call_sid, None)
+            transfer_ctx = TransferContext(
+                call_id=call_sid,
+                caller_phone=agent.caller_phone or "",
+                loan_id="MUTH-8921",
+                amount_due=5420.0,
+                agitation_score=step_res.get("sentiment", {}).get("composite_agitation", 0.8),
+                dispute_type=tool_data.get("reason", "DISPUTE"),
+                briefing_summary=tool_data.get("summary", "Customer transfer escalation."),
+                target_department=tool_data.get("department", "supervisor"),
+            )
+            twiml = SIPTransferDispatcher.build_twiml_dial_transfer(
+                context=transfer_ctx,
+                caller_id=agent.caller_phone,
+                language=agent.language,
+            )
+            return Response(content=twiml, media_type="application/xml")
 
         if step_res["terminated"]:
             # Hang up the call
@@ -279,6 +311,32 @@ def create_app(auth_token: Optional[str] = None) -> Any:
 
         step_res = agent.step(customer_utterance)
         terminated = step_res["terminated"]
+        tool_data = step_res.get("tool_data") or {}
+
+        if tool_data.get("action") == "transfer":
+            active_calls.pop(call_id, None)
+            transfer_ctx = TransferContext(
+                call_id=call_id,
+                caller_phone=agent.caller_phone or "",
+                loan_id="MUTH-8921",
+                amount_due=5420.0,
+                agitation_score=step_res.get("sentiment", {}).get("composite_agitation", 0.8),
+                dispute_type=tool_data.get("reason", "DISPUTE"),
+                briefing_summary=tool_data.get("summary", "Customer transfer escalation."),
+                target_department=tool_data.get("department", "supervisor"),
+            )
+            sip_refer = SIPTransferDispatcher.build_sip_refer(context=transfer_ctx)
+            return JSONResponse({
+                "call_id": call_id,
+                "agent_response": step_res["text"],
+                "audio_url": step_res.get("audio_path"),
+                "tool_event": step_res.get("tool_event"),
+                "quality_report": step_res.get("quality_report").to_dict() if step_res.get("quality_report") else None,
+                "hangup": True,
+                "action": "transfer",
+                "sip_refer": sip_refer,
+                "transfer_context": transfer_ctx.to_dict(mask_pii=True),
+            })
 
         if terminated:
             active_calls.pop(call_id, None)
@@ -468,6 +526,92 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             silence_ratio=silence_ratio,
         )
         return JSONResponse(result.to_dict())
+
+    # --------------------------------------------------------------------------
+    # REAL-TIME SENTIMENT & SIP REFER WARM TRANSFER ENDPOINTS
+    # --------------------------------------------------------------------------
+
+    @app.post("/telephony/sentiment")
+    async def analyze_sentiment_endpoint(request: Request):
+        """
+        Real-time acoustic and lexical sentiment analysis endpoint.
+        Analyzes customer text and/or base64-encoded PCM audio for agitation and disputes.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+
+        data = await request.json()
+        text = str(data.get("text", "")).strip()
+        audio_b64 = data.get("audio_base64")
+        pcm_bytes = None
+        if audio_b64:
+            try:
+                pcm_bytes = base64.b64decode(audio_b64)
+            except Exception:
+                pass
+
+        result = sentiment_engine.analyze(text=text, pcm_bytes=pcm_bytes)
+        return JSONResponse(result.to_dict())
+
+    @app.post("/telephony/transfer")
+    async def dispatch_transfer_endpoint(request: Request):
+        """
+        Dispatches a carrier warm transfer directive (SIP REFER, Twilio TwiML, or WebSocket frame).
+        Injects X-Verbalyze-Context metadata header briefing the receiving agent.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+
+        data = await request.json()
+        call_id = str(data.get("call_id") or f"CALL_{uuid.uuid4().hex[:8].upper()}")
+        caller_phone = str(data.get("caller_phone") or "")
+        loan_id = str(data.get("loan_id") or "MUTH-8921")
+        amount_due = float(data.get("amount_due", 0.0))
+        agitation = float(data.get("agitation_score", 0.0))
+        dispute_type = str(data.get("dispute_type", "NONE"))
+        briefing = str(data.get("briefing_summary", "Warm transfer initiated."))
+        target_dept = str(data.get("target_department", "supervisor"))
+        target_uri = data.get("target_uri")
+        fmt = str(data.get("format", "sip_refer")).lower()
+        lang = str(data.get("language", "hi"))
+
+        context = TransferContext(
+            call_id=call_id,
+            caller_phone=caller_phone,
+            loan_id=loan_id,
+            amount_due=amount_due,
+            agitation_score=agitation,
+            dispute_type=dispute_type,
+            briefing_summary=briefing,
+            target_department=target_dept,
+        )
+
+        if fmt == "twiml":
+            twiml = SIPTransferDispatcher.build_twiml_dial_transfer(
+                target=target_uri,
+                context=context,
+                caller_id=caller_phone,
+                language=lang,
+            )
+            return Response(content=twiml, media_type="application/xml")
+        elif fmt == "websocket":
+            event = SIPTransferDispatcher.build_websocket_transfer_event(
+                target_uri=target_uri,
+                context=context,
+            )
+            return JSONResponse(event)
+        else:
+            refer_headers = SIPTransferDispatcher.build_sip_refer(
+                target_uri=target_uri,
+                context=context,
+            )
+            return JSONResponse({
+                "status": "transfer_initiated",
+                "format": "sip_refer",
+                "call_id": call_id,
+                "sip_refer_headers": refer_headers,
+                "context": context.to_dict(mask_pii=True),
+            })
 
     return app
 

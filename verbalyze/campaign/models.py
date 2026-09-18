@@ -43,6 +43,8 @@ class CallDisposition(str, Enum):
     NO_ANSWER = "NO_ANSWER"
     DND_REJECTED = "DND_REJECTED"
     HOURS_BLOCKED = "HOURS_BLOCKED"
+    TRANSFERRED_TO_SUPERVISOR = "TRANSFERRED_TO_SUPERVISOR"
+    LEGAL_DISPUTE_ESCALATED = "LEGAL_DISPUTE_ESCALATED"
     FAILED_CALL = "FAILED_CALL"
 
 
@@ -175,6 +177,8 @@ class CallDetailRecord:
     turns_count: int
     transcript_turns: List[Dict[str, str]] = field(default_factory=list)
     tool_events: List[Dict[str, Any]] = field(default_factory=list)
+    agitation_score: float = 0.0
+    dispute_type: str = "NONE"
     error_message: Optional[str] = None
 
     def to_dict(self, mask_pii: bool = True) -> Dict[str, Any]:
@@ -216,6 +220,8 @@ class CallDetailRecord:
             "amd_decision": self.amd_result.decision.value if self.amd_result else None,
             "amd_confidence": self.amd_result.confidence if self.amd_result else None,
             "final_disposition": self.final_disposition.value,
+            "agitation_score": round(self.agitation_score, 3),
+            "dispute_type": self.dispute_type,
             "payment_link_sent": self.payment_link_sent,
             "amount_recovered_or_promised": self.amount_recovered_or_promised,
             "turns_count": self.turns_count,
@@ -238,6 +244,7 @@ class CampaignSummary:
     busy_or_no_answer_count: int = 0
     dnd_blocked_count: int = 0
     hours_blocked_count: int = 0
+    transferred_to_supervisor_count: int = 0
     promise_to_pay_count: int = 0
     payment_link_sent_count: int = 0
     total_amount_recovered: float = 0.0

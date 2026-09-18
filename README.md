@@ -510,6 +510,24 @@ python3 scripts/test_campaign_dialer_amd.py
 python3 -m verbalyze.cli campaign --csv leads.csv --channels 5 --persona muthoot_recovery --lang hi --ignore-calling-window
 ```
 
+#### Real-Time Acoustic Sentiment Detection & Human Warm Transfer (SIP REFER)
+To handle complex debt recovery, customer distress, and regulatory escalations during live voice calls, Verbalyze features dual-channel emotion intelligence and carrier-grade human warm handoff:
+* **Dual-Channel Emotion & Dispute Detection**:
+  * **Acoustic Agitation Scorer**: Evaluates raw linear PCM volume dynamics (normal 800 - 2,500 RMS vs shouting >6,000 RMS), frame-to-frame energy variance (erratic bursts), and zero-crossing rate volatility (pitch jitter and screeching).
+  * **Lexical Dispute Classifier**: Detects Indian financial and regulatory dispute patterns across Hindi, English, and Hinglish, including payment disputes ("paise jama kar diye", "receipt"), legal threats ("police FIR", "court case", "rbi ombudsman"), harassment claims ("bar bar call kyu", "stop calling me"), supervisor demands ("manager se baat karao", "talk to human"), and wrong person flags ("galat number").
+  * **Composite Agitation Index**: Synthesizes acoustic and lexical features into a normalized score (0.00 to 1.00) categorized into `CALM`, `ELEVATED`, `AGITATED`, and `CRITICAL`.
+* **Empathetic Conversational De-escalation**: When elevated customer distress or annoyance is detected, the agent shifts to an empathetic de-escalation posture, validating customer concerns before discussing obligations.
+* **Carrier SIP REFER Warm Transfer (RFC 3515)**:
+  * Automatically terminates bot turn-taking upon critical agitation or legal threats, playing a reassurance announcement and initiating call transfer.
+  * Injects an `X-Verbalyze-Context` metadata header containing URL-safe Base64 encoded JSON (caller phone, loan ID, amount due, agitation score, dispute reason, and conversational briefing).
+  * Formats standard RFC 3515 SIP `REFER` directives for Asterisk/FreeSWITCH, Twilio/Exotel XML `<Dial>` payloads with `<Sip>` or `<Number>`, and WebSocket media stream transfer control frames.
+  * Captures `TRANSFERRED_TO_SUPERVISOR` and `LEGAL_DISPUTE_ESCALATED` dispositions in campaign Call Detail Records (CDRs) with DPDP-compliant PII masking.
+
+```bash
+# Verify Acoustic Sentiment Detection & Warm Transfer Suite (8/8):
+python3 scripts/test_sentiment_and_transfer.py
+```
+
 ---
 
 ### 4. Automated Human-Likeness Quality Gate (80% / MOS 4.0)

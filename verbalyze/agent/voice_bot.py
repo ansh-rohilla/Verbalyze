@@ -18,6 +18,12 @@ from typing import Dict, List, Any, Optional, Tuple, AsyncGenerator
 from verbalyze.agent.tools import TELEPHONY_TOOLS_SCHEMA, execute_telephony_tool
 from verbalyze.agent.audio_engine import AudioEngine
 from verbalyze.security import detect_prompt_injection, PIIRedactor
+from verbalyze.agent.sentiment import (
+    UnifiedSentimentEngine,
+    SentimentResult,
+    SentimentCategory,
+    DisputeType,
+)
 
 INITIAL_GREETINGS = {
     "muthoot_recovery": {
@@ -133,6 +139,9 @@ class VoiceAgent:
             {"role": "system", "content": self.system_prompt}
         ]
         self.is_call_active = True
+        self.sentiment_engine = UnifiedSentimentEngine()
+        self.last_sentiment: Optional[SentimentResult] = None
+        self.deescalation_active: bool = False
 
     def get_initial_greeting(self) -> str:
         """Returns localized initial greeting for the selected persona."""
@@ -292,8 +301,8 @@ class VoiceAgent:
             return "हाँ जी, मैं मुथूट फिनकॉर्प से बोल रहा हूँ। क्या आप आज अपनी बकाया ईएमआई जमा कर पाएंगे?", None
         return "Yes, I am calling from Muthoot Fincorp regarding your pending loan EMI. Could you confirm when you can clear it?", None
 
-    def step(self, user_utterance: str) -> Dict[str, Any]:
-        """Processes a single conversational turn from the user."""
+    def step(self, user_utterance: str, pcm_bytes: Optional[bytes] = None) -> Dict[str, Any]:
+        """Processes a single conversational turn from the user with emotion & dispute analysis."""
         if not self.is_call_active:
             return {"text": "[Call already disconnected]", "terminated": True}
 
@@ -314,11 +323,56 @@ class VoiceAgent:
                 "security_block": True
             }
 
+        # 0.5. Dual-Channel Emotion & Dispute Analysis
+        sentiment = self.sentiment_engine.analyze(user_utterance, pcm_bytes=pcm_bytes)
+        self.last_sentiment = sentiment
+
         # 1. Record user turn
         self.messages.append({"role": "user", "content": user_utterance})
 
-        # 2. Generate assistant response
-        content, tool_call = self._call_groq_or_openai()
+        # Check if automatic escalation or human transfer is triggered
+        auto_transfer = False
+        if sentiment.transfer_recommended and (
+            sentiment.category in (SentimentCategory.CRITICAL, SentimentCategory.AGITATED)
+            or sentiment.dispute_type in (DisputeType.LEGAL_THREAT, DisputeType.HARASSMENT_COMPLAINT, DisputeType.HUMAN_REQUEST)
+        ):
+            auto_transfer = True
+
+        if auto_transfer:
+            transfer_reason = sentiment.dispute_type.value if sentiment.dispute_type != DisputeType.NONE else "high_agitation"
+            target_dept = "disputes" if sentiment.dispute_type in (DisputeType.PAYMENT_DISPUTE, DisputeType.LEGAL_THREAT) else "supervisor"
+            tool_call = {
+                "function": {
+                    "name": "transfer_to_human",
+                    "arguments": json.dumps({
+                        "reason": transfer_reason,
+                        "customer_sentiment": sentiment.category.value,
+                        "summary": f"Customer escalation ({transfer_reason}): {user_utterance[:100]}",
+                        "target_department": target_dept,
+                    })
+                }
+            }
+            content = (
+                "मैं आपकी स्थिति समझ सकती हूँ। कृपया एक क्षण प्रतीक्षा करें, मैं आपकी कॉल वरिष्ठ अधिकारी को ट्रांसफर कर रही हूँ।"
+                if self.language == "hi"
+                else "I understand your situation. Please hold for a moment while I transfer you to a senior officer."
+            )
+        else:
+            if sentiment.deescalation_recommended:
+                self.deescalation_active = True
+
+            # 2. Generate assistant response
+            content, tool_call = self._call_groq_or_openai()
+
+            # Apply empathetic de-escalation tone if customer is elevated/agitated
+            if self.deescalation_active and content and not tool_call:
+                empathy_prefix = (
+                    "मैं आपकी चिंता समझ सकती हूँ। "
+                    if self.language == "hi"
+                    else "I understand your concern. "
+                )
+                if not content.startswith(empathy_prefix.strip()[:10]):
+                    content = empathy_prefix + content
 
         # Clean up JSON leaks or token fragments from small local SLMs
         if content:
@@ -413,16 +467,22 @@ class VoiceAgent:
             "quality_report": quality_report,
             "tool_event": tool_status if tool_call else None,
             "tool_data": tool_data if tool_call else None,
+            "sentiment": sentiment.to_dict(),
             "terminated": not self.is_call_active
         }
 
-    async def step_stream(self, user_utterance: str) -> AsyncGenerator[Dict[str, Any], None]:
+    async def step_stream(
+        self,
+        user_utterance: str,
+        pcm_bytes: Optional[bytes] = None
+    ) -> AsyncGenerator[Dict[str, Any], None]:
         """
-        Processes a conversational turn with token streaming and clause-level pipelining.
+        Processes a conversational turn with token streaming, clause-level pipelining,
+        and real-time emotion/dispute transfer handling.
         Yields:
         - {"type": "clause", "text": clause_str, "index": int}
         - {"type": "tool_call", "tool_name": str, "tool_event": str, "tool_data": Any, "terminated": bool}
-        - {"type": "final", "full_text": str, "terminated": bool}
+        - {"type": "final", "full_text": str, "sentiment": Dict[str, Any], "terminated": bool}
         """
         if not self.is_call_active:
             yield {"type": "final", "full_text": "[Call already disconnected]", "terminated": True}
@@ -448,6 +508,55 @@ class VoiceAgent:
                 "terminated": False
             }
             return
+
+        # 0.5. Dual-Channel Emotion & Dispute Analysis
+        sentiment = self.sentiment_engine.analyze(user_utterance, pcm_bytes=pcm_bytes)
+        self.last_sentiment = sentiment
+
+        # Auto-transfer under critical agitation, harassment, legal threat, or human request
+        if sentiment.transfer_recommended and (
+            sentiment.category in (SentimentCategory.CRITICAL, SentimentCategory.AGITATED)
+            or sentiment.dispute_type in (DisputeType.LEGAL_THREAT, DisputeType.HARASSMENT_COMPLAINT, DisputeType.HUMAN_REQUEST)
+        ):
+            transfer_reason = sentiment.dispute_type.value if sentiment.dispute_type != DisputeType.NONE else "high_agitation"
+            dept = "disputes" if sentiment.dispute_type in (DisputeType.PAYMENT_DISPUTE, DisputeType.LEGAL_THREAT) else "supervisor"
+            transfer_msg = (
+                "मैं आपकी स्थिति समझ सकती हूँ। कृपया एक क्षण प्रतीक्षा करें, मैं आपकी कॉल वरिष्ठ अधिकारी को ट्रांसफर कर रही हूँ।"
+                if self.language == "hi"
+                else "I understand your situation. Please hold for a moment while I transfer you to a senior officer."
+            )
+            yield {
+                "type": "clause",
+                "text": transfer_msg,
+                "index": 1
+            }
+
+            transfer_args = {
+                "reason": transfer_reason,
+                "customer_sentiment": sentiment.category.value,
+                "summary": f"Customer escalation ({transfer_reason}): {user_utterance[:100]}",
+                "target_department": dept,
+            }
+            term, msg, evt_data = execute_telephony_tool("transfer_to_human", transfer_args, caller_phone=self.caller_phone)
+            self.is_call_active = False
+
+            yield {
+                "type": "tool_call",
+                "tool_name": "transfer_to_human",
+                "tool_event": msg,
+                "tool_data": evt_data,
+                "terminated": True
+            }
+            yield {
+                "type": "final",
+                "full_text": transfer_msg,
+                "sentiment": sentiment.to_dict(),
+                "terminated": True
+            }
+            return
+
+        if sentiment.deescalation_recommended:
+            self.deescalation_active = True
 
         # 1. Record user turn
         self.messages.append({"role": "user", "content": user_utterance})
