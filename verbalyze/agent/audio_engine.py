@@ -70,6 +70,14 @@ class AudioEngine:
         else:
             self.player = None
 
+    def set_language(self, language: str, voice: Optional[str] = None):
+        """
+        Dynamically updates active language and selects the corresponding neural voice.
+        Enables mid-call voice adaptation when customer code-switches languages.
+        """
+        self.language = language
+        self.voice = voice or NEURAL_VOICES.get(language, self.voice)
+
     async def _synthesize_edge_tts(self, text: str, output_path: str, voice: Optional[str] = None, rate: str = "+0%", pitch: str = "+0Hz"):
         """Invokes Microsoft Edge-TTS neural engine asynchronously."""
         import edge_tts
@@ -147,7 +155,7 @@ class AudioEngine:
                         return dest_path
 
             # If still failing threshold, reject and drop audio
-            print(f"⚠️  [Quality Gate REJECTED] Candidate audio score ({report.score*100:.1f}%) < threshold ({threshold*100:.1f}%). {report.feedback}")
+            print(f"[Quality Gate REJECTED] Candidate audio score ({report.score*100:.1f}%) < threshold ({threshold*100:.1f}%). {report.feedback}")
             return None
 
         except ImportError:
@@ -164,7 +172,7 @@ class AudioEngine:
             self.last_quality_report = report
             if report.score >= threshold:
                 return dest_path
-            print(f"⚠️  [Quality Gate REJECTED] Fallback audio score ({report.score*100:.1f}%) < threshold ({threshold*100:.1f}%).")
+            print(f"[Quality Gate REJECTED] Fallback audio score ({report.score*100:.1f}%) < threshold ({threshold*100:.1f}%).")
             return None
         except Exception:
             pass

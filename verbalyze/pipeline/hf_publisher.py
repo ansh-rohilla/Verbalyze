@@ -94,7 +94,7 @@ def publish_dataset(
 
     dataset_url = f"https://huggingface.co/datasets/{repo_id}"
     print(f"\n========================================================")
-    print(f"🎉 Successfully published to Hugging Face Hub!")
+    print(f"[Success] Successfully published to Hugging Face Hub!")
     print(f"URL: {dataset_url}")
     print(f"Python usage:")
     print(f"  from datasets import load_dataset")

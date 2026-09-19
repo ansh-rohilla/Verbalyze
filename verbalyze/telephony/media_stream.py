@@ -152,7 +152,7 @@ class MediaStreamSession:
                 self.current_playback_task.cancel()
             self.is_agent_streaming = False
             await self.send_clear_event()
-            print("⚡ [WebSocket Barge-In] Interrupted bot playback! Sent clear event to carrier.")
+            print("[WebSocket Barge-In] Interrupted bot playback! Sent clear event to carrier.")
 
     async def stream_audio_to_carrier(self, pcm_8k_bytes: bytes):
         """
@@ -264,37 +264,58 @@ class MediaStreamSession:
 
         caller_tag = PIIRedactor.mask_phone(self.caller_phone) if self.caller_phone else "Unknown"
         redacted_user_text = PIIRedactor.redact_text(user_text)
-        print(f"📞 [Caller {caller_tag} Turn Transcribed]: '{redacted_user_text}'")
-        print(f"⚡ [Streaming Pipeline] Beginning token-to-TTS pipeline for low-latency response...")
+        print(f"[Caller {caller_tag} Turn Transcribed]: '{redacted_user_text}'")
+        print("[Streaming Pipeline] Beginning token-to-TTS pipeline for low-latency response...")
 
         self.cancel_playback_event.clear()
         self.is_agent_streaming = True
         accumulated_reply = []
 
         try:
-            async for chunk in self.agent.step_stream(user_text):
+            async for chunk in self.agent.step_stream(user_text, pcm_bytes=raw_pcm):
                 if self.cancel_playback_event.is_set():
-                    print("⚡ [Streaming Pipeline] Discarded remaining clauses due to caller barge-in.")
+                    print("[Streaming Pipeline] Discarded remaining clauses due to caller barge-in.")
                     break
 
                 if chunk["type"] == "clause":
                     clause_text = chunk["text"]
                     accumulated_reply.append(clause_text)
-                    print(f"🗣️ [Agent Clause {chunk.get('index', 0)}]: '{clause_text}'")
+                    print(f"[Agent Clause {chunk.get('index', 0)}]: '{clause_text}'")
                     await self.synthesize_and_stream_clause(clause_text)
 
                 elif chunk["type"] == "tool_call":
-                    print(f"🔧 [Telephony Tool Triggered]: {chunk.get('tool_event')}")
+                    print(f"[Telephony Tool Triggered]: {chunk.get('tool_event')}")
 
                 elif chunk["type"] == "final":
                     full_text = chunk.get("full_text") or " ".join(accumulated_reply)
-                    print(f"🤖 [Agent Full Turn Completed]: '{full_text}'")
+                    print(f"[Agent Full Turn Completed]: '{full_text}'")
+                    
+                    # Process dynamic language identification event
+                    lang_info = chunk.get("language_info")
+                    if lang_info and lang_info.get("language_switched"):
+                        new_lang = lang_info.get("primary_language", self.language)
+                        self.language = new_lang
+                        if not self.is_binary_mode:
+                            switch_msg = json.dumps({
+                                "event": "language_switch",
+                                "streamSid": self.stream_sid,
+                                "language": new_lang,
+                                "confidence": lang_info.get("confidence", 1.0),
+                                "is_code_switched": lang_info.get("is_code_switched", False),
+                                "recommended_voice": lang_info.get("recommended_voice", "")
+                            })
+                            try:
+                                await self.websocket.send_text(switch_msg)
+                            except Exception:
+                                pass
+                        print(f"[LID Gate] Dynamic language switch detected: {new_lang} (confidence {lang_info.get('confidence', 1.0):.2f}, code_switched={lang_info.get('is_code_switched', False)})")
+
                     if chunk.get("terminated"):
-                        print("📞 [Call Terminated]: Agent hung up.")
+                        print("[Call Terminated]: Agent hung up.")
                         self.is_active = False
 
         except Exception as e:
-            print(f"⚠️ [Streaming Turn Error]: {e}")
+            print(f"[Streaming Turn Error]: {e}")
         finally:
             self.is_agent_streaming = False
 
@@ -308,10 +329,10 @@ class MediaStreamSession:
                 self.language
             )
             if transcript:
-                print(f"🎙️ [Sovereign STT Transcribed in {latency_ms:.1f}ms]: '{transcript}'")
+                print(f"[Sovereign STT Transcribed in {latency_ms:.1f}ms]: '{transcript}'")
                 return transcript
         except Exception as e:
-            print(f"⚠️ [STT Error]: {e}")
+            print(f"[STT Error]: {e}")
 
         fallback_map = {
             "hi": "हाँ जी, मैं सुन रहा हूँ।",
@@ -383,7 +404,7 @@ class MediaStreamSession:
                         media_fmt = msg_json.get("start", {}).get("mediaFormat", {})
                         if "encoding" in media_fmt:
                             self.codec = media_fmt["encoding"].lower()
-                        print(f"📞 [WebSocket Stream Connected] StreamSid: {self.stream_sid}, Codec: {self.codec}")
+                        print(f"[WebSocket Stream Connected] StreamSid: {self.stream_sid}, Codec: {self.codec}")
 
                         if not greeting_sent:
                             greeting = self.agent.get_initial_greeting()
@@ -397,7 +418,7 @@ class MediaStreamSession:
                             await self.handle_inbound_frame(raw_bytes)
 
                     elif event == "stop":
-                        print(f"📞 [WebSocket Stream Stopped] StreamSid: {self.stream_sid}")
+                        print(f"[WebSocket Stream Stopped] StreamSid: {self.stream_sid}")
                         self.is_active = False
                         break
 

@@ -232,7 +232,7 @@ class SMSDispatcher:
         masked_phone = PIIRedactor.mask_phone(phone)
         masked_upi = PIIRedactor.mask_upi_url(upi_url)
         redacted_text = PIIRedactor.redact_text(text)
-        print(f"📱 [Live SMS Dispatcher] Sent to {masked_phone}:")
+        print(f"[Live SMS Dispatcher] Sent to {masked_phone}:")
         print(f"   • Message: '{redacted_text}'")
         print(f"   • UPI Deep-Link: '{masked_upi}'")
         formatted_phone = f"+91 {phone[:5]} {phone[5:]}"

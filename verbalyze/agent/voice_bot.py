@@ -24,6 +24,11 @@ from verbalyze.agent.sentiment import (
     SentimentCategory,
     DisputeType,
 )
+from verbalyze.agent.lid_engine import (
+    LanguageIdentificationGate,
+    LanguageIDResult,
+    ScriptType,
+)
 
 INITIAL_GREETINGS = {
     "muthoot_recovery": {
@@ -107,13 +112,15 @@ class VoiceAgent:
         voice_enabled: bool = True,
         min_human_likeness: float = 0.80,
         simulate_telephony: bool = False,
-        caller_phone: Optional[str] = None
+        caller_phone: Optional[str] = None,
+        adaptive_language: bool = True
     ):
         self.language = language
         self.persona = persona
         self.caller_phone = caller_phone
         self.min_human_likeness = min_human_likeness
         self.simulate_telephony = simulate_telephony
+        self.adaptive_language = adaptive_language
         self.system_prompt = system_prompt or DEFAULT_SYSTEM_PROMPTS.get(language, DEFAULT_SYSTEM_PROMPTS["hi"])
         self.llm_provider = llm_provider.lower()
         self.api_key = api_key or os.environ.get("GROQ_API_KEY") or os.environ.get("OPENAI_API_KEY")
@@ -142,6 +149,8 @@ class VoiceAgent:
         self.sentiment_engine = UnifiedSentimentEngine()
         self.last_sentiment: Optional[SentimentResult] = None
         self.deescalation_active: bool = False
+        self.lid_gate = LanguageIdentificationGate(default_language=language)
+        self.last_lid: Optional[LanguageIDResult] = None
 
     def get_initial_greeting(self) -> str:
         """Returns localized initial greeting for the selected persona."""
@@ -226,7 +235,7 @@ class VoiceAgent:
                     pass
 
             if self.llm_provider == "ollama":
-                print(f"⚠️  [Ollama Notice] Failed connecting to {url}: {e}. Falling back to rule-based telephony response.")
+                print(f"[Ollama Notice] Failed connecting to {url}: {e}. Falling back to rule-based telephony response.")
             # Fallback to simulated telephony response
             return self._mock_llm_response()
 
@@ -322,6 +331,25 @@ class VoiceAgent:
                 "audio_path": self.audio_engine.synthesize(safe_reply) if self.audio_engine else None,
                 "security_block": True
             }
+
+        # 0.4. Multi-Modal Language Identification & Dynamic Adaptation
+        lid_result = self.lid_gate.identify(
+            transcript=user_utterance,
+            pcm_bytes=pcm_bytes,
+            current_language=self.language,
+        )
+        self.last_lid = lid_result
+
+        # Dynamically adapt language and voice if customer transitioned languages
+        if self.adaptive_language and lid_result.language_switched:
+            new_lang = lid_result.primary_language
+            self.language = new_lang
+            if self.audio_engine:
+                self.audio_engine.set_language(new_lang, lid_result.recommended_voice)
+            self.messages.append({
+                "role": "system",
+                "content": f"[Language Switch] Customer is now speaking in {new_lang.upper()}. Respond naturally in {new_lang.upper()}."
+            })
 
         # 0.5. Dual-Channel Emotion & Dispute Analysis
         sentiment = self.sentiment_engine.analyze(user_utterance, pcm_bytes=pcm_bytes)
@@ -468,6 +496,7 @@ class VoiceAgent:
             "tool_event": tool_status if tool_call else None,
             "tool_data": tool_data if tool_call else None,
             "sentiment": sentiment.to_dict(),
+            "language_info": lid_result.to_dict(),
             "terminated": not self.is_call_active
         }
 
@@ -508,6 +537,24 @@ class VoiceAgent:
                 "terminated": False
             }
             return
+
+        # 0.4. Multi-Modal Language Identification & Dynamic Adaptation
+        lid_result = self.lid_gate.identify(
+            transcript=user_utterance,
+            pcm_bytes=pcm_bytes,
+            current_language=self.language,
+        )
+        self.last_lid = lid_result
+
+        if self.adaptive_language and lid_result.language_switched:
+            new_lang = lid_result.primary_language
+            self.language = new_lang
+            if self.audio_engine:
+                self.audio_engine.set_language(new_lang, lid_result.recommended_voice)
+            self.messages.append({
+                "role": "system",
+                "content": f"[Language Switch] Customer is now speaking in {new_lang.upper()}. Respond naturally in {new_lang.upper()}."
+            })
 
         # 0.5. Dual-Channel Emotion & Dispute Analysis
         sentiment = self.sentiment_engine.analyze(user_utterance, pcm_bytes=pcm_bytes)
@@ -619,6 +666,8 @@ class VoiceAgent:
             yield {
                 "type": "final",
                 "full_text": accumulated_content,
+                "sentiment": sentiment.to_dict(),
+                "language_info": lid_result.to_dict(),
                 "terminated": not self.is_call_active
             }
             return
@@ -715,7 +764,7 @@ class VoiceAgent:
 
         except Exception as e:
             # If Ollama / Groq connection fails, fallback to mock response
-            print(f"⚠️  [Streaming LLM Notice] Streaming failed ({e}). Falling back to rule-based telephony.")
+            print(f"[Streaming LLM Notice] Streaming failed ({e}). Falling back to rule-based telephony.")
             mock_content, mock_tool_call = self._mock_llm_response()
             clause_index += 1
             accumulated_content = mock_content
@@ -825,6 +874,8 @@ class VoiceAgent:
         yield {
             "type": "final",
             "full_text": accumulated_content,
+            "sentiment": sentiment.to_dict(),
+            "language_info": lid_result.to_dict(),
             "terminated": not self.is_call_active
         }
 
@@ -843,12 +894,12 @@ class VoiceAgent:
         else:
             initial_greeting = "Hello, am I speaking with Mr. Sharma? I am calling from Muthoot Fincorp."
 
-        print(f"📞 Agent: {initial_greeting}")
+        print(f"[Agent]: {initial_greeting}")
         if self.voice_enabled and self.audio_engine:
             audio_file = self.audio_engine.synthesize(initial_greeting)
             if self.audio_engine.last_quality_report:
                 q = self.audio_engine.last_quality_report
-                print(f"   🎯 [Quality Gate] Human-Likeness: {q.score*100:.1f}% (MOS {q.mos_equivalent}/5.0) ✓ Accepted")
+                print(f"   [Quality Gate] Human-Likeness: {q.score*100:.1f}% (MOS {q.mos_equivalent}/5.0) Accepted")
             if audio_file:
                 self.audio_engine.play(audio_file)
                 time.sleep(0.5)
@@ -857,7 +908,7 @@ class VoiceAgent:
 
         while self.is_call_active:
             try:
-                user_input = input("\n👤 Customer: ").strip()
+                user_input = input("\n[Customer]: ").strip()
                 if not user_input:
                     continue
                 if user_input.lower() in ["quit", "exit"]:
@@ -865,23 +916,23 @@ class VoiceAgent:
                     break
 
                 res = self.step(user_input)
-                print(f"📞 Agent: {res['text']}")
+                print(f"[Agent]: {res['text']}")
                 
                 if res.get("quality_report"):
                     q = res["quality_report"]
-                    print(f"   🎯 [Quality Gate] Human-Likeness: {q.score*100:.1f}% (MOS {q.mos_equivalent}/5.0) ✓ Accepted")
+                    print(f"   [Quality Gate] Human-Likeness: {q.score*100:.1f}% (MOS {q.mos_equivalent}/5.0) Accepted")
                 elif self.voice_enabled:
-                    print("   ⚠️  [Quality Gate] Audio rejected: fell below human-likeness threshold.")
+                    print("   [Quality Gate] Audio rejected: fell below human-likeness threshold.")
 
                 if res.get("tool_event"):
-                    print(f"   ⚙️  {res['tool_event']}")
+                    print(f"   [Tool]: {res['tool_event']}")
 
                 if res.get("audio_path") and self.audio_engine:
                     self.audio_engine.play(res["audio_path"])
                     time.sleep(0.5)
 
                 if res.get("terminated"):
-                    print("\n🔴 [CALL TERMINATED - Phone Hung Up]")
+                    print("\n[CALL TERMINATED - Phone Hung Up]")
             except (KeyboardInterrupt, EOFError):
                 print("\n[Call interrupted]")
                 break
@@ -898,19 +949,19 @@ class VoiceAgent:
         listener = MicrophoneListener(language=self.language)
 
         print("\n" + "=" * 64)
-        print("  🎙️  VERBALYZE: LIVE HANDS-FREE VOICEBOT ON MAC")
-        print(f"  Persona:  {self.persona.upper()} (Muthoot Loan Recovery ₹5,420)")
+        print("  VERBALYZE: LIVE HANDS-FREE VOICEBOT ON MAC")
+        print(f"  Persona:  {self.persona.upper()} (Muthoot Loan Recovery INR 5,420)")
         print(f"  Language: {self.language.upper()} | Voice: {self.audio_engine.voice if self.audio_engine else 'Default'}")
         print(f"  Input:    MacBook Microphone ({listener.locale})")
         print(f"  Output:   MacBook Speakers (Neural Edge-TTS via afplay)")
         print(f"  Mode:     {'Push-to-Talk [ENTER to record]' if mode == 'push_to_talk' else 'Auto Voice Detection (VAD)'}")
-        print(f"  Barge-In: {'⚡ Active (<150ms cutoff)' if enable_barge_in else 'Disabled'}")
+        print(f"  Barge-In: {'Active (<150ms cutoff)' if enable_barge_in else 'Disabled'}")
         print("  (Type 'q' or 'quit' at any prompt to hang up)")
         print("=" * 64 + "\n")
 
         # Initial outbound greeting
         initial_greeting = self.get_initial_greeting()
-        print(f"📞 Agent: {initial_greeting}")
+        print(f"[Agent]: {initial_greeting}")
         self.messages.append({"role": "assistant", "content": initial_greeting})
 
         pending_user_utterance = None
@@ -919,7 +970,7 @@ class VoiceAgent:
             audio_file = self.audio_engine.synthesize(initial_greeting)
             if self.audio_engine.last_quality_report:
                 q = self.audio_engine.last_quality_report
-                print(f"   🎯 [Quality Gate] Human-Likeness: {q.score*100:.1f}% (MOS {q.mos_equivalent}/5.0) ✓ Accepted")
+                print(f"   [Quality Gate] Human-Likeness: {q.score*100:.1f}% (MOS {q.mos_equivalent}/5.0) Accepted")
             if audio_file:
                 if enable_barge_in:
                     interrupted, int_wav, cutoff_ms = listener.monitor_barge_in_and_record(
@@ -946,11 +997,11 @@ class VoiceAgent:
                     user_utterance = pending_user_utterance
                     pending_user_utterance = None
                 else:
-                    print("\n👤 You (Customer):")
+                    print("\n[Customer]:")
                     if mode == "auto":
                         wav_path = listener.record_auto_vad(silence_seconds=1.2)
                     else:
-                        prompt = input("   👉 Press [ENTER] to speak into mic (or type text directly): ").strip()
+                        prompt = input("   Press [ENTER] to speak into mic (or type text directly): ").strip()
                         if prompt.lower() in ["q", "quit", "exit"]:
                             print("\n[Call ended by user]")
                             break
@@ -960,7 +1011,7 @@ class VoiceAgent:
                             wav_path = listener.record_push_to_talk()
 
                     if wav_path:
-                        print("⚡ Transcribing your speech...", end="\r", flush=True)
+                        print("[STT] Transcribing your speech...", end="\r", flush=True)
                         user_utterance = listener.transcribe(wav_path)
                         try:
                             os.remove(wav_path)
@@ -968,23 +1019,23 @@ class VoiceAgent:
                             pass
 
                 if not user_utterance or not user_utterance.strip():
-                    print("⚠️  [Could not detect speech clearly. Please try again]")
+                    print("[Notice] Could not detect speech clearly. Please try again")
                     continue
 
-                print(f"👤 Customer (Transcribed): \"{user_utterance}\"")
+                print(f"[Customer Transcribed]: \"{user_utterance}\"")
 
                 # Step agent
                 res = self.step(user_utterance)
-                print(f"📞 Agent: {res['text']}")
+                print(f"[Agent]: {res['text']}")
 
                 if res.get("quality_report"):
                     q = res["quality_report"]
-                    print(f"   🎯 [Quality Gate] Human-Likeness: {q.score*100:.1f}% (MOS {q.mos_equivalent}/5.0) ✓ Accepted")
+                    print(f"   [Quality Gate] Human-Likeness: {q.score*100:.1f}% (MOS {q.mos_equivalent}/5.0) Accepted")
                 elif self.voice_enabled:
-                    print("   ⚠️  [Quality Gate] Audio rejected: fell below human-likeness threshold.")
+                    print("   [Quality Gate] Audio rejected: fell below human-likeness threshold.")
 
                 if res.get("tool_event"):
-                    print(f"   ⚙️  {res['tool_event']}")
+                    print(f"   [Tool]: {res['tool_event']}")
 
                 if res.get("audio_path") and self.audio_engine:
                     if enable_barge_in and not res.get("terminated"):
@@ -1004,7 +1055,7 @@ class VoiceAgent:
                         time.sleep(0.5)
 
                 if res.get("terminated"):
-                    print("\n🔴 [CALL TERMINATED - Phone Hung Up]")
+                    print("\n[CALL TERMINATED - Phone Hung Up]")
                     break
 
             except (KeyboardInterrupt, EOFError):

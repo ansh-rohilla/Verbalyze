@@ -62,7 +62,7 @@ class MicrophoneListener:
                 frames.append(indata.copy())
 
         # Start stream
-        print("🎙️  [RECORDING...] Speak into your microphone now. Press [ENTER] when done: ", end="", flush=True)
+        print("[RECORDING...] Speak into your microphone now. Press [ENTER] when done: ", end="", flush=True)
         stream = sd.InputStream(samplerate=self.sample_rate, channels=1, dtype="int16", callback=callback)
         with stream:
             try:
@@ -104,7 +104,7 @@ class MicrophoneListener:
         total_blocks = 0
 
         # Ambient energy calibration
-        print("🎙️  [Listening...] Calibrating ambient background noise...", end="", flush=True)
+        print("[Listening...] Calibrating ambient background noise...", end="", flush=True)
         ambient_blocks = []
         with sd.InputStream(samplerate=self.sample_rate, channels=1, dtype="int16") as stream:
             for _ in range(6): # 300ms
@@ -114,7 +114,7 @@ class MicrophoneListener:
 
         ambient_level = max(150.0, np.mean(ambient_blocks))
         energy_threshold = max(350.0, ambient_level * 2.2)
-        print(f"\r🎙️  [Listening...] Speak now in {self.language.upper()} (Auto-detecting speech)...              ", flush=True)
+        print(f"\r[Listening...] Speak now in {self.language.upper()} (Auto-detecting speech)...              ", flush=True)
 
         with sd.InputStream(samplerate=self.sample_rate, channels=1, dtype="int16") as stream:
             while total_blocks < max_blocks:
@@ -126,7 +126,7 @@ class MicrophoneListener:
                     if rms > energy_threshold:
                         speech_started = True
                         frames.append(data.copy())
-                        print("🔴 [Speaking detected... recording]", end="\r", flush=True)
+                        print("[Speaking detected... recording]", end="\r", flush=True)
                 else:
                     frames.append(data.copy())
                     if rms < energy_threshold:
@@ -239,8 +239,8 @@ class MicrophoneListener:
                                 t0 = time.time()
                                 audio_engine.stop_playback()
                                 cutoff_ms = round((time.time() - t0) * 1000.0, 1)
-                                print(f"\n⚡ [Barge-In Detected! Interrupted agent in {cutoff_ms}ms]")
-                                print("🔴 [Listening to your interruption...]", end="\r", flush=True)
+                                print(f"\n[Barge-In Detected! Interrupted agent in {cutoff_ms}ms]")
+                                print("[Listening to your interruption...]", end="\r", flush=True)
 
                                 # Continue recording remaining speech using VAD
                                 frames = list(buffered_frames)

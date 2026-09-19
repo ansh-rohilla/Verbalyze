@@ -28,6 +28,10 @@ from verbalyze.telephony.transfer import (
     SIPTransferDispatcher,
     TransferContext,
 )
+from verbalyze.agent.lid_engine import (
+    LanguageIdentificationGate,
+    LanguageIDResult,
+)
 
 # Try importing FastAPI
 try:
@@ -81,6 +85,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
     active_campaigns: Dict[str, CampaignDialer] = {}
     amd_engine = AMDClassifier()
     sentiment_engine = UnifiedSentimentEngine()
+    lid_gate = LanguageIdentificationGate()
 
     @app.get("/health")
     def health():
@@ -332,6 +337,8 @@ def create_app(auth_token: Optional[str] = None) -> Any:
                 "audio_url": step_res.get("audio_path"),
                 "tool_event": step_res.get("tool_event"),
                 "quality_report": step_res.get("quality_report").to_dict() if step_res.get("quality_report") else None,
+                "sentiment": step_res.get("sentiment"),
+                "language_info": step_res.get("language_info"),
                 "hangup": True,
                 "action": "transfer",
                 "sip_refer": sip_refer,
@@ -347,6 +354,8 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "audio_url": step_res.get("audio_path"),
             "tool_event": step_res.get("tool_event"),
             "quality_report": step_res.get("quality_report").to_dict() if step_res.get("quality_report") else None,
+            "sentiment": step_res.get("sentiment"),
+            "language_info": step_res.get("language_info"),
             "hangup": terminated,
             "action": "hangup" if terminated else "play_and_listen"
         })
@@ -551,6 +560,33 @@ def create_app(auth_token: Optional[str] = None) -> Any:
                 pass
 
         result = sentiment_engine.analyze(text=text, pcm_bytes=pcm_bytes)
+        return JSONResponse(result.to_dict())
+
+    @app.post("/telephony/lid")
+    async def analyze_lid_endpoint(request: Request):
+        """
+        Real-time multi-modal Language Identification (LID) & code-switching endpoint.
+        Analyzes customer text and/or base64-encoded PCM audio for Indic language & script detection.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+
+        data = await request.json()
+        text = str(data.get("text", "")).strip()
+        current_lang = str(data.get("current_language", "hi"))
+        audio_b64 = data.get("audio_base64")
+        pcm_bytes = None
+        if audio_b64:
+            try:
+                pcm_bytes = base64.b64decode(audio_b64)
+            except Exception:
+                pass
+
+        result = lid_gate.identify(
+            transcript=text,
+            pcm_bytes=pcm_bytes,
+            current_language=current_lang,
+        )
         return JSONResponse(result.to_dict())
 
     @app.post("/telephony/transfer")

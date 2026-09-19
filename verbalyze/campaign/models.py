@@ -179,6 +179,8 @@ class CallDetailRecord:
     tool_events: List[Dict[str, Any]] = field(default_factory=list)
     agitation_score: float = 0.0
     dispute_type: str = "NONE"
+    detected_language: str = "hi"
+    is_code_switched: bool = False
     error_message: Optional[str] = None
 
     def to_dict(self, mask_pii: bool = True) -> Dict[str, Any]:
@@ -222,6 +224,8 @@ class CallDetailRecord:
             "final_disposition": self.final_disposition.value,
             "agitation_score": round(self.agitation_score, 3),
             "dispute_type": self.dispute_type,
+            "detected_language": self.detected_language,
+            "is_code_switched": self.is_code_switched,
             "payment_link_sent": self.payment_link_sent,
             "amount_recovered_or_promised": self.amount_recovered_or_promised,
             "turns_count": self.turns_count,
@@ -250,6 +254,8 @@ class CampaignSummary:
     total_amount_recovered: float = 0.0
     failed_count: int = 0
     disposition_breakdown: Dict[str, int] = field(default_factory=dict)
+    language_breakdown: Dict[str, int] = field(default_factory=dict)
+    code_switched_count: int = 0
     average_duration_sec: float = 0.0
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
@@ -271,6 +277,8 @@ class CampaignSummary:
             "total_amount_recovered": round(self.total_amount_recovered, 2),
             "failed_count": self.failed_count,
             "disposition_breakdown": self.disposition_breakdown,
+            "language_breakdown": self.language_breakdown,
+            "code_switched_count": self.code_switched_count,
             "average_duration_sec": round(self.average_duration_sec, 2),
             "start_time": self.start_time.isoformat() if self.start_time else None,
             "end_time": self.end_time.isoformat() if self.end_time else None,

@@ -301,7 +301,7 @@ class CampaignDialer:
         # Stage 4: Conversational VoiceAgent Execution
         # ----------------------------------------------------------------------
         self.summary.human_answered_count += 1
-        call_turns, tool_events, final_disp, payment_sent, peak_agitation, detected_dispute = await self._conduct_conversation(
+        call_turns, tool_events, final_disp, payment_sent, peak_agitation, detected_dispute, detected_lang, is_code_switched = await self._conduct_conversation(
             lead=lead,
             initial_transcript=early_transcript,
         )
@@ -327,6 +327,13 @@ class CampaignDialer:
             self.summary.disposition_breakdown.get(disp_key, 0) + 1
         )
 
+        # Record language breakdown and code-switch count
+        self.summary.language_breakdown[detected_lang] = (
+            self.summary.language_breakdown.get(detected_lang, 0) + 1
+        )
+        if is_code_switched:
+            self.summary.code_switched_count += 1
+
         cdr = CallDetailRecord(
             call_id=call_id,
             campaign_id=self.config.campaign_id,
@@ -340,6 +347,8 @@ class CampaignDialer:
             final_disposition=final_disp,
             agitation_score=peak_agitation,
             dispute_type=detected_dispute,
+            detected_language=detected_lang,
+            is_code_switched=is_code_switched,
             payment_link_sent=payment_sent,
             amount_recovered_or_promised=lead.amount_due if payment_sent else 0.0,
             turns_count=len(call_turns),
@@ -426,6 +435,8 @@ class CampaignDialer:
         final_disp = CallDisposition.PROMISE_TO_PAY
         peak_agitation = 0.0
         detected_dispute = "NONE"
+        detected_lang = self.config.language
+        is_code_switched = False
 
         # Initial Agent Greeting
         greeting = agent.get_initial_greeting()
@@ -437,6 +448,11 @@ class CampaignDialer:
 
         res_1 = agent.step(cust_turn_1)
         turns.append({"role": "assistant", "content": res_1["text"]})
+
+        if res_1.get("language_info"):
+            detected_lang = res_1["language_info"].get("primary_language", detected_lang)
+            if res_1["language_info"].get("is_code_switched"):
+                is_code_switched = True
 
         if res_1.get("sentiment"):
             peak_agitation = max(peak_agitation, res_1["sentiment"].get("composite_agitation", 0.0))
@@ -451,7 +467,7 @@ class CampaignDialer:
                     if detected_dispute == "LEGAL_THREAT"
                     else CallDisposition.TRANSFERRED_TO_SUPERVISOR
                 )
-                return turns, tool_events, final_disp, False, peak_agitation, detected_dispute
+                return turns, tool_events, final_disp, False, peak_agitation, detected_dispute, detected_lang, is_code_switched
             else:
                 payment_link_sent = True
 
@@ -461,6 +477,11 @@ class CampaignDialer:
 
         res_2 = agent.step(cust_turn_2)
         turns.append({"role": "assistant", "content": res_2["text"]})
+
+        if res_2.get("language_info"):
+            detected_lang = res_2["language_info"].get("primary_language", detected_lang)
+            if res_2["language_info"].get("is_code_switched"):
+                is_code_switched = True
 
         if res_2.get("sentiment"):
             peak_agitation = max(peak_agitation, res_2["sentiment"].get("composite_agitation", 0.0))
@@ -475,7 +496,7 @@ class CampaignDialer:
                     if detected_dispute == "LEGAL_THREAT"
                     else CallDisposition.TRANSFERRED_TO_SUPERVISOR
                 )
-                return turns, tool_events, final_disp, False, peak_agitation, detected_dispute
+                return turns, tool_events, final_disp, False, peak_agitation, detected_dispute, detected_lang, is_code_switched
             else:
                 payment_link_sent = True
 
@@ -486,7 +507,7 @@ class CampaignDialer:
         else:
             final_disp = CallDisposition.PROMISE_TO_PAY
 
-        return turns, tool_events, final_disp, payment_link_sent, peak_agitation, detected_dispute
+        return turns, tool_events, final_disp, payment_link_sent, peak_agitation, detected_dispute, detected_lang, is_code_switched
 
     # --------------------------------------------------------------------------
     # RETRY LOGIC & DISPOSITION HANDLERS
@@ -678,6 +699,8 @@ class CampaignDialer:
             "duration_seconds",
             "amd_decision",
             "final_disposition",
+            "detected_language",
+            "is_code_switched",
             "payment_link_sent",
             "amount_recovered_or_promised",
             "turns_count",

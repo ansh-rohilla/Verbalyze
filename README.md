@@ -528,6 +528,31 @@ To handle complex debt recovery, customer distress, and regulatory escalations d
 python3 scripts/test_sentiment_and_transfer.py
 ```
 
+#### Multi-Lingual Code-Switching STT Tuning & Language Identification (LID) Gate
+Indian telephone dialogues frequently transition between native regional languages, English, and Romanized colloquial dialects (Hinglish, Gujlish, Tanglish). Verbalyze integrates real-time Language Identification and prompt conditioning to guarantee natural code-switching comprehension:
+* **Multi-Modal Language Identification Gate (`LanguageIdentificationGate`)**:
+  * **Unicode Script Analyzer (`LexicalLIDClassifier`)**: Instantly categorizes native scripts across Devanagari, Gujarati, Tamil, Telugu, Bengali, Kannada, Malayalam, Gurmukhi, Odia, and Arabic.
+  * **Romanized Dialect Classifier**: Evaluates Latin-script inputs against distinctive lexical marker dictionaries to classify English vs Hinglish vs Gujlish vs Tanglish. Detects code-switching when English banking loanwords (EMI, UPI, statement, payment, loan, penalty) blend with Indic grammar.
+  * **Acoustic LID Classifier (`AcousticLIDClassifier`)**: Evaluates incoming 8kHz linear PCM speech through Whisper's sub-30ms `detect_language()` acoustic mel-filterbank.
+  * **Signal Fusion & Hysteresis Gating**: Fuses acoustic and lexical signals. Protects against erratic voice flickering by enforcing confidence thresholds and transition confirmation before triggering mid-call language switches.
+* **Code-Switching STT Prompt Conditioning**:
+  * Conditions `faster-whisper` decoders with `INDIC_CODE_SWITCH_PROMPTS` across all 12 Indian languages.
+  * Injects banking-specific terminology (`UPI`, `EMI`, `statement`, `net banking`, `QR code`, `reference number`) into the decoding context, preventing phonetic corruption into bizarre native script transliterations.
+* **Dynamic Mid-Call Voice Adaptation**:
+  * When a caller switches languages (e.g. from Hindi to English or Gujarati), `VoiceAgent` and `AudioEngine` dynamically reconfigure the active neural synthesis voice (`hi-IN-SwaraNeural`, `en-IN-NeerjaNeural`, `gu-IN-DhwaniNeural`, `ta-IN-PallaviNeural`, etc.) on the fly.
+  * Emits `{"event": "language_switch", ...}` control frames over WebSocket media streams to alert telecom carriers and supervisor consoles.
+* **Campaign Disposition & Language Breakdown Tracking**:
+  * `CallDetailRecord` records `detected_language` and `is_code_switched` per call.
+  * `CampaignSummary` aggregates real-time language breakdowns and total code-switched interactions.
+  * Exports sanitized CSV and JSON audits compliant with DPDP Act 2023.
+* **FastAPI Telephony REST API (`POST /telephony/lid`)**:
+  * Standalone endpoint accepting text and/or base64 PCM audio, returning detected primary language, confidence, script, code-switching flags, and recommended neural voice.
+
+```bash
+# Verify Multi-Lingual Code-Switching & LID Suite (8/8):
+python3 scripts/test_lid_and_code_switching.py
+```
+
 ---
 
 ### 4. Automated Human-Likeness Quality Gate (80% / MOS 4.0)
