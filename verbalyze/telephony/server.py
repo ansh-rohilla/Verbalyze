@@ -32,6 +32,9 @@ from verbalyze.agent.lid_engine import (
     LanguageIdentificationGate,
     LanguageIDResult,
 )
+from verbalyze.telephony.supervisor import SupervisorManager
+from verbalyze.telephony.browser_gateway import BrowserAudioSession
+from verbalyze.telephony.templates import SUPERVISOR_DASHBOARD_HTML, BROWSER_CLIENT_HTML
 
 # Try importing FastAPI
 try:
@@ -86,6 +89,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
     amd_engine = AMDClassifier()
     sentiment_engine = UnifiedSentimentEngine()
     lid_gate = LanguageIdentificationGate()
+    supervisor_manager = SupervisorManager()
 
     @app.get("/health")
     def health():
@@ -93,6 +97,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "status": "ok",
             "active_calls": len(active_calls),
             "active_campaigns": len(active_campaigns),
+            "supervisor_active_calls": len(supervisor_manager.active_calls),
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -405,6 +410,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             model_name=model,
             codec=codec,
             caller_phone=caller_phone,
+            supervisor_manager=supervisor_manager,
             stt_provider=stt_provider,
             stt_model=stt_model,
             strict_sovereignty=strict_sovereignty
@@ -648,6 +654,143 @@ def create_app(auth_token: Optional[str] = None) -> Any:
                 "sip_refer_headers": refer_headers,
                 "context": context.to_dict(mask_pii=True),
             })
+
+    # --------------------------------------------------------------------------
+    # SUPERVISOR LIVE OBSERVABILITY & WHISPER COACHING
+    # --------------------------------------------------------------------------
+
+    @app.get("/telephony/supervisor/dashboard", response_class=HTMLResponse)
+    async def supervisor_dashboard_ui():
+        """Serves the real-time supervisor observability and live monitoring console."""
+        return HTMLResponse(content=SUPERVISOR_DASHBOARD_HTML)
+
+    @app.get("/telephony/supervisor/calls")
+    async def list_active_supervisor_calls(request: Request):
+        """Returns JSON snapshot of all active calls monitored by supervisors."""
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+        return JSONResponse({
+            "calls": supervisor_manager.list_calls(),
+            "summary": supervisor_manager.get_fleet_summary()
+        })
+
+    @app.get("/telephony/supervisor/summary")
+    async def get_supervisor_summary(request: Request):
+        """Returns aggregated fleet health metrics across active calls."""
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+        return JSONResponse(supervisor_manager.get_fleet_summary())
+
+    @app.post("/telephony/supervisor/whisper")
+    async def inject_supervisor_whisper_api(request: Request):
+        """Injects private supervisor coaching directive into active call context."""
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+        data = await request.json()
+        call_id = str(data.get("call_id", "")).strip()
+        text = str(data.get("text") or data.get("whisper", "")).strip()
+        supervisor_id = str(data.get("supervisor_id", "supervisor_admin"))
+        if not call_id or not text:
+            return JSONResponse({"error": "Missing call_id or text parameter."}, status_code=400)
+        success = supervisor_manager.inject_whisper(call_id, text, supervisor_id=supervisor_id)
+        if not success:
+            return JSONResponse({"error": f"Call {call_id} not found in active calls."}, status_code=404)
+        return JSONResponse({"success": True, "call_id": call_id, "whisper": text})
+
+    @app.post("/telephony/supervisor/takeover")
+    async def takeover_call_api(request: Request):
+        """Triggers immediate supervisor takeover and warm transfer for an active call."""
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+        data = await request.json()
+        call_id = str(data.get("call_id", "")).strip()
+        supervisor_id = str(data.get("supervisor_id", "supervisor_admin"))
+        target_sip = data.get("target_sip")
+        reason = str(data.get("reason", "supervisor_manual_takeover"))
+        res = supervisor_manager.takeover_call(call_id, supervisor_id=supervisor_id, target_sip=target_sip, reason=reason)
+        return JSONResponse(res, status_code=200 if res.get("success") else 404)
+
+    @app.post("/telephony/supervisor/barge-in")
+    async def barge_in_api(request: Request):
+        """Cuts agent audio speech immediately via supervisor command."""
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+        data = await request.json()
+        call_id = str(data.get("call_id", "")).strip()
+        supervisor_id = str(data.get("supervisor_id", "supervisor_admin"))
+        success = supervisor_manager.barge_in(call_id, supervisor_id=supervisor_id)
+        return JSONResponse({"success": success, "call_id": call_id})
+
+    @app.websocket("/telephony/supervisor/stream")
+    async def supervisor_stream_endpoint(websocket: WebSocket, token: Optional[str] = None):
+        """Real-time pub/sub event stream for supervisor dashboards."""
+        ws_token = token or websocket.query_params.get("token")
+        if not ws_token:
+            auth_header = websocket.headers.get("authorization", "")
+            if auth_header.lower().startswith("bearer "):
+                ws_token = auth_header[7:].strip()
+            else:
+                ws_token = websocket.headers.get("x-verbalyze-token") or websocket.headers.get("x-auth-token")
+        if expected_token and not verify_auth_token(ws_token, expected_token):
+            await websocket.close(code=1008, reason="Policy Violation: Unauthorized")
+            return
+
+        await websocket.accept()
+        queue = supervisor_manager.subscribe()
+        try:
+            init_payload = {
+                "event": "initial_state",
+                "summary": supervisor_manager.get_fleet_summary(),
+                "calls": supervisor_manager.list_calls()
+            }
+            await websocket.send_text(json.dumps(init_payload))
+            while True:
+                msg = await queue.get()
+                await websocket.send_text(msg)
+        except (asyncio.CancelledError, Exception):
+            pass
+        finally:
+            supervisor_manager.unsubscribe(queue)
+
+    # --------------------------------------------------------------------------
+    # IN-BROWSER FULL-DUPLEX AUDIO GATEWAY
+    # --------------------------------------------------------------------------
+
+    @app.get("/telephony/browser-client", response_class=HTMLResponse)
+    async def browser_client_ui():
+        """Interactive in-browser telephony client for direct mic testing."""
+        return HTMLResponse(content=BROWSER_CLIENT_HTML)
+
+    @app.websocket("/telephony/browser/stream")
+    async def browser_stream_endpoint(
+        websocket: WebSocket,
+        session_id: Optional[str] = None,
+        lang: str = "hi",
+        persona: str = "muthoot_recovery",
+        provider: str = "ollama",
+        model: Optional[str] = None,
+        sample_rate: int = 16000,
+        caller_phone: Optional[str] = None,
+        stt_provider: str = "local",
+        stt_model: str = "tiny"
+    ):
+        """Bi-directional full-duplex audio stream for in-browser callers."""
+        await websocket.accept()
+        call_id = session_id or f"web_{uuid.uuid4().hex[:8]}"
+        session = BrowserAudioSession(
+            websocket=websocket,
+            session_id=call_id,
+            language=lang,
+            persona=persona,
+            llm_provider=provider,
+            model_name=model,
+            sample_rate=sample_rate,
+            caller_phone=caller_phone or "+919876543210",
+            supervisor_manager=supervisor_manager,
+            stt_provider=stt_provider,
+            stt_model=stt_model
+        )
+        await session.run()
 
     return app
 

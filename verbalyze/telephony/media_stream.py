@@ -22,6 +22,8 @@ from typing import Dict, Any, Optional, List, Callable
 from verbalyze.agent.voice_bot import VoiceAgent
 from verbalyze.agent.stt_engine import SovereignSTTEngine
 from verbalyze.security import PIIRedactor
+from verbalyze.telephony.jitter_buffer import AdaptiveJitterBuffer
+from verbalyze.telephony.supervisor import SupervisorManager
 
 try:
     import pydub
@@ -46,6 +48,7 @@ class MediaStreamSession:
         speech_threshold: int = 650,  # 16-bit linear PCM RMS energy threshold
         silence_timeout_ms: int = 600, # Trailing silence before turn completion
         caller_phone: Optional[str] = None,
+        supervisor_manager: Optional[SupervisorManager] = None,
         stt_provider: str = "local",
         stt_model: str = "tiny",
         strict_sovereignty: Optional[bool] = None
@@ -59,6 +62,7 @@ class MediaStreamSession:
         self.speech_threshold = speech_threshold
         self.silence_timeout_frames = int(silence_timeout_ms / 20)  # 20ms per frame
         self.caller_phone = caller_phone
+        self.supervisor_manager = supervisor_manager
         self.stt_provider = stt_provider
         self.stt_model = stt_model
         self.strict_sovereignty = (
@@ -66,6 +70,16 @@ class MediaStreamSession:
             if strict_sovereignty is not None
             else os.environ.get("STRICT_SOVEREIGNTY", "0").lower() in ("1", "true", "yes")
         )
+
+        # Adaptive Telecom Jitter Buffer for carrier RTP streams
+        self.jitter_buffer = AdaptiveJitterBuffer(
+            frame_duration_ms=20.0,
+            sample_rate=8000,
+            bytes_per_sample=2,
+            min_delay_ms=40.0,
+            max_delay_ms=200.0,
+        )
+        self.inbound_seq: int = 0
 
         # Sovereign STT Engine with strict data residency enforcement
         self.stt_engine = SovereignSTTEngine(
@@ -314,6 +328,18 @@ class MediaStreamSession:
                         print("[Call Terminated]: Agent hung up.")
                         self.is_active = False
 
+                    # Update Supervisor Hub
+                    if self.supervisor_manager:
+                        self.supervisor_manager.update_turn(
+                            call_id=self.call_sid,
+                            customer_utterance=user_text,
+                            agent_reply=full_text,
+                            sentiment=chunk.get("sentiment"),
+                            lid_info=lang_info,
+                            quality_report=self.agent.audio_engine.last_quality_report.to_dict() if (self.agent.audio_engine and self.agent.audio_engine.last_quality_report) else None,
+                            jitter_stats=self.jitter_buffer.get_stats().to_dict(),
+                        )
+
         except Exception as e:
             print(f"[Streaming Turn Error]: {e}")
         finally:
@@ -353,7 +379,14 @@ class MediaStreamSession:
         if len(pcm_16) < 4:
             return
 
-        rms = audioop.rms(pcm_16, 2)
+        self.inbound_seq += 1
+        now_ms = time.time() * 1000.0
+        self.jitter_buffer.push(pcm_data=pcm_16, sequence_number=self.inbound_seq, arrival_time_ms=now_ms)
+        frame, is_concealed = self.jitter_buffer.pop(current_time_ms=now_ms)
+        if len(frame) < 4:
+            return
+
+        rms = audioop.rms(frame, 2)
 
         # 1. Check for real-time Barge-In if agent is streaming audio
         if self.is_agent_streaming:
@@ -362,7 +395,7 @@ class MediaStreamSession:
                 if self.barge_in_consecutive_frames >= 2:  # ~40ms speech confirmation
                     await self.interrupt_agent_playback()
                     self.is_caller_speaking = True
-                    self.inbound_pcm_buffer.append(pcm_16)
+                    self.inbound_pcm_buffer.append(frame)
                     self.barge_in_consecutive_frames = 0
             else:
                 self.barge_in_consecutive_frames = 0
@@ -372,10 +405,10 @@ class MediaStreamSession:
         if rms > self.speech_threshold:
             self.is_caller_speaking = True
             self.silence_frames_count = 0
-            self.inbound_pcm_buffer.append(pcm_16)
+            self.inbound_pcm_buffer.append(frame)
         elif self.is_caller_speaking:
             # Trailing silence period
-            self.inbound_pcm_buffer.append(pcm_16)
+            self.inbound_pcm_buffer.append(frame)
             self.silence_frames_count += 1
 
             if self.silence_frames_count >= self.silence_timeout_frames:
@@ -411,6 +444,15 @@ class MediaStreamSession:
                             asyncio.create_task(self.synthesize_and_play_reply(greeting))
                             greeting_sent = True
 
+                        if self.supervisor_manager:
+                            self.supervisor_manager.register_call(
+                                call_id=self.call_sid,
+                                caller_phone=self.caller_phone,
+                                persona=self.persona,
+                                language=self.language,
+                                agent_instance=self.agent,
+                            )
+
                     elif event == "media":
                         payload = msg_json.get("media", {}).get("payload", "")
                         if payload:
@@ -442,3 +484,5 @@ class MediaStreamSession:
             self.silence_frames_count = 0
             if self.current_playback_task and not self.current_playback_task.done():
                 self.current_playback_task.cancel()
+            if self.supervisor_manager:
+                self.supervisor_manager.terminate_call(self.call_sid, reason="carrier_stream_closed")

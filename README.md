@@ -553,6 +553,30 @@ Indian telephone dialogues frequently transition between native regional languag
 python3 scripts/test_lid_and_code_switching.py
 ```
 
+#### Real-Time Telephony Supervisor Live Console, Adaptive Jitter Buffer & In-Browser Audio Gateway
+Verbalyze provides a comprehensive live observability stack for debt-collection and banking voicebot operations, telecom jitter resilience across Indian mobile corridors, and direct in-browser testing:
+* **Adaptive Telecom Network Jitter Buffer & PLC (`AdaptiveJitterBuffer`)**:
+  * **RFC 3550 Inter-Arrival Jitter**: Continuous mathematical estimation of network packet arrival variance: $J(i) = J(i-1) + (|D(i, j)| - J(i-1)) / 16$.
+  * **Dynamic Playout Delay**: Adapts buffer depth dynamically between 30ms and 200ms depending on cellular jitter conditions across Indian 2G/3G/4G GSM corridors, preventing buffer underruns and audio chopping.
+  * **Packet Loss Concealment (PLC)**: Interpolates missing speech frames using linear waveform attenuation and comfort noise synthesis when frames are lost or delayed past playout deadlines.
+  * **Packet Reordering**: Re-sequences out-of-order packets based on sequence indices and timestamps.
+* **Telephony Supervisor Observability Hub (`SupervisorManager`)**:
+  * **Fleet-Wide Active Call Registry**: Tracks live calls, duration, turn counts, sentiment agitation scores, MOS quality, jitter telemetry, and DPDP-masked caller identifiers.
+  * **Whisper Coaching Bus**: Allows call center supervisors to inject private coaching guidance into active calls without the customer hearing. The bot absorbs instructions into its reasoning context on the very next turn.
+  * **1-Click Barge-In & Takeover**: Enables supervisors to immediately cut bot audio playback and execute an instant warm transfer / takeover with complete context transfer.
+  * **Real-Time WebSocket Pub/Sub Stream (`/telephony/supervisor/stream`)**: Pushes instant updates, agitation alerts, and fleet health metrics to supervisor dashboards.
+* **In-Browser Full-Duplex Audio Streaming Gateway (`BrowserAudioSession`)**:
+  * Enables developers and QA engineers to test full-duplex voice telephony directly in any modern browser over WebSockets without requiring a paid Twilio or Exotel SIP trunk.
+  * Streams 16-bit linear PCM audio (16kHz / 8kHz) with sub-150ms round-trip latency, real-time VAD, and barge-in.
+* **Enterprise Web Consoles**:
+  * **Supervisor Live Dashboard (`GET /telephony/supervisor/dashboard`)**: Responsive live operations console displaying fleet KPI cards, active calls table, agitation badges, and whisper coaching modals.
+  * **In-Browser Voice Client (`GET /telephony/browser-client`)**: Interactive phone simulator with microphone streaming, live audio waveform canvas, transcript view, and dynamic language chips.
+
+```bash
+# Verify Telephony Supervisor, Jitter Buffer & In-Browser Gateway Suite (8/8):
+python3 scripts/test_supervisor_and_browser_gateway.py
+```
+
 ---
 
 ### 4. Automated Human-Likeness Quality Gate (80% / MOS 4.0)

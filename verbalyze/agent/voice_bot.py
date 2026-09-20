@@ -151,6 +151,18 @@ class VoiceAgent:
         self.deescalation_active: bool = False
         self.lid_gate = LanguageIdentificationGate(default_language=language)
         self.last_lid: Optional[LanguageIDResult] = None
+        self.pending_whispers: List[str] = []
+        self.whisper_history: List[str] = []
+
+    def inject_supervisor_whisper(self, whisper_text: str):
+        """
+        Injects a private supervisor coaching directive into the agent's context.
+        The agent incorporates this instruction into the very next turn generation.
+        """
+        cleaned = str(whisper_text).strip()
+        if cleaned:
+            self.pending_whispers.append(cleaned)
+            self.whisper_history.append(cleaned)
 
     def get_initial_greeting(self) -> str:
         """Returns localized initial greeting for the selected persona."""
@@ -250,6 +262,18 @@ class VoiceAgent:
         farewell_keywords = ["bye", "alvida", "hang up", "rakhta hoon", "baad me", "disconnect", "अलविदा", "बाय", "रखता", "नमस्कार", "धन्यवाद", "रखती"]
         link_keywords = ["link", "upi", "qr", "online", "bhejo", "लिंक", "भेज", "यूपीआई", "पेमेंट", "कर दो"]
         callback_keywords = ["kal", "tomorrow", "next week", "tarikh", "pay", "कल", "हफ्ते", "तारीख", "सोमवार"]
+
+        # Check for active supervisor coaching directive
+        if self.whisper_history:
+            latest_whisper = self.whisper_history[-1].lower()
+            if any(w in latest_whisper for w in ["waive", "discount", "fee", "penalty", "छूट", "माफ़"]):
+                if self.language == "hi":
+                    return "जी, हमारे सुपरवाइजर के निर्देशानुसार हम आपका लेट फीस शुल्क माफ कर सकते हैं। क्या आप शेष ₹5,420 का भुगतान अभी कर सकते हैं?", None
+                return "Yes, as approved by our supervisor, we can waive your late payment fee. Can you settle the remaining amount now?", None
+            elif any(w in latest_whisper for w in ["manager", "supervisor", "escalat", "अधिकारी"]):
+                if self.language == "hi":
+                    return "जी, हमारे वरिष्ठ अधिकारी इस कॉल की निगरानी कर रहे हैं और हम आपकी समस्या का तुरंत समाधान करेंगे।", None
+                return "Yes, our senior supervisor is actively monitoring this call and we will resolve your issue immediately.", None
 
         if any(w in last_user_msg for w in farewell_keywords):
             tool_call = {
@@ -357,6 +381,15 @@ class VoiceAgent:
 
         # 1. Record user turn
         self.messages.append({"role": "user", "content": user_utterance})
+
+        # Inject pending supervisor whisper guidance into system context
+        if self.pending_whispers:
+            whisper_directive = " | ".join(self.pending_whispers)
+            self.messages.append({
+                "role": "system",
+                "content": f"[SUPERVISOR COACHING]: {whisper_directive}. Follow this instruction immediately."
+            })
+            self.pending_whispers.clear()
 
         # Check if automatic escalation or human transfer is triggered
         auto_transfer = False
@@ -497,6 +530,7 @@ class VoiceAgent:
             "tool_data": tool_data if tool_call else None,
             "sentiment": sentiment.to_dict(),
             "language_info": lid_result.to_dict(),
+            "whispers": list(self.whisper_history),
             "terminated": not self.is_call_active
         }
 
@@ -607,6 +641,15 @@ class VoiceAgent:
 
         # 1. Record user turn
         self.messages.append({"role": "user", "content": user_utterance})
+
+        # Inject pending supervisor whisper guidance into system context
+        if self.pending_whispers:
+            whisper_directive = " | ".join(self.pending_whispers)
+            self.messages.append({
+                "role": "system",
+                "content": f"[SUPERVISOR COACHING]: {whisper_directive}. Follow this instruction immediately."
+            })
+            self.pending_whispers.clear()
 
         clause_delimiters = ["\n", "।", ".", "?", "!", ";"]
         clause_buffer = ""
@@ -876,6 +919,7 @@ class VoiceAgent:
             "full_text": accumulated_content,
             "sentiment": sentiment.to_dict(),
             "language_info": lid_result.to_dict(),
+            "whispers": list(self.whisper_history),
             "terminated": not self.is_call_active
         }
 
