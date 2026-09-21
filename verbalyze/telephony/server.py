@@ -47,6 +47,14 @@ from verbalyze.telephony.payment_webhooks import (
     parse_cashfree_webhook,
     parse_upi_callback,
 )
+from verbalyze.telephony.call_recorder import DualChannelCallRecorder
+from verbalyze.telephony.compliance_qa import (
+    ComplianceQAEngine,
+    ComplianceQARegistry,
+    QAScorecard,
+    ComplianceStatus,
+    CRMNotes,
+)
 
 # Try importing FastAPI
 try:
@@ -107,6 +115,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
         supervisor_manager=supervisor_manager,
         whatsapp_gateway=whatsapp_gateway,
     )
+    compliance_qa_registry = ComplianceQARegistry()
 
     @app.get("/health")
     def health():
@@ -116,6 +125,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "active_campaigns": len(active_campaigns),
             "supervisor_active_calls": len(supervisor_manager.active_calls),
             "settled_transactions": len([t for t in settlement_ledger.transactions.values() if t.status == SettlementStatus.SETTLED]),
+            "audited_calls": len(compliance_qa_registry.scorecards),
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -1116,6 +1126,112 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "transaction_id": txn.transaction_id if txn else None,
             "receipt_number": txn.receipt_number if txn else None,
         }, status_code=200 if success else 404)
+
+    # --------------------------------------------------------------------------
+    # REGULATORY COMPLIANCE QA & DUAL-CHANNEL CALL AUDITING (RBI / TRAI)
+    # --------------------------------------------------------------------------
+
+    @app.post("/telephony/qa/evaluate")
+    async def evaluate_call_compliance(request: Request):
+        """
+        Runs post-call 4-pillar compliance audit on a conversation transcript.
+        Requires authentication guard verification.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+
+        try:
+            payload = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        call_id = payload.get("call_id") or f"CALL_{uuid.uuid4().hex[:8].upper()}"
+        turns = payload.get("turns", [])
+        loan_id = payload.get("loan_id", "MUTH-8921")
+        phone = payload.get("phone") or payload.get("caller_phone") or "+919876543210"
+        customer_name = payload.get("customer_name", "Borrower")
+        duration = float(payload.get("duration_sec", 0.0))
+        language = payload.get("language", "hi")
+        start_time = payload.get("start_timestamp")
+
+        scorecard = ComplianceQAEngine.evaluate_call(
+            call_id=call_id,
+            turns=turns,
+            loan_id=loan_id,
+            caller_phone=phone,
+            customer_name=customer_name,
+            call_start_timestamp=start_time,
+            audio_duration_sec=duration,
+            language=language,
+        )
+
+        compliance_qa_registry.register_audit(scorecard)
+        return JSONResponse({"status": "evaluated", "scorecard": scorecard.to_dict(mask_pii=True)})
+
+    @app.get("/telephony/qa/audits")
+    def list_compliance_audits(request: Request, status: Optional[str] = None):
+        """
+        Lists all audited calls and compliance scorecards.
+        Requires authentication guard verification.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+
+        audits = compliance_qa_registry.list_audits()
+        if status:
+            audits = [a for a in audits if a.get("status", "").lower() == status.lower()]
+
+        return JSONResponse({
+            "count": len(audits),
+            "audits": audits,
+        })
+
+    @app.get("/telephony/qa/audit/{call_id}")
+    def get_compliance_audit(request: Request, call_id: str):
+        """
+        Retrieves full QA scorecard, CRM notes, and violation details for a specific call.
+        Requires authentication guard verification.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+
+        scorecard = compliance_qa_registry.get_scorecard(call_id)
+        if not scorecard:
+            return JSONResponse({"error": f"Audit record for call '{call_id}' not found."}, status_code=404)
+
+        return JSONResponse(scorecard.to_dict(mask_pii=True))
+
+    @app.get("/telephony/qa/certificate/{call_id}")
+    def get_compliance_certificate_pdf(request: Request, call_id: str):
+        """
+        Generates and serves official RBI Compliance Audit Certificate PDF directly from memory.
+        Zero disk storage overhead.
+        """
+        pdf_bytes = compliance_qa_registry.generate_certificate_pdf_bytes(call_id)
+        if not pdf_bytes:
+            return JSONResponse({"error": f"Certificate for call '{call_id}' not found."}, status_code=404)
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="compliance_certificate_{call_id}.pdf"'}
+        )
+
+    @app.get("/telephony/qa/recording/{call_id}")
+    def get_call_recording_wav(request: Request, call_id: str):
+        """
+        Streams official dual-channel stereo WAV audio recording (Channel 0: Customer, Channel 1: Agent).
+        Served directly from memory.
+        """
+        wav_bytes = compliance_qa_registry.get_recording(call_id)
+        if not wav_bytes:
+            return JSONResponse({"error": f"Audio recording for call '{call_id}' not found."}, status_code=404)
+
+        return Response(
+            content=wav_bytes,
+            media_type="audio/wav",
+            headers={"Content-Disposition": f'attachment; filename="call_recording_{call_id}.wav"'}
+        )
 
     return app
 

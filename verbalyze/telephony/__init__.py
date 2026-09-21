@@ -22,6 +22,16 @@ from verbalyze.telephony.payment_webhooks import (
     parse_cashfree_webhook,
     parse_upi_callback,
 )
+from verbalyze.telephony.call_recorder import DualChannelCallRecorder
+from verbalyze.telephony.compliance_qa import (
+    ComplianceQAEngine,
+    ComplianceQARegistry,
+    QAScorecard,
+    ComplianceStatus,
+    CRMNotes,
+    ComplianceInfraction,
+    PillarScore,
+)
 
 __all__ = [
     "SIPTransferDispatcher",
@@ -45,6 +55,14 @@ __all__ = [
     "parse_razorpay_webhook",
     "parse_cashfree_webhook",
     "parse_upi_callback",
+    "DualChannelCallRecorder",
+    "ComplianceQAEngine",
+    "ComplianceQARegistry",
+    "QAScorecard",
+    "ComplianceStatus",
+    "CRMNotes",
+    "ComplianceInfraction",
+    "PillarScore",
 ]
 
 

@@ -600,6 +600,33 @@ Verbalyze closes the debt collection loop by seamlessly bridging dropped or unat
 python3 scripts/test_whatsapp_settlement_gateway.py
 ```
 
+#### Regulatory Dual-Channel Call Recording & Post-Call AI Compliance QA Engine (RBI / TRAI)
+Under the RBI Fair Practices Code for Lenders, RBI Master Directions on Recovery Agents, and TRAI TCCCPR regulations, financial institutions must record and conduct 100% compliance auditing on debt collection calls:
+* **Dual-Channel In-Memory Call Recording (`DualChannelCallRecorder`)**:
+  * Captures caller audio and bot audio on separated stereo channels (Channel 0: Borrower, Channel 1: VoiceAgent) in standard 16-bit linear PCM at 8kHz or 16kHz.
+  * Interleaves dual channels using fast vectorized operations into standard stereo WAV bytes in memory (`export_stereo_wav_bytes()`).
+  * Zero disk bloat, temporary buffers cleared on demand, adhering strictly to RBI data sovereignty and DPDP Act 2023.
+* **Automated 4-Pillar Compliance Scoring Matrix (0–100 Scale)**:
+  * **Pillar 1: Mandatory Identity & NBFC Authorization Disclosure (25 pts)**: Verifies that the agent clearly stated the lending institution name (Muthoot Fincorp), performed borrower identity confirmation, and disclosed overdue debt details.
+  * **Pillar 2: Zero Prohibited Conduct & Harassment Check (25 pts)**: Scans for prohibited conduct under RBI guidelines (abusive language, coercive physical threats, intimidation, breach of privacy/third-party disclosure threats, or calling outside legal TRAI hours of 08:00–19:00 IST). Any critical infraction zeroes this pillar and marks the call `NON_COMPLIANT`.
+  * **Pillar 3: Professionalism, Empathy & Active De-escalation (25 pts)**: Evaluates polite opening greetings, respectful closings, and empathetic de-escalation responses when the borrower reports distress or medical hardship.
+  * **Pillar 4: Resolution & Terms Confirmation (25 pts)**: Validates whether a concrete Promise-to-Pay (PTP) date/amount, formal dispute escalation, callback window, or instant UPI payment link was secured.
+* **Automated CRM Notes & Next Best Action (NBA) Generator**:
+  * Synthesizes structured borrower dispositions (`PAYMENT_PROMISED`, `DISPUTE_RAISED`, `CALLBACK_REQUESTED`, `HARDSHIP_UNEMPLOYMENT`, `REFUSAL_TO_PAY`).
+  * Suggests immediate next best actions for human loan officers (e.g. automated WhatsApp reminders, routing to disputes desk, restructuring review).
+* **Official In-Memory RBI Compliance Certificate PDF**:
+  * Uses `fpdf2` to dynamically synthesize official compliance audit certificates with DPDP-masked identifiers, 4-pillar score breakdown, findings table, and SHA-256 digital integrity seal (`GET /telephony/qa/certificate/{call_id}`).
+* **Supervisor QA REST API**:
+  * `POST /telephony/qa/evaluate`: Real-time post-call audit evaluation.
+  * `GET /telephony/qa/audits`: List scorecards and compliance summaries.
+  * `GET /telephony/qa/audit/{call_id}`: Inspect detailed scorecard and CRM notes.
+  * `GET /telephony/qa/recording/{call_id}`: Stream dual-channel stereo WAV audio directly from memory.
+
+```bash
+# Verify Regulatory Call Recording & Post-Call QA Engine Suite (8/8):
+python3 scripts/test_regulatory_qa_engine.py
+```
+
 ---
 
 ### 4. Automated Human-Likeness Quality Gate (80% / MOS 4.0)
