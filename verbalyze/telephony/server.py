@@ -9,6 +9,8 @@ import os
 import uuid
 import asyncio
 import base64
+import json
+import time
 from typing import Dict, Any, Optional
 from verbalyze.agent.voice_bot import VoiceAgent
 from verbalyze.telephony.media_stream import MediaStreamSession
@@ -35,6 +37,16 @@ from verbalyze.agent.lid_engine import (
 from verbalyze.telephony.supervisor import SupervisorManager
 from verbalyze.telephony.browser_gateway import BrowserAudioSession
 from verbalyze.telephony.templates import SUPERVISOR_DASHBOARD_HTML, BROWSER_CLIENT_HTML
+from verbalyze.telephony.whatsapp_gateway import WhatsAppGateway
+from verbalyze.telephony.settlement_engine import SettlementLedger, SettlementStatus
+from verbalyze.telephony.payment_webhooks import (
+    verify_razorpay_signature,
+    verify_cashfree_signature,
+    verify_upi_webhook_signature,
+    parse_razorpay_webhook,
+    parse_cashfree_webhook,
+    parse_upi_callback,
+)
 
 # Try importing FastAPI
 try:
@@ -90,6 +102,11 @@ def create_app(auth_token: Optional[str] = None) -> Any:
     sentiment_engine = UnifiedSentimentEngine()
     lid_gate = LanguageIdentificationGate()
     supervisor_manager = SupervisorManager()
+    whatsapp_gateway = WhatsAppGateway()
+    settlement_ledger = SettlementLedger(
+        supervisor_manager=supervisor_manager,
+        whatsapp_gateway=whatsapp_gateway,
+    )
 
     @app.get("/health")
     def health():
@@ -98,6 +115,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "active_calls": len(active_calls),
             "active_campaigns": len(active_campaigns),
             "supervisor_active_calls": len(supervisor_manager.active_calls),
+            "settled_transactions": len([t for t in settlement_ledger.transactions.values() if t.status == SettlementStatus.SETTLED]),
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -791,6 +809,313 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             stt_model=stt_model
         )
         await session.run()
+
+    # --------------------------------------------------------------------------
+    # WHATSAPP BUSINESS API & RCS GATEWAY ENDPOINTS
+    # --------------------------------------------------------------------------
+
+    @app.get("/webhook/whatsapp")
+    async def whatsapp_verify_challenge(request: Request):
+        """
+        Meta WhatsApp Webhook subscription verification endpoint.
+        Validates hub.mode, hub.verify_token, and echoes back hub.challenge.
+        """
+        mode = request.query_params.get("hub.mode")
+        token = request.query_params.get("hub.verify_token")
+        challenge = request.query_params.get("hub.challenge")
+
+        if mode and token and challenge:
+            verified_challenge = whatsapp_gateway.verify_webhook_challenge(mode, token, challenge)
+            if verified_challenge:
+                return Response(content=verified_challenge, media_type="text/plain", status_code=200)
+            return Response(content="Forbidden: Invalid verification token", status_code=403)
+        return Response(content="Bad Request: Missing parameters", status_code=400)
+
+    @app.post("/webhook/whatsapp")
+    async def whatsapp_incoming_webhook(request: Request):
+        """
+        Meta WhatsApp Business webhook listener.
+        Processes message status delivery receipts and interactive Quick Reply button clicks.
+        """
+        raw_body = await request.body()
+        sig_header = request.headers.get("x-hub-signature-256")
+        if sig_header:
+            app_secret = os.getenv("WHATSAPP_APP_SECRET") or os.getenv("WHATSAPP_API_TOKEN")
+            if app_secret and not whatsapp_gateway.verify_payload_signature(raw_body, sig_header, app_secret):
+                return JSONResponse({"status": "error", "message": "Invalid signature"}, status_code=401)
+
+        try:
+            payload = json.loads(raw_body.decode("utf-8")) if raw_body else {}
+        except Exception:
+            return JSONResponse({"status": "error", "message": "Invalid JSON payload"}, status_code=400)
+
+        event = whatsapp_gateway.handle_inbound_webhook(payload)
+
+        # If button click was a callback request or dispute, broadcast to supervisor
+        if event.get("event_type") == "button_click":
+            button_id = event.get("button_id", "")
+            sender_phone = event.get("sender_phone", "")
+            if "CALLBACK" in button_id.upper():
+                supervisor_manager._broadcast({
+                    "event": "whatsapp_callback_requested",
+                    "sender_phone": PIIRedactor.mask_phone(sender_phone),
+                    "button_id": button_id,
+                    "timestamp": time.time(),
+                })
+            elif "DISPUTE" in button_id.upper():
+                supervisor_manager._broadcast({
+                    "event": "whatsapp_dispute_raised",
+                    "sender_phone": PIIRedactor.mask_phone(sender_phone),
+                    "button_id": button_id,
+                    "timestamp": time.time(),
+                })
+
+        return JSONResponse({"status": "success", "event": event})
+
+    @app.post("/webhook/whatsapp/send")
+    async def whatsapp_send_template(request: Request):
+        """
+        Dispatches an interactive WhatsApp payment or recovery notice to a customer.
+        Requires valid authentication token if enabled.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+
+        try:
+            payload = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        phone = payload.get("phone") or payload.get("phone_number")
+        if not phone:
+            return JSONResponse({"error": "Missing recipient phone number"}, status_code=400)
+
+        customer_name = payload.get("customer_name", "Customer")
+        loan_id = payload.get("loan_id", "MUTH-8921")
+        amount = float(payload.get("amount", 5420.0))
+        language = payload.get("language", "hi")
+        overdue_days = int(payload.get("overdue_days", 14))
+
+        result = whatsapp_gateway.dispatch_payment_message(
+            phone_number=phone,
+            customer_name=customer_name,
+            loan_id=loan_id,
+            amount=amount,
+            overdue_days=overdue_days,
+            language=language,
+        )
+        return JSONResponse(result)
+
+    # --------------------------------------------------------------------------
+    # SETTLEMENT ENGINE & NPCI UPI RECONCILIATION ENDPOINTS
+    # --------------------------------------------------------------------------
+
+    @app.post("/settlement/order")
+    async def create_settlement_order(request: Request):
+        """
+        Creates a new payment settlement order in the ledger.
+        Requires authentication guard verification.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+
+        try:
+            payload = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        loan_id = payload.get("loan_id")
+        phone = payload.get("phone") or payload.get("customer_phone")
+        amount = payload.get("amount")
+
+        if not loan_id or not phone or amount is None:
+            return JSONResponse({"error": "Missing loan_id, phone, or amount"}, status_code=400)
+
+        customer_name = payload.get("customer_name", "Borrower")
+        gateway = payload.get("gateway", "UPI_INTENT")
+        metadata = payload.get("metadata", {})
+
+        txn = settlement_ledger.create_order(
+            loan_id=str(loan_id),
+            amount=float(amount),
+            customer_phone=str(phone),
+            customer_name=str(customer_name),
+            gateway=str(gateway),
+            metadata=metadata,
+        )
+        return JSONResponse({"status": "created", "transaction": txn.to_dict(mask_pii=True)})
+
+    @app.get("/settlement/transactions")
+    def list_settlement_transactions(request: Request, status: Optional[str] = None):
+        """
+        Lists all settlement orders and payments tracked by the ledger.
+        Requires authentication guard verification.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized: Invalid or missing authentication token."}, status_code=401)
+
+        txns = list(settlement_ledger.transactions.values())
+        if status:
+            txns = [t for t in txns if t.status.value.lower() == status.lower()]
+
+        return JSONResponse({
+            "count": len(txns),
+            "transactions": [t.to_dict(mask_pii=True) for t in txns]
+        })
+
+    @app.get("/settlement/receipt/{transaction_id}")
+    def get_settlement_receipt_pdf(request: Request, transaction_id: str):
+        """
+        Generates and serves official digital payment receipt PDF directly from memory.
+        No disk clutter, zero temporary storage.
+        """
+        pdf_bytes = settlement_ledger.generate_pdf_receipt_bytes(transaction_id)
+        if not pdf_bytes:
+            return JSONResponse({
+                "error": f"Settled receipt for transaction {transaction_id} not found."
+            }, status_code=404)
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="receipt_{transaction_id}.pdf"'}
+        )
+
+    # --------------------------------------------------------------------------
+    # PAYMENT GATEWAY WEBHOOK INGESTION (Razorpay / Cashfree / BharatPe UPI)
+    # --------------------------------------------------------------------------
+
+    @app.post("/webhook/payment/razorpay")
+    async def razorpay_payment_webhook(request: Request):
+        """
+        Razorpay payment webhook receiver.
+        Performs constant-time HMAC-SHA256 signature verification and auto-reconciles settled payments.
+        """
+        raw_body = await request.body()
+        sig = request.headers.get("x-razorpay-signature", "")
+        secret = os.getenv("RAZORPAY_WEBHOOK_SECRET", "razorpay_secret_key_123")
+
+        if not verify_razorpay_signature(raw_body, sig, secret):
+            return JSONResponse({"status": "error", "message": "Invalid Razorpay HMAC-SHA256 signature"}, status_code=400)
+
+        try:
+            payload = json.loads(raw_body.decode("utf-8")) if raw_body else {}
+        except Exception:
+            return JSONResponse({"status": "error", "message": "Malformed JSON payload"}, status_code=400)
+
+        parsed = parse_razorpay_webhook(payload)
+        order_id = parsed.get("order_id") or parsed.get("notes", {}).get("loan_id") or parsed.get("notes", {}).get("transaction_id")
+        payment_id = parsed.get("payment_id", f"pay_rzp_{uuid.uuid4().hex[:8]}")
+
+        # Reconcile payment in ledger
+        success, msg, txn = settlement_ledger.reconcile_payment(
+            transaction_id=order_id,
+            gateway_payment_id=payment_id,
+            signature=sig,
+            raw_payload=raw_body,
+            verify_sig=False,  # Already verified above
+            gateway="RAZORPAY",
+        )
+
+        # Halt retries across all active campaigns
+        if txn:
+            for dialer in active_campaigns.values():
+                dialer.mark_lead_settled(txn.loan_id)
+                dialer.mark_lead_settled(txn.customer_phone_raw)
+
+        return JSONResponse({
+            "status": "reconciled" if success else "failed",
+            "message": msg,
+            "transaction_id": txn.transaction_id if txn else None,
+            "receipt_number": txn.receipt_number if txn else None,
+        }, status_code=200 if success else 404)
+
+    @app.post("/webhook/payment/cashfree")
+    async def cashfree_payment_webhook(request: Request):
+        """
+        Cashfree payment webhook receiver.
+        Validates timestamped HMAC-SHA256 signature and auto-reconciles settled loans.
+        """
+        raw_body = await request.body()
+        sig = request.headers.get("x-webhook-signature", "")
+        timestamp = request.headers.get("x-webhook-timestamp", "")
+        secret = os.getenv("CASHFREE_WEBHOOK_SECRET", "cashfree_secret_key_123")
+
+        if not verify_cashfree_signature(raw_body, sig, timestamp, secret):
+            return JSONResponse({"status": "error", "message": "Invalid Cashfree HMAC-SHA256 signature"}, status_code=400)
+
+        try:
+            payload = json.loads(raw_body.decode("utf-8")) if raw_body else {}
+        except Exception:
+            return JSONResponse({"status": "error", "message": "Malformed JSON payload"}, status_code=400)
+
+        parsed = parse_cashfree_webhook(payload)
+        order_id = parsed.get("order_id")
+        payment_id = parsed.get("payment_id", f"pay_cf_{uuid.uuid4().hex[:8]}")
+
+        success, msg, txn = settlement_ledger.reconcile_payment(
+            transaction_id=order_id,
+            gateway_payment_id=payment_id,
+            signature=sig,
+            raw_payload=raw_body,
+            verify_sig=False,
+            gateway="CASHFREE",
+        )
+
+        if txn:
+            for dialer in active_campaigns.values():
+                dialer.mark_lead_settled(txn.loan_id)
+                dialer.mark_lead_settled(txn.customer_phone_raw)
+
+        return JSONResponse({
+            "status": "reconciled" if success else "failed",
+            "message": msg,
+            "transaction_id": txn.transaction_id if txn else None,
+            "receipt_number": txn.receipt_number if txn else None,
+        }, status_code=200 if success else 404)
+
+    @app.post("/webhook/payment/upi")
+    async def upi_callback_webhook(request: Request):
+        """
+        Direct NPCI / BharatPe / UPI callback webhook receiver.
+        Validates HMAC signature and reconciles settlement against loan.
+        """
+        raw_body = await request.body()
+        sig = request.headers.get("x-webhook-signature", "")
+        secret = os.getenv("UPI_WEBHOOK_SECRET", "settlement_webhook_secret_key_123")
+
+        if not verify_upi_webhook_signature(raw_body, sig, secret):
+            return JSONResponse({"status": "error", "message": "Invalid UPI webhook signature"}, status_code=400)
+
+        try:
+            payload = json.loads(raw_body.decode("utf-8")) if raw_body else {}
+        except Exception:
+            return JSONResponse({"status": "error", "message": "Malformed JSON payload"}, status_code=400)
+
+        parsed = parse_upi_callback(payload)
+        order_id = parsed.get("order_id")
+        upi_ref = parsed.get("upi_ref_id") or parsed.get("gateway_payment_id", f"upi_ref_{uuid.uuid4().hex[:8]}")
+
+        success, msg, txn = settlement_ledger.reconcile_payment(
+            transaction_id=order_id,
+            gateway_payment_id=upi_ref,
+            signature=sig,
+            raw_payload=raw_body,
+            verify_sig=False,
+            gateway="UPI_INTENT",
+        )
+
+        if txn:
+            for dialer in active_campaigns.values():
+                dialer.mark_lead_settled(txn.loan_id)
+                dialer.mark_lead_settled(txn.customer_phone_raw)
+
+        return JSONResponse({
+            "status": "reconciled" if success else "failed",
+            "message": msg,
+            "transaction_id": txn.transaction_id if txn else None,
+            "receipt_number": txn.receipt_number if txn else None,
+        }, status_code=200 if success else 404)
 
     return app
 

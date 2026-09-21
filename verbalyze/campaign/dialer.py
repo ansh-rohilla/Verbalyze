@@ -10,6 +10,7 @@ Asynchronous Outbound Campaign Batch Dialer:
 """
 
 import os
+import re
 import csv
 import json
 import uuid
@@ -247,6 +248,10 @@ class CampaignDialer:
                 lead.disposition = CallDisposition.FAILED_CALL
 
             self._record_compliance_block_cdr(call_id, lead, start_time, reason)
+            return
+
+        if lead.status == LeadStatus.SETTLED:
+            print(f"[Campaign Dialer] Skipping lead {lead.lead_id} (Loan: {lead.loan_id}) - already SETTLED.")
             return
 
         # ----------------------------------------------------------------------
@@ -721,3 +726,23 @@ class CampaignDialer:
             with open(filepath, mode="w", encoding="utf-8") as f:
                 f.write(csv_text)
         return csv_text
+
+    def mark_lead_settled(self, identifier: str) -> bool:
+        """
+        Marks a lead as SETTLED when a payment confirmation webhook arrives.
+        Cancels any pending retries and prevents further outbound dial attempts.
+        Matches either by loan_id or phone_number.
+        """
+        clean_id = re.sub(r"\D", "", identifier)
+        found = False
+        for lead in self.leads:
+            lead_phone_clean = re.sub(r"\D", "", lead.phone_number)
+            if lead.loan_id == identifier or (clean_id and clean_id[-10:] == lead_phone_clean[-10:]):
+                lead.status = LeadStatus.SETTLED
+                lead.disposition = CallDisposition.PAYMENT_SETTLED
+                lead.retry_scheduled = False
+                found = True
+                masked_phone = PIIRedactor.mask_phone(lead.phone_number)
+                print(f"[Campaign Dialer] Lead {lead.lead_id} (Loan: {lead.loan_id}, Phone: {masked_phone}) marked SETTLED. Outbound dialing halted.")
+        return found
+

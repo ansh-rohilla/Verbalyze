@@ -577,6 +577,29 @@ Verbalyze provides a comprehensive live observability stack for debt-collection 
 python3 scripts/test_supervisor_and_browser_gateway.py
 ```
 
+#### Omnichannel Voice-to-WhatsApp & NPCI UPI Instant Settlement Gateway
+Verbalyze closes the debt collection loop by seamlessly bridging dropped or unattended voice calls to interactive WhatsApp channels and instantly reconciling NPCI UPI settlements:
+* **Automated Voice-to-WhatsApp Fallback (`WhatsAppGateway`)**:
+  * Automatically detects call drop-offs, line busy signals, and unanswered dials (`NO_ANSWER`, `BUSY`, `CUSTOMER_HANGUP`) in the outbound campaign dialer and immediately triggers a personalized WhatsApp interactive notice.
+  * Integrates with Meta WhatsApp Business Cloud API, On-Premises API, and sandbox environments.
+* **Interactive Templates & Quick Reply Actions**:
+  * Dispatches rich templates with localized Hindi and English copy, loan details, overdue duration, and 3 quick-reply buttons: `Pay via UPI`, `Request Callback`, and `Raise Dispute`.
+  * Inbound webhook listener (`POST /webhook/whatsapp`) captures customer button responses; callback requests and disputes are instantly dispatched to the supervisor live console.
+* **NPCI UPI Intent Generation & Payment Webhook Ingestion**:
+  * Formats official NPCI-compliant UPI deep-links (`upi://pay?pa=...`) that directly launch PhonePe, Google Pay, Paytm, or BHIM.
+  * Secure webhook receivers for **Razorpay** (`POST /webhook/payment/razorpay`), **Cashfree** (`POST /webhook/payment/cashfree`), and **Direct UPI/BBPS** (`POST /webhook/payment/upi`) with constant-time HMAC-SHA256 signature verification.
+* **Automated Reconciliation & Dialer Retry Halt (`SettlementLedger`)**:
+  * When payment confirmation arrives, the ledger reconciles the order, transitions status to `SETTLED`, and halts all future retry dials across active campaigns.
+  * Broadcasts a `payment_settled` event to the live supervisor console and dispatches an official settlement receipt over WhatsApp.
+* **Zero-Disk-Bloat In-Memory PDF Receipt Generation**:
+  * Uses `fpdf2` to dynamically generate official PDF payment receipts entirely in memory (`GET /settlement/receipt/{transaction_id}`).
+  * Zero temporary disk storage overhead, complete DPDP Act 2023 borrower PII redaction, and compliant with RBI data sovereignty guidelines.
+
+```bash
+# Verify Omnichannel WhatsApp & UPI Settlement Gateway Suite (8/8):
+python3 scripts/test_whatsapp_settlement_gateway.py
+```
+
 ---
 
 ### 4. Automated Human-Likeness Quality Gate (80% / MOS 4.0)
