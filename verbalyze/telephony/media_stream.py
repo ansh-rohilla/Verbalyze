@@ -24,6 +24,8 @@ from verbalyze.agent.stt_engine import SovereignSTTEngine
 from verbalyze.security import PIIRedactor
 from verbalyze.telephony.jitter_buffer import AdaptiveJitterBuffer
 from verbalyze.telephony.supervisor import SupervisorManager
+from verbalyze.telephony.dtmf_engine import DTMFPad, RFC4733EventDecoder
+from verbalyze.telephony.ivr_tree import IVRStateMachine, IVRTransitionResult
 
 try:
     import pydub
@@ -51,7 +53,8 @@ class MediaStreamSession:
         supervisor_manager: Optional[SupervisorManager] = None,
         stt_provider: str = "local",
         stt_model: str = "tiny",
-        strict_sovereignty: Optional[bool] = None
+        strict_sovereignty: Optional[bool] = None,
+        ivr_machine: Optional[IVRStateMachine] = None,
     ):
         self.websocket = websocket
         self.language = language
@@ -70,6 +73,11 @@ class MediaStreamSession:
             if strict_sovereignty is not None
             else os.environ.get("STRICT_SOVEREIGNTY", "0").lower() in ("1", "true", "yes")
         )
+        self.ivr_machine = ivr_machine
+
+        # DTMF Acoustic & RFC 4733 Decoders
+        self.dtmf_pad = DTMFPad(sample_rate=8000)
+        self.rfc4733_decoder = RFC4733EventDecoder()
 
         # Adaptive Telecom Jitter Buffer for carrier RTP streams
         self.jitter_buffer = AdaptiveJitterBuffer(
@@ -167,6 +175,25 @@ class MediaStreamSession:
             self.is_agent_streaming = False
             await self.send_clear_event()
             print("[WebSocket Barge-In] Interrupted bot playback! Sent clear event to carrier.")
+
+    async def handle_dtmf_digit(self, digit: str):
+        """
+        Processes a DTMF keypress event:
+        1. Triggers instantaneous playback abort (Barge-In) with carrier buffer clear event.
+        2. Routes digit to active IVR state machine if bound.
+        """
+        print(f"[DTMF Keypad Event] Digit pressed: '{digit}'")
+        await self.interrupt_agent_playback()
+
+        if self.ivr_machine and not self.ivr_machine.is_completed:
+            res = self.ivr_machine.handle_digit(digit)
+            print(f"[IVR State] Transitioned to '{res.node_id}' status='{res.status}'")
+            if res.prompt:
+                self.current_playback_task = asyncio.create_task(
+                    self.synthesize_and_play_reply(res.prompt)
+                )
+            if res.is_terminal and res.action == "hangup":
+                self.is_active = False
 
     async def stream_audio_to_carrier(self, pcm_8k_bytes: bytes):
         """
@@ -279,6 +306,31 @@ class MediaStreamSession:
         caller_tag = PIIRedactor.mask_phone(self.caller_phone) if self.caller_phone else "Unknown"
         redacted_user_text = PIIRedactor.redact_text(user_text)
         print(f"[Caller {caller_tag} Turn Transcribed]: '{redacted_user_text}'")
+
+        # If an IVR tree is active, evaluate spoken utterance against IVR tree options
+        if self.ivr_machine and not self.ivr_machine.is_completed:
+            ivr_res = self.ivr_machine.handle_speech(user_text)
+            if ivr_res.status == "OK":
+                print(f"[IVR Voice Traversal] Navigated to '{ivr_res.node_id}' via utterance")
+                if ivr_res.prompt:
+                    self.current_playback_task = asyncio.create_task(
+                        self.synthesize_and_play_reply(ivr_res.prompt)
+                    )
+                if ivr_res.is_terminal:
+                    if ivr_res.action == "hangup":
+                        self.is_active = False
+                    elif ivr_res.action == "handoff_bot":
+                        pass
+                return
+            elif ivr_res.status in ("INVALID_INPUT", "TIMEOUT", "MAX_RETRIES_EXCEEDED"):
+                if ivr_res.prompt:
+                    self.current_playback_task = asyncio.create_task(
+                        self.synthesize_and_play_reply(ivr_res.prompt)
+                    )
+                if ivr_res.is_terminal and ivr_res.action == "hangup":
+                    self.is_active = False
+                return
+
         print("[Streaming Pipeline] Beginning token-to-TTS pipeline for low-latency response...")
 
         self.cancel_playback_event.clear()
@@ -386,6 +438,11 @@ class MediaStreamSession:
         if len(frame) < 4:
             return
 
+        # 0. Evaluate acoustic DTMF keypad tones on inbound PCM
+        detected_dtmf_digits = self.dtmf_pad.process_pcm_chunk(frame)
+        for dtmf_digit in detected_dtmf_digits:
+            await self.handle_dtmf_digit(dtmf_digit)
+
         rms = audioop.rms(frame, 2)
 
         # 1. Check for real-time Barge-In if agent is streaming audio
@@ -459,6 +516,11 @@ class MediaStreamSession:
                             raw_bytes = base64.b64decode(payload)
                             await self.handle_inbound_frame(raw_bytes)
 
+                    elif event == "dtmf":
+                        digit = msg_json.get("dtmf", {}).get("digit") or msg_json.get("digit")
+                        if digit:
+                            await self.handle_dtmf_digit(str(digit))
+
                     elif event == "stop":
                         print(f"[WebSocket Stream Stopped] StreamSid: {self.stream_sid}")
                         self.is_active = False
@@ -472,6 +534,11 @@ class MediaStreamSession:
                         greeting_sent = True
 
                     raw_bytes = message["bytes"]
+                    if len(raw_bytes) == 4:
+                        rfc_digit = self.rfc4733_decoder.process_packet(raw_bytes)
+                        if rfc_digit:
+                            await self.handle_dtmf_digit(rfc_digit)
+                            continue
                     await self.handle_inbound_frame(raw_bytes)
 
         except (asyncio.CancelledError, Exception) as e:

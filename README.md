@@ -629,6 +629,39 @@ python3 scripts/test_regulatory_qa_engine.py
 
 ---
 
+### 3.7 Telecom DTMF Keypad Engine & Multi-Level IVR State Machine
+
+In enterprise Indian telephony environments (banking, micro-finance, customer service), callers frequently navigate multi-level IVR menus using both touch-tone keypad buttons and spoken responses. Verbalyze provides an integrated, pure-math DTMF detection and stateful IVR navigation suite:
+
+* **In-Band Acoustic Goertzel Algorithm (ITU-T Q.23 / Q.24 & Bellcore)**:
+  * Efficient $O(N)$ discrete tone detection on 8kHz and 16kHz 16-bit linear PCM audio.
+  * Detects all 16 standard touch-tone keypad frequencies (`0`-`9`, `*`, `#`, `A`-`D`).
+  * Enforces second-harmonic dominance, ITU-T twist ratio tolerance (-8 dB to +4 dB), and wideband noise immunity.
+* **Out-of-Band RFC 4733 / RFC 2833 RTP Telephone-Event Decoder**:
+  * Parses standard 4-byte RTP payloads (Event ID, End bit, Volume in -dBm0, Duration).
+  * Automatically filters redundant triplicate end packets (RFC 4733 Section 2.5.1) to avoid duplicate keypress registrations.
+* **Acoustic DTMF Pad & Debouncer**:
+  * Enforces minimum tone duration (40ms) and inter-digit silence intervals to cleanly differentiate sustained keypresses from subsequent identical digits.
+* **Indic Multi-Level IVR State Machine**:
+  * Hierarchical tree structure supporting multilingual prompts (Hindi, English, Gujarati, Marathi).
+  * **Hybrid Traversal**: Navigates states on DTMF keypresses (`1`, `2`, `*`, `#`) or spoken words (`"hindi"`, `"payment"`, `"agent"`).
+  * **Multi-Digit Sequence Collection**: Gathers fixed-length sequences (e.g. 4-digit PINs, OTPs) with inter-digit timeouts.
+  * **Automated Action Hooks**: Triggers language switching, WhatsApp UPI payment link dispatch, SIP warm transfer, or conversational voicebot handoff.
+* **DPDP Act 2023 Keypad Masking**:
+  * Sensitive digits (PINs, OTPs, account numbers) are automatically masked (`****`) across all transition results, session summaries, and audit logs.
+* **FastAPI DTMF & IVR REST Endpoints**:
+  * `POST /telephony/dtmf/decode`: Decodes raw PCM audio or RFC 4733 packets.
+  * `POST /telephony/ivr/start`: Initializes a stateful IVR session.
+  * `POST /telephony/ivr/action`: Advances IVR on DTMF keypress, speech text, or timeout.
+  * `GET /telephony/ivr/session/{call_id}`: Retrieves DPDP-sanitized session audit summary.
+
+```bash
+# Verify Telecom DTMF & Multi-Level IVR Engine Suite (8/8):
+python3 scripts/test_dtmf_ivr_engine.py
+```
+
+---
+
 ### 4. Automated Human-Likeness Quality Gate (80% / MOS 4.0)
 
 Every generated speech utterance is evaluated across 5 acoustic dimensions before being accepted or played over the phone:

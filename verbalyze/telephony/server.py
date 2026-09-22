@@ -55,6 +55,19 @@ from verbalyze.telephony.compliance_qa import (
     ComplianceStatus,
     CRMNotes,
 )
+from verbalyze.telephony.dtmf_engine import (
+    GoertzelDetector,
+    DTMFPad,
+    RFC4733EventDecoder,
+    decode_rfc4733_packet,
+    mask_digits,
+    sanitize_sensitive_dict,
+)
+from verbalyze.telephony.ivr_tree import (
+    IVRStateMachine,
+    IVRNode,
+    create_default_banking_ivr,
+)
 
 # Try importing FastAPI
 try:
@@ -116,6 +129,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
         whatsapp_gateway=whatsapp_gateway,
     )
     compliance_qa_registry = ComplianceQARegistry()
+    active_ivr_sessions: Dict[str, IVRStateMachine] = {}
 
     @app.get("/health")
     def health():
@@ -123,6 +137,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "status": "ok",
             "active_calls": len(active_calls),
             "active_campaigns": len(active_campaigns),
+            "active_ivr_sessions": len(active_ivr_sessions),
             "supervisor_active_calls": len(supervisor_manager.active_calls),
             "settled_transactions": len([t for t in settlement_ledger.transactions.values() if t.status == SettlementStatus.SETTLED]),
             "audited_calls": len(compliance_qa_registry.scorecards),
@@ -1232,6 +1247,142 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             media_type="audio/wav",
             headers={"Content-Disposition": f'attachment; filename="call_recording_{call_id}.wav"'}
         )
+
+    # --- DTMF KEYPAD & MULTI-LEVEL IVR ROUTES ---
+
+    @app.post("/telephony/dtmf/decode")
+    async def decode_dtmf_payload(request: Request):
+        """
+        Decodes in-band acoustic DTMF audio or RFC 4733 RTP telephone-event packets.
+        Accepts:
+        - 'pcm_base64': Base64 encoded 16-bit linear PCM audio.
+        - 'sample_rate': Sampling rate (default 8000).
+        - 'rfc4733_hex': Hex-encoded 4-byte RFC 4733 payload.
+        - 'rfc4733_base64': Base64-encoded 4-byte RFC 4733 payload.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        response_data: Dict[str, Any] = {
+            "status": "ok",
+            "detected_digits": [],
+            "rfc4733_event": None,
+        }
+
+        # 1. Acoustic DTMF tone detection via Goertzel Pad
+        pcm_b64 = body.get("pcm_base64")
+        if pcm_b64:
+            try:
+                pcm_bytes = base64.b64decode(pcm_b64)
+                sample_rate = int(body.get("sample_rate", 8000))
+                pad = DTMFPad(sample_rate=sample_rate)
+                detected = pad.process_pcm_chunk(pcm_bytes)
+                response_data["detected_digits"] = detected
+            except Exception as e:
+                return JSONResponse({"error": f"PCM decoding failed: {e}"}, status_code=400)
+
+        # 2. RFC 4733 / RFC 2833 Out-of-Band Packet Decoding
+        rfc_hex = body.get("rfc4733_hex")
+        rfc_b64 = body.get("rfc4733_base64")
+        if rfc_hex or rfc_b64:
+            try:
+                if rfc_hex:
+                    raw_pkt = bytes.fromhex(rfc_hex)
+                else:
+                    raw_pkt = base64.b64decode(rfc_b64)
+                event = decode_rfc4733_packet(raw_pkt)
+                response_data["rfc4733_event"] = event.to_dict()
+            except Exception as e:
+                return JSONResponse({"error": f"RFC 4733 packet decoding failed: {e}"}, status_code=400)
+
+        return JSONResponse(response_data)
+
+    @app.post("/telephony/ivr/start")
+    async def start_ivr_session(request: Request):
+        """
+        Initializes an IVR state machine session for a call.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        call_id = str(body.get("call_id") or f"ivr_{uuid.uuid4().hex[:10]}")
+        default_lang = str(body.get("default_lang", "hi"))
+        caller_phone = body.get("caller_phone")
+
+        ivr_session = create_default_banking_ivr(
+            call_id=call_id,
+            default_lang=default_lang,
+            caller_phone=caller_phone,
+        )
+        transition = ivr_session.start()
+        active_ivr_sessions[call_id] = ivr_session
+
+        return JSONResponse({
+            "status": "ok",
+            "call_id": call_id,
+            "transition": transition.to_dict(),
+        })
+
+    @app.post("/telephony/ivr/action")
+    async def handle_ivr_action(request: Request):
+        """
+        Processes a caller input (DTMF digit, spoken text, or timeout) to advance the IVR state machine.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        call_id = str(body.get("call_id", ""))
+        if not call_id or call_id not in active_ivr_sessions:
+            return JSONResponse({"error": f"IVR session for call '{call_id}' not found."}, status_code=404)
+
+        ivr_session = active_ivr_sessions[call_id]
+        digit = body.get("digit")
+        speech_text = body.get("speech_text")
+        is_timeout = bool(body.get("timeout", False))
+
+        if digit is not None:
+            transition = ivr_session.handle_digit(str(digit))
+        elif speech_text is not None:
+            transition = ivr_session.handle_speech(str(speech_text))
+        elif is_timeout:
+            transition = ivr_session.handle_timeout()
+        else:
+            return JSONResponse({"error": "Must provide 'digit', 'speech_text', or 'timeout': true."}, status_code=400)
+
+        return JSONResponse({
+            "status": "ok",
+            "call_id": call_id,
+            "transition": transition.to_dict(),
+        })
+
+    @app.get("/telephony/ivr/session/{call_id}")
+    def get_ivr_session_audit(request: Request, call_id: str):
+        """
+        Returns DPDP Act 2023 sanitized audit summary of an active or completed IVR session.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        if call_id not in active_ivr_sessions:
+            return JSONResponse({"error": f"IVR session for call '{call_id}' not found."}, status_code=404)
+
+        ivr_session = active_ivr_sessions[call_id]
+        return JSONResponse(ivr_session.get_summary())
 
     return app
 
