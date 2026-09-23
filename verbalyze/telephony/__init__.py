@@ -80,6 +80,19 @@ from verbalyze.telephony.voice_biometrics import (
     BiometricVerificationEngine,
     SpeakerProfileRegistry,
 )
+from verbalyze.telephony.turn_taking import (
+    TurnTakingState,
+    DialogueContext,
+    VADFrameResult,
+    TurnCompletionAssessment,
+    LatencyBreakdown,
+    AcousticVAD,
+    TurnCompletionConfidenceScorer,
+    AdaptivePausePolicy,
+    SpeculativePipeliner,
+    GlassToGlassLatencyProfiler,
+    AdaptiveTurnTakingManager,
+)
 
 __all__ = [
     "DispatchResult",
@@ -149,6 +162,17 @@ __all__ = [
     "AntiSpoofDetector",
     "BiometricVerificationEngine",
     "SpeakerProfileRegistry",
+    "TurnTakingState",
+    "DialogueContext",
+    "VADFrameResult",
+    "TurnCompletionAssessment",
+    "LatencyBreakdown",
+    "AcousticVAD",
+    "TurnCompletionConfidenceScorer",
+    "AdaptivePausePolicy",
+    "SpeculativePipeliner",
+    "GlassToGlassLatencyProfiler",
+    "AdaptiveTurnTakingManager",
 ]
 
 

@@ -164,6 +164,7 @@ class VoiceAgent:
         self.last_lid: Optional[LanguageIDResult] = None
         self.pending_whispers: List[str] = []
         self.whisper_history: List[str] = []
+        self.turn_context: Optional[str] = None
 
     def inject_supervisor_whisper(self, whisper_text: str):
         """
@@ -174,6 +175,10 @@ class VoiceAgent:
         if cleaned:
             self.pending_whispers.append(cleaned)
             self.whisper_history.append(cleaned)
+
+    def set_turn_context(self, context: str):
+        """Sets dialogue context hint for adaptive turn-taking (CONFIRMATION, STANDARD, DIGIT_COLLECTION)."""
+        self.turn_context = context
 
     def get_initial_greeting(self) -> str:
         """Returns localized initial greeting for the selected persona."""

@@ -26,6 +26,14 @@ from verbalyze.telephony.jitter_buffer import AdaptiveJitterBuffer
 from verbalyze.telephony.supervisor import SupervisorManager
 from verbalyze.telephony.dtmf_engine import DTMFPad, RFC4733EventDecoder
 from verbalyze.telephony.ivr_tree import IVRStateMachine, IVRTransitionResult
+from verbalyze.telephony.turn_taking import (
+    AdaptiveTurnTakingManager,
+    TurnTakingState,
+    DialogueContext,
+    AdaptivePausePolicy,
+    TurnCompletionConfidenceScorer,
+    GlassToGlassLatencyProfiler,
+)
 
 try:
     import pydub
@@ -111,6 +119,14 @@ class MediaStreamSession:
             caller_phone=caller_phone
         )
 
+        # Adaptive Conversational Turn-Taking & Speculative Early-Pipelining Manager
+        self.turn_manager = AdaptiveTurnTakingManager(
+            sample_rate=8000,
+            frame_duration_ms=20.0,
+            default_context=DialogueContext.STANDARD_CONVERSATION,
+            barge_in_enabled=True,
+        )
+
         # Inbound VAD state
         self.inbound_pcm_buffer: List[bytes] = []
         self.silence_frames_count: int = 0
@@ -169,6 +185,7 @@ class MediaStreamSession:
     async def interrupt_agent_playback(self):
         """Atomically aborts active agent speech streaming upon caller interruption."""
         if self.is_agent_streaming:
+            self.turn_manager.set_bot_speaking(False)
             self.cancel_playback_event.set()
             if self.current_playback_task and not self.current_playback_task.done():
                 self.current_playback_task.cancel()
@@ -202,6 +219,7 @@ class MediaStreamSession:
         """
         self.cancel_playback_event.clear()
         self.is_agent_streaming = True
+        self.turn_manager.set_bot_speaking(True)
 
         # Frame size at 8,000 Hz mono 16-bit: 20ms = 160 samples = 320 bytes
         frame_size_pcm = 320
@@ -228,12 +246,17 @@ class MediaStreamSession:
                     })
                     await self.websocket.send_text(media_msg)
 
+                # Record first outbound RTP packet for glass-to-glass latency SLA
+                if idx == 0 and not self.turn_manager.latency_profiler.breakdown.rtp_dispatched_ts:
+                    self.turn_manager.latency_profiler.record_rtp_dispatched()
+
                 # 20ms telephony pacing
                 await asyncio.sleep(0.02)
         except asyncio.CancelledError:
             pass
         finally:
             self.is_agent_streaming = False
+            self.turn_manager.set_bot_speaking(False)
 
     async def synthesize_and_play_reply(self, text: str):
         """Synthesizes text via AudioEngine and streams 20ms packets down the socket."""
@@ -272,6 +295,10 @@ class MediaStreamSession:
         if self.cancel_playback_event.is_set():
             return
 
+        # Record first TTS audio chunk generated for latency SLA tracking
+        if not self.turn_manager.latency_profiler.breakdown.tts_first_chunk_ts:
+            self.turn_manager.latency_profiler.record_tts_first_chunk()
+
         try:
             seg = pydub.AudioSegment.from_file(audio_path)
             seg = seg.set_frame_rate(8000).set_channels(1).set_sample_width(2)
@@ -284,22 +311,36 @@ class MediaStreamSession:
         except Exception as e:
             print(f"Error streaming clause audio to carrier: {e}")
 
-    async def process_caller_turn(self):
+    async def process_caller_turn(
+        self,
+        raw_pcm_override: Optional[bytes] = None,
+        speculative_result: Optional[str] = None,
+    ):
         """Transcribes accumulated inbound PCM buffer and triggers streaming pipelined agent step."""
-        if not self.inbound_pcm_buffer:
-            return
+        if raw_pcm_override is not None:
+            raw_pcm = raw_pcm_override
+        else:
+            if not self.inbound_pcm_buffer:
+                return
+            raw_pcm = b"".join(self.inbound_pcm_buffer)
+            self.inbound_pcm_buffer.clear()
+            self.silence_frames_count = 0
 
-        raw_pcm = b"".join(self.inbound_pcm_buffer)
-        self.inbound_pcm_buffer.clear()
-        self.silence_frames_count = 0
         self.is_caller_speaking = False
 
         # If audio is shorter than 250ms (8k * 2 bytes * 0.25s = 4000 bytes), discard as click/pop
         if len(raw_pcm) < 4000:
             return
 
-        # Transcribe audio:
-        user_text = await self._transcribe_pcm_audio(raw_pcm)
+        # 1. Transcribe audio or use pre-fetched speculative STT result
+        if speculative_result:
+            user_text = speculative_result
+            self.turn_manager.latency_profiler.record_stt_ready()
+            print(f"[Turn Taking] Using pre-fetched speculative STT transcript: '{user_text}'")
+        else:
+            user_text = await self._transcribe_pcm_audio(raw_pcm)
+            self.turn_manager.latency_profiler.record_stt_ready()
+
         if not user_text:
             return
 
@@ -336,6 +377,7 @@ class MediaStreamSession:
         self.cancel_playback_event.clear()
         self.is_agent_streaming = True
         accumulated_reply = []
+        first_clause = True
 
         try:
             async for chunk in self.agent.step_stream(user_text, pcm_bytes=raw_pcm):
@@ -346,6 +388,9 @@ class MediaStreamSession:
                 if chunk["type"] == "clause":
                     clause_text = chunk["text"]
                     accumulated_reply.append(clause_text)
+                    if first_clause:
+                        self.turn_manager.latency_profiler.record_llm_first_token()
+                        first_clause = False
                     print(f"[Agent Clause {chunk.get('index', 0)}]: '{clause_text}'")
                     await self.synthesize_and_stream_clause(clause_text)
 
@@ -392,6 +437,20 @@ class MediaStreamSession:
                             jitter_stats=self.jitter_buffer.get_stats().to_dict(),
                         )
 
+            # Profile glass-to-glass latency at completion of turn
+            latency_summary = self.turn_manager.latency_profiler.get_summary()
+            if latency_summary.get("glass_to_glass_ms"):
+                print(
+                    f"[Glass-to-Glass Profiler] Latency Breakdown: "
+                    f"Turn={latency_summary.get('turn_detection_ms', 0):.1f}ms, "
+                    f"STT={latency_summary.get('stt_latency_ms', 0):.1f}ms, "
+                    f"LLM_TTFT={latency_summary.get('llm_ttft_ms', 0):.1f}ms, "
+                    f"TTS_TTFB={latency_summary.get('tts_ttfb_ms', 0):.1f}ms, "
+                    f"Total={latency_summary['glass_to_glass_ms']:.1f}ms "
+                    f"(Sub-300ms SLA: {latency_summary.get('meets_sub_300ms_sla', False)})"
+                )
+            self.turn_manager.latency_profiler = GlassToGlassLatencyProfiler()
+
         except Exception as e:
             print(f"[Streaming Turn Error]: {e}")
         finally:
@@ -424,8 +483,8 @@ class MediaStreamSession:
         """
         Processes an incoming 20ms audio frame from the carrier:
         1. Decodes to 16-bit linear PCM.
-        2. Evaluates RMS energy for VAD & Barge-In.
-        3. Accumulates speech frames and dispatches on pause.
+        2. Evaluates acoustic DTMF keypad tones.
+        3. Routes through AdaptiveTurnTakingManager for acoustic VAD, speculative early-pipelining, dynamic pause threshold, and barge-in.
         """
         pcm_16 = self.decode_inbound_audio(raw_frame_bytes)
         if len(pcm_16) < 4:
@@ -443,34 +502,35 @@ class MediaStreamSession:
         for dtmf_digit in detected_dtmf_digits:
             await self.handle_dtmf_digit(dtmf_digit)
 
-        rms = audioop.rms(frame, 2)
+        # 1. Update turn manager dialogue context if agent has a context hint
+        if hasattr(self.agent, "turn_context") and self.agent.turn_context:
+            try:
+                ctx_enum = DialogueContext(self.agent.turn_context)
+                self.turn_manager.set_context(ctx_enum)
+            except (ValueError, KeyError):
+                pass
 
-        # 1. Check for real-time Barge-In if agent is streaming audio
-        if self.is_agent_streaming:
-            if rms > self.speech_threshold:
-                self.barge_in_consecutive_frames += 1
-                if self.barge_in_consecutive_frames >= 2:  # ~40ms speech confirmation
-                    await self.interrupt_agent_playback()
-                    self.is_caller_speaking = True
-                    self.inbound_pcm_buffer.append(frame)
-                    self.barge_in_consecutive_frames = 0
-            else:
-                self.barge_in_consecutive_frames = 0
-            return
+        # 2. Ingest frame into AdaptiveTurnTakingManager
+        state, event_data = await self.turn_manager.ingest_frame(
+            frame,
+            transcribe_fn=self._transcribe_pcm_audio,
+        )
 
-        # 2. Inbound Caller Speech Accumulation & VAD
-        if rms > self.speech_threshold:
+        if state == TurnTakingState.BARGE_IN:
+            await self.interrupt_agent_playback()
             self.is_caller_speaking = True
-            self.silence_frames_count = 0
-            self.inbound_pcm_buffer.append(frame)
-        elif self.is_caller_speaking:
-            # Trailing silence period
-            self.inbound_pcm_buffer.append(frame)
-            self.silence_frames_count += 1
 
-            if self.silence_frames_count >= self.silence_timeout_frames:
-                # Caller has finished their conversational turn
-                await self.process_caller_turn()
+        elif state in (TurnTakingState.SPEECH_ONSET, TurnTakingState.SPEAKING):
+            self.is_caller_speaking = True
+
+        elif state == TurnTakingState.TURN_COMPLETED and event_data:
+            self.is_caller_speaking = False
+            utterance_pcm = event_data.get("pcm_bytes", b"")
+            speculative_res = event_data.get("speculative_result")
+            await self.process_caller_turn(
+                raw_pcm_override=utterance_pcm,
+                speculative_result=speculative_res,
+            )
 
     async def run(self):
         """Main event loop receiving frames from the WebSocket."""
