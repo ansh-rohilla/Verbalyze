@@ -13,6 +13,16 @@ from verbalyze.agent.sentiment import (
     SentimentCategory,
     DisputeType,
 )
+from verbalyze.agent.voice_bot import VoiceAgent
+from verbalyze.agent.audio_engine import AudioEngine
+from verbalyze.agent.audio_quality import (
+    HumanLikenessScorer,
+    AudioQualityReport,
+    TelephonyChannelSimulator,
+)
+from verbalyze.agent.stt_engine import SovereignSTTEngine
+
+QualityGate = HumanLikenessScorer  # Alias for backward compatibility
 
 __all__ = [
     "LanguageIdentificationGate",
@@ -24,4 +34,11 @@ __all__ = [
     "SentimentResult",
     "SentimentCategory",
     "DisputeType",
+    "VoiceAgent",
+    "AudioEngine",
+    "HumanLikenessScorer",
+    "QualityGate",
+    "AudioQualityReport",
+    "TelephonyChannelSimulator",
+    "SovereignSTTEngine",
 ]

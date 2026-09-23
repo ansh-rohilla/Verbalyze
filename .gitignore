@@ -50,3 +50,11 @@ data/**/*.jsonl
 data/**/*.json
 !data/**/README.md
 checkpoints/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+*.orig
+*.rej
+*.bak

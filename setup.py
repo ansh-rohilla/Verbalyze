@@ -36,6 +36,8 @@ setup(
         "huggingface-hub>=0.22.0",
         "pandas>=2.0.0",
         "gradio>=6.0.0",
+        "fpdf2>=2.7.8",
+        "boto3>=1.34.0",
     ],
     entry_points={
         "console_scripts": [
