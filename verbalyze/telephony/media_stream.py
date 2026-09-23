@@ -34,6 +34,10 @@ from verbalyze.telephony.turn_taking import (
     TurnCompletionConfidenceScorer,
     GlassToGlassLatencyProfiler,
 )
+from verbalyze.telephony.echo_canceller import (
+    AcousticEchoAndNoiseProcessor,
+    DSPTelemetry,
+)
 
 try:
     import pydub
@@ -127,6 +131,14 @@ class MediaStreamSession:
             barge_in_enabled=True,
         )
 
+        # Real-Time Acoustic Echo Cancellation (AEC) & Spectral Noise Suppression Engine
+        self.dsp_processor = AcousticEchoAndNoiseProcessor(
+            sample_rate=8000,
+            filter_length=256,
+            aec_enabled=True,
+            noise_suppression_enabled=True,
+        )
+
         # Inbound VAD state
         self.inbound_pcm_buffer: List[bytes] = []
         self.silence_frames_count: int = 0
@@ -186,6 +198,7 @@ class MediaStreamSession:
         """Atomically aborts active agent speech streaming upon caller interruption."""
         if self.is_agent_streaming:
             self.turn_manager.set_bot_speaking(False)
+            self.dsp_processor.set_bot_speaking(False)
             self.cancel_playback_event.set()
             if self.current_playback_task and not self.current_playback_task.done():
                 self.current_playback_task.cancel()
@@ -220,6 +233,7 @@ class MediaStreamSession:
         self.cancel_playback_event.clear()
         self.is_agent_streaming = True
         self.turn_manager.set_bot_speaking(True)
+        self.dsp_processor.set_bot_speaking(True)
 
         # Frame size at 8,000 Hz mono 16-bit: 20ms = 160 samples = 320 bytes
         frame_size_pcm = 320
@@ -231,12 +245,14 @@ class MediaStreamSession:
                     break
 
                 chunk_pcm = pcm_8k_bytes[idx * frame_size_pcm : (idx + 1) * frame_size_pcm]
+                # Register outbound reference frame in AEC adaptive filter
+                self.dsp_processor.register_reference_frame(chunk_pcm)
                 encoded_chunk = self.encode_outbound_audio(chunk_pcm)
 
                 if self.is_binary_mode:
                     await self.websocket.send_bytes(encoded_chunk)
                 else:
-                    payload_b64 = base64.b64encode(encoded_chunk).decode("ascii")
+                    payload_b64 = base64.b64decode(encoded_chunk).decode("ascii") if False else base64.b64encode(encoded_chunk).decode("ascii")
                     media_msg = json.dumps({
                         "event": "media",
                         "streamSid": self.stream_sid,
@@ -257,6 +273,7 @@ class MediaStreamSession:
         finally:
             self.is_agent_streaming = False
             self.turn_manager.set_bot_speaking(False)
+            self.dsp_processor.set_bot_speaking(False)
 
     async def synthesize_and_play_reply(self, text: str):
         """Synthesizes text via AudioEngine and streams 20ms packets down the socket."""
@@ -497,12 +514,15 @@ class MediaStreamSession:
         if len(frame) < 4:
             return
 
-        # 0. Evaluate acoustic DTMF keypad tones on inbound PCM
-        detected_dtmf_digits = self.dtmf_pad.process_pcm_chunk(frame)
+        # 0. Clean inbound frame via AEC (subtracting bot echo) & Spectral Noise Suppression
+        clean_frame, dsp_telemetry = self.dsp_processor.process_inbound_frame(frame)
+
+        # 1. Evaluate acoustic DTMF keypad tones on cleaned inbound PCM
+        detected_dtmf_digits = self.dtmf_pad.process_pcm_chunk(clean_frame)
         for dtmf_digit in detected_dtmf_digits:
             await self.handle_dtmf_digit(dtmf_digit)
 
-        # 1. Update turn manager dialogue context if agent has a context hint
+        # 2. Update turn manager dialogue context if agent has a context hint
         if hasattr(self.agent, "turn_context") and self.agent.turn_context:
             try:
                 ctx_enum = DialogueContext(self.agent.turn_context)
@@ -510,9 +530,9 @@ class MediaStreamSession:
             except (ValueError, KeyError):
                 pass
 
-        # 2. Ingest frame into AdaptiveTurnTakingManager
+        # 3. Ingest cleaned frame into AdaptiveTurnTakingManager
         state, event_data = await self.turn_manager.ingest_frame(
-            frame,
+            clean_frame,
             transcribe_fn=self._transcribe_pcm_audio,
         )
 

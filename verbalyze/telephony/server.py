@@ -11,6 +11,7 @@ import asyncio
 import base64
 import json
 import time
+import numpy as np
 from typing import Dict, Any, Optional
 from verbalyze.agent.voice_bot import VoiceAgent
 from verbalyze.telephony.media_stream import MediaStreamSession
@@ -103,6 +104,10 @@ from verbalyze.telephony.turn_taking import (
     SpeculativePipeliner,
     GlassToGlassLatencyProfiler,
 )
+from verbalyze.telephony.echo_canceller import (
+    AcousticEchoAndNoiseProcessor,
+    DSPTelemetry,
+)
 
 # Try importing FastAPI
 try:
@@ -170,6 +175,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
     biometrics_engine = BiometricVerificationEngine()
     completion_scorer = TurnCompletionConfidenceScorer()
     turn_manager = AdaptiveTurnTakingManager()
+    dsp_processor = AcousticEchoAndNoiseProcessor(sample_rate=8000)
 
     @app.get("/health")
     def health():
@@ -185,6 +191,8 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "audited_calls": len(compliance_qa_registry.scorecards),
             "turn_taking_status": "ready",
             "target_glass_to_glass_ms": 300,
+            "dsp_echo_cancellation": "ready",
+            "dsp_noise_suppression": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -1867,6 +1875,91 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "benchmark": summary,
             "sla_target_ms": 300.0,
             "meets_sub_300ms_sla": summary.get("meets_sub_300ms_sla", False),
+        })
+
+    @app.post("/telephony/dsp/process")
+    async def process_dsp_audio(request: Request):
+        """
+        Cleans a 20ms microphone audio chunk using NLMS Acoustic Echo Cancellation
+        and Spectral Noise Suppression.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        mic_b64 = body.get("mic_chunk_b64") or body.get("audio_sample_b64")
+        ref_b64 = body.get("ref_chunk_b64")
+        aec_enabled = bool(body.get("aec_enabled", True))
+        noise_suppression_enabled = bool(body.get("noise_suppression_enabled", True))
+
+        if not mic_b64:
+            return JSONResponse({"error": "Missing 'mic_chunk_b64'"}, status_code=400)
+
+        try:
+            mic_bytes = base64.b64decode(mic_b64)
+            processor = AcousticEchoAndNoiseProcessor(
+                sample_rate=8000,
+                aec_enabled=aec_enabled,
+                noise_suppression_enabled=noise_suppression_enabled,
+            )
+
+            if ref_b64:
+                ref_bytes = base64.b64decode(ref_b64)
+                processor.register_reference_frame(ref_bytes)
+
+            clean_bytes, telemetry = processor.process_inbound_frame(mic_bytes)
+            clean_b64 = base64.b64encode(clean_bytes).decode("ascii")
+
+            return JSONResponse({
+                "status": "ok",
+                "clean_chunk_b64": clean_b64,
+                "telemetry": telemetry.to_dict(),
+            })
+        except Exception as e:
+            return JSONResponse({"error": f"DSP processing error: {str(e)}"}, status_code=500)
+
+    @app.post("/telephony/dsp/benchmark")
+    async def benchmark_dsp_pipeline(request: Request):
+        """
+        Benchmarks DSP execution throughput per 20ms frame.
+        Verifies that processing time is < 2.5ms (ensuring zero degradation of glass-to-glass SLA).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        processor = AcousticEchoAndNoiseProcessor(sample_rate=8000)
+
+        n_frames = 50
+        durations = []
+
+        # Synthetic reference frame
+        ref_samples = (np.sin(2 * np.pi * 200.0 * np.linspace(0, 0.02, 160)) * 12000).astype(np.int16).tobytes()
+        # Synthetic mic frame (echo + fan noise)
+        mic_samples = (np.sin(2 * np.pi * 200.0 * np.linspace(0, 0.02, 160)) * 6000 + np.random.normal(0, 150, 160)).astype(np.int16).tobytes()
+
+        for _ in range(n_frames):
+            processor.register_reference_frame(ref_samples)
+            _, telemetry = processor.process_inbound_frame(mic_samples)
+            durations.append(telemetry.processing_time_ms)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_frames,
+            "avg_dsp_time_ms": round(avg_ms, 3),
+            "p95_dsp_time_ms": round(p95_ms, 3),
+            "max_dsp_time_ms": round(max_ms, 3),
+            "target_sla_ms": 2.5,
+            "meets_dsp_sla": avg_ms < 2.5,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 
     return app

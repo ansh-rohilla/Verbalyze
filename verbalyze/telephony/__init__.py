@@ -93,6 +93,13 @@ from verbalyze.telephony.turn_taking import (
     GlassToGlassLatencyProfiler,
     AdaptiveTurnTakingManager,
 )
+from verbalyze.telephony.echo_canceller import (
+    DSPTelemetry,
+    NLMSAdaptiveFilter,
+    GeigelDoubleTalkDetector,
+    SpectralNoiseSuppressor,
+    AcousticEchoAndNoiseProcessor,
+)
 
 __all__ = [
     "DispatchResult",
@@ -173,6 +180,11 @@ __all__ = [
     "SpeculativePipeliner",
     "GlassToGlassLatencyProfiler",
     "AdaptiveTurnTakingManager",
+    "DSPTelemetry",
+    "NLMSAdaptiveFilter",
+    "GeigelDoubleTalkDetector",
+    "SpectralNoiseSuppressor",
+    "AcousticEchoAndNoiseProcessor",
 ]
 
 
