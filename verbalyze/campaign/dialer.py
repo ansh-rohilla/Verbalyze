@@ -52,11 +52,15 @@ class CampaignDialer:
         compliance_engine: Optional[TRAIComplianceEngine] = None,
         amd_classifier: Optional[AMDClassifier] = None,
         trunk_router: Optional[Any] = None,
+        biometrics_registry: Optional[Any] = None,
+        biometrics_engine: Optional[Any] = None,
     ):
         self.config = config or CampaignConfig()
         self.compliance_engine = compliance_engine or TRAIComplianceEngine()
         self.amd_classifier = amd_classifier or AMDClassifier()
         self.trunk_router = trunk_router
+        self.biometrics_registry = biometrics_registry
+        self.biometrics_engine = biometrics_engine
 
         self.leads: List[Lead] = []
         self.cdrs: List[CallDetailRecord] = []
@@ -116,6 +120,7 @@ class CampaignDialer:
                 amount_due=float(amt_clean),
                 due_date=due_date,
                 max_retries=self.config.max_retries_per_lead,
+                custom_metadata=dict(item.get("custom_metadata", {})),
             )
             self.leads.append(lead)
             accepted += 1
@@ -346,7 +351,7 @@ class CampaignDialer:
         # Stage 4: Conversational VoiceAgent Execution
         # ----------------------------------------------------------------------
         self.summary.human_answered_count += 1
-        call_turns, tool_events, final_disp, payment_sent, peak_agitation, detected_dispute, detected_lang, is_code_switched = await self._conduct_conversation(
+        call_turns, tool_events, final_disp, payment_sent, peak_agitation, detected_dispute, detected_lang, is_code_switched, biometric_status, biometric_confidence, spoof_type = await self._conduct_conversation(
             lead=lead,
             initial_transcript=early_transcript,
         )
@@ -404,6 +409,9 @@ class CampaignDialer:
             failover_occurred=failover_occurred,
             failover_count=failover_count,
             trunk_mos_score=trunk_mos_score,
+            biometric_status=biometric_status,
+            biometric_confidence=biometric_confidence,
+            spoof_type=spoof_type,
         )
         self.cdrs.append(cdr)
 
@@ -487,10 +495,17 @@ class CampaignDialer:
         self,
         lead: Lead,
         initial_transcript: str
-    ) -> Tuple[List[Dict[str, str]], List[Dict[str, Any]], CallDisposition, bool, float, str]:
+    ) -> Tuple[List[Dict[str, str]], List[Dict[str, Any]], CallDisposition, bool, float, str, str, bool, str, float, str]:
         """
         Orchestrates multi-turn conversation between VoiceAgent and borrower.
         """
+        # Resolve customer voiceprint profile if biometrics enabled
+        profile = None
+        if self.biometrics_registry:
+            profile = self.biometrics_registry.get_profile(lead.lead_id) or self.biometrics_registry.get_profile(lead.loan_id)
+        if not profile and "speaker_profile" in lead.custom_metadata:
+            profile = lead.custom_metadata["speaker_profile"]
+
         agent = VoiceAgent(
             language=self.config.language,
             persona=self.config.persona,
@@ -498,6 +513,8 @@ class CampaignDialer:
             model_name=self.config.model_name,
             voice_enabled=False,  # Text/dialogue turns for high-throughput batching
             caller_phone=lead.phone_number,
+            biometrics_engine=self.biometrics_engine,
+            enrolled_profile=profile,
         )
 
         turns: List[Dict[str, str]] = []
@@ -509,6 +526,9 @@ class CampaignDialer:
         detected_lang = self.config.language
         is_code_switched = False
 
+        # Optional audio probe for voice biometrics & anti-spoofing
+        caller_pcm = lead.custom_metadata.get("pcm_bytes") or lead.custom_metadata.get("caller_pcm_bytes")
+
         # Initial Agent Greeting
         greeting = agent.get_initial_greeting()
         turns.append({"role": "assistant", "content": greeting})
@@ -517,7 +537,7 @@ class CampaignDialer:
         cust_turn_1 = initial_transcript or "हाँ जी, मैं शर्मा बोल रहा हूँ।"
         turns.append({"role": "user", "content": cust_turn_1})
 
-        res_1 = agent.step(cust_turn_1)
+        res_1 = agent.step(cust_turn_1, pcm_bytes=caller_pcm)
         turns.append({"role": "assistant", "content": res_1["text"]})
 
         if res_1.get("language_info"):
@@ -530,6 +550,14 @@ class CampaignDialer:
             if res_1["sentiment"].get("dispute_type") != "NONE":
                 detected_dispute = res_1["sentiment"].get("dispute_type")
 
+        # Check for security block (voice biometric mismatch or deepfake spoof detected)
+        if res_1.get("security_block") and agent.last_biometric:
+            status_val = agent.last_biometric.status.value
+            conf_val = agent.last_biometric.confidence
+            spoof_val = agent.last_biometric.anti_spoof.decision.value
+            final_disp = CallDisposition.TRANSFERRED_TO_SUPERVISOR
+            return turns, tool_events, final_disp, False, peak_agitation, detected_dispute, detected_lang, is_code_switched, status_val, conf_val, spoof_val
+
         if res_1.get("tool_event"):
             tool_events.append(res_1["tool_event"])
             if res_1.get("tool_data") and res_1["tool_data"].get("action") == "transfer":
@@ -538,7 +566,10 @@ class CampaignDialer:
                     if detected_dispute == "LEGAL_THREAT"
                     else CallDisposition.TRANSFERRED_TO_SUPERVISOR
                 )
-                return turns, tool_events, final_disp, False, peak_agitation, detected_dispute, detected_lang, is_code_switched
+                status_val = agent.last_biometric.status.value if agent.last_biometric else "NOT_ENROLLED"
+                conf_val = agent.last_biometric.confidence if agent.last_biometric else 0.0
+                spoof_val = agent.last_biometric.anti_spoof.decision.value if agent.last_biometric else "AUTHENTIC_HUMAN"
+                return turns, tool_events, final_disp, False, peak_agitation, detected_dispute, detected_lang, is_code_switched, status_val, conf_val, spoof_val
             else:
                 payment_link_sent = True
 
@@ -546,7 +577,7 @@ class CampaignDialer:
         cust_turn_2 = lead.custom_metadata.get("second_turn") or "हाँ, मुझे पेमेंट लिंक एसएमएस पर भेज दीजिए, मैं अभी कर देता हूँ।"
         turns.append({"role": "user", "content": cust_turn_2})
 
-        res_2 = agent.step(cust_turn_2)
+        res_2 = agent.step(cust_turn_2, pcm_bytes=caller_pcm)
         turns.append({"role": "assistant", "content": res_2["text"]})
 
         if res_2.get("language_info"):
@@ -559,6 +590,15 @@ class CampaignDialer:
             if res_2["sentiment"].get("dispute_type") != "NONE":
                 detected_dispute = res_2["sentiment"].get("dispute_type")
 
+        # Extract biometric telemetry
+        biometric_status = agent.last_biometric.status.value if agent.last_biometric else "NOT_ENROLLED"
+        biometric_confidence = agent.last_biometric.confidence if agent.last_biometric else 0.0
+        spoof_type = agent.last_biometric.anti_spoof.decision.value if agent.last_biometric else "AUTHENTIC_HUMAN"
+
+        if res_2.get("security_block") and agent.last_biometric:
+            final_disp = CallDisposition.TRANSFERRED_TO_SUPERVISOR
+            return turns, tool_events, final_disp, False, peak_agitation, detected_dispute, detected_lang, is_code_switched, biometric_status, biometric_confidence, spoof_type
+
         if res_2.get("tool_event"):
             tool_events.append(res_2["tool_event"])
             if res_2.get("tool_data") and res_2["tool_data"].get("action") == "transfer":
@@ -567,7 +607,7 @@ class CampaignDialer:
                     if detected_dispute == "LEGAL_THREAT"
                     else CallDisposition.TRANSFERRED_TO_SUPERVISOR
                 )
-                return turns, tool_events, final_disp, False, peak_agitation, detected_dispute, detected_lang, is_code_switched
+                return turns, tool_events, final_disp, False, peak_agitation, detected_dispute, detected_lang, is_code_switched, biometric_status, biometric_confidence, spoof_type
             else:
                 payment_link_sent = True
 
@@ -578,7 +618,7 @@ class CampaignDialer:
         else:
             final_disp = CallDisposition.PROMISE_TO_PAY
 
-        return turns, tool_events, final_disp, payment_link_sent, peak_agitation, detected_dispute, detected_lang, is_code_switched
+        return turns, tool_events, final_disp, payment_link_sent, peak_agitation, detected_dispute, detected_lang, is_code_switched, biometric_status, biometric_confidence, spoof_type
 
     # --------------------------------------------------------------------------
     # RETRY LOGIC & DISPOSITION HANDLERS
@@ -841,4 +881,8 @@ class CampaignDialer:
                 masked_phone = PIIRedactor.mask_phone(lead.phone_number)
                 print(f"[Campaign Dialer] Lead {lead.lead_id} (Loan: {lead.loan_id}, Phone: {masked_phone}) marked SETTLED. Outbound dialing halted.")
         return found
+
+
+OutboundCampaignDialer = CampaignDialer
+
 

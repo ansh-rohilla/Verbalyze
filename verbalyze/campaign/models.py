@@ -192,6 +192,9 @@ class CallDetailRecord:
     failover_occurred: bool = False
     failover_count: int = 0
     trunk_mos_score: Optional[float] = None
+    biometric_status: str = "NOT_ENROLLED"
+    biometric_confidence: float = 0.0
+    spoof_type: str = "AUTHENTIC_HUMAN"
 
     def to_dict(self, mask_pii: bool = True) -> Dict[str, Any]:
         phone = self.phone_number
@@ -247,6 +250,9 @@ class CallDetailRecord:
             "failover_occurred": self.failover_occurred,
             "failover_count": self.failover_count,
             "trunk_mos_score": self.trunk_mos_score,
+            "biometric_status": self.biometric_status,
+            "biometric_confidence": round(self.biometric_confidence, 4),
+            "spoof_type": self.spoof_type,
         }
 
 

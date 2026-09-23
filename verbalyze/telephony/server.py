@@ -85,6 +85,14 @@ from verbalyze.telephony.trunk_router import (
     detect_telecom_circle,
     create_default_indian_trunk_mesh,
 )
+from verbalyze.telephony.voice_biometrics import (
+    BiometricVerificationEngine,
+    BiometricVerificationResult,
+    BiometricStatus,
+    SpoofType,
+    SpeakerProfile,
+    SpeakerProfileRegistry,
+)
 
 # Try importing FastAPI
 try:
@@ -148,6 +156,8 @@ def create_app(auth_token: Optional[str] = None) -> Any:
     compliance_qa_registry = ComplianceQARegistry()
     active_ivr_sessions: Dict[str, IVRStateMachine] = {}
     trunk_router = create_default_indian_trunk_mesh()
+    biometrics_registry = SpeakerProfileRegistry()
+    biometrics_engine = BiometricVerificationEngine()
 
     @app.get("/health")
     def health():
@@ -157,6 +167,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "active_campaigns": len(active_campaigns),
             "active_ivr_sessions": len(active_ivr_sessions),
             "active_trunks": len(trunk_router.trunks),
+            "enrolled_voiceprints": biometrics_registry.count(),
             "supervisor_active_calls": len(supervisor_manager.active_calls),
             "settled_transactions": len([t for t in settlement_ledger.transactions.values() if t.status == SettlementStatus.SETTLED]),
             "audited_calls": len(compliance_qa_registry.scorecards),
@@ -520,7 +531,11 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             enforce_dnd_check=enforce_dnd,
         )
 
-        dialer = CampaignDialer(config=config)
+        dialer = CampaignDialer(
+            config=config,
+            biometrics_registry=biometrics_registry,
+            biometrics_engine=biometrics_engine,
+        )
 
         # Ingest leads
         raw_leads = payload.get("leads", [])
@@ -1562,6 +1577,188 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "health": trunk.circuit_breaker.get_health(trunk.qos).value,
             "mos_score": trunk.qos.mos_score,
             "trunk": trunk.to_dict(),
+        })
+
+    # --------------------------------------------------------------------------
+    # VOICE BIOMETRICS & ANTI-SPOOFING (RBI IDENTITY GUARD & DPDP ACT 2023)
+    # --------------------------------------------------------------------------
+
+    @app.post("/telephony/biometrics/enroll")
+    async def enroll_voiceprint(request: Request):
+        """
+        Enrolls a customer voiceprint from one or more base64-encoded PCM audio snippets.
+        Computes 64-dimensional unit centroid embedding in memory per DPDP Act 2023.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        customer_id = body.get("customer_id")
+        name = body.get("name", "Borrower")
+        loan_id = body.get("loan_id", customer_id)
+        samples_b64 = body.get("audio_samples_b64") or body.get("audio_samples") or []
+
+        if not customer_id or not samples_b64:
+            return JSONResponse({
+                "error": "Must provide 'customer_id' and at least one base64 encoded audio sample in 'audio_samples_b64'."
+            }, status_code=400)
+
+        pcm_samples = []
+        for s in samples_b64:
+            try:
+                pcm_bytes = base64.b64decode(s)
+                pcm_samples.append(pcm_bytes)
+            except Exception as e:
+                return JSONResponse({"error": f"Failed decoding base64 audio sample: {e}"}, status_code=400)
+
+        try:
+            profile = biometrics_registry.enroll_speaker(
+                customer_id=customer_id,
+                name=name,
+                loan_id=loan_id,
+                audio_samples=pcm_samples,
+            )
+            return JSONResponse({
+                "status": "ok",
+                "message": f"Customer '{customer_id}' voiceprint enrolled successfully.",
+                "profile": profile.to_dict(),
+            })
+        except Exception as e:
+            return JSONResponse({"error": f"Enrollment error: {str(e)}"}, status_code=500)
+
+    @app.post("/telephony/biometrics/verify")
+    async def verify_voiceprint(request: Request):
+        """
+        Verifies incoming caller audio against enrolled voiceprint:
+        Anti-spoofing check -> Cosine similarity calculation -> Threshold decision.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        customer_id = body.get("customer_id")
+        sample_b64 = body.get("audio_sample_b64") or body.get("audio_sample")
+
+        if not customer_id or not sample_b64:
+            return JSONResponse({"error": "Must provide 'customer_id' and 'audio_sample_b64'."}, status_code=400)
+
+        profile = biometrics_registry.get_profile(customer_id)
+        if not profile:
+            return JSONResponse({
+                "status": "ok",
+                "verification": {
+                    "status": BiometricStatus.NOT_ENROLLED.value,
+                    "confidence": 0.0,
+                    "customer_id": customer_id,
+                    "cosine_similarity": 0.0,
+                    "anti_spoof": {
+                        "decision": SpoofType.AUTHENTIC_HUMAN.value,
+                        "is_authentic": True,
+                        "confidence": 0.0,
+                        "synthetic_score": 0.0,
+                        "replay_score": 0.0,
+                        "indicators": {},
+                    },
+                    "speech_duration_sec": 0.0,
+                    "is_verified": False,
+                    "message": f"Customer '{customer_id}' is not enrolled in voice biometrics.",
+                }
+            })
+
+        try:
+            probe_pcm = base64.b64decode(sample_b64)
+            result = biometrics_engine.verify_speaker(probe_pcm, profile)
+            return JSONResponse({
+                "status": "ok",
+                "verification": result.to_dict(),
+            })
+        except Exception as e:
+            return JSONResponse({"error": f"Verification error: {str(e)}"}, status_code=500)
+
+    @app.post("/telephony/biometrics/anti-spoof")
+    async def check_anti_spoof(request: Request):
+        """
+        Standalone forensic anti-spoofing analysis:
+        Detects synthetic deepfake vocoders (HiFi-GAN, WaveGlow) and loudspeaker phone replays.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        sample_b64 = body.get("audio_sample_b64") or body.get("audio_sample")
+        if not sample_b64:
+            return JSONResponse({"error": "Must provide 'audio_sample_b64'."}, status_code=400)
+
+        try:
+            probe_pcm = base64.b64decode(sample_b64)
+            result = biometrics_engine.anti_spoof.analyze(probe_pcm)
+            return JSONResponse({
+                "status": "ok",
+                "anti_spoof": result.to_dict(),
+            })
+        except Exception as e:
+            return JSONResponse({"error": f"Anti-spoof analysis error: {str(e)}"}, status_code=500)
+
+    @app.get("/telephony/biometrics/profile/{customer_id}")
+    def get_voiceprint_profile(customer_id: str, request: Request):
+        """
+        Retrieves enrolled voiceprint metadata (without sensitive raw audio).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        profile = biometrics_registry.get_profile(customer_id)
+        if not profile:
+            return JSONResponse({"error": f"Profile for '{customer_id}' not found."}, status_code=404)
+
+        return JSONResponse({
+            "status": "ok",
+            "profile": profile.to_dict(),
+        })
+
+    @app.delete("/telephony/biometrics/profile/{customer_id}")
+    def delete_voiceprint_profile(customer_id: str, request: Request):
+        """
+        DPDP Act 2023 Right to Erasure: Permanently removes customer voiceprint from memory.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        deleted = biometrics_registry.delete_profile(customer_id)
+        if not deleted:
+            return JSONResponse({"error": f"Profile for '{customer_id}' not found."}, status_code=404)
+
+        return JSONResponse({
+            "status": "ok",
+            "deleted": True,
+            "customer_id": customer_id,
+            "message": f"Customer '{customer_id}' voiceprint profile permanently erased per DPDP Act 2023.",
+        })
+
+    @app.get("/telephony/biometrics/profiles")
+    def list_voiceprint_profiles(request: Request):
+        """
+        Lists all enrolled customer voiceprint metadata.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        return JSONResponse({
+            "status": "ok",
+            "count": biometrics_registry.count(),
+            "profiles": biometrics_registry.list_profiles(),
         })
 
     return app

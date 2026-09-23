@@ -68,6 +68,18 @@ from verbalyze.telephony.trunk_router import (
     detect_telecom_circle,
     create_default_indian_trunk_mesh,
 )
+from verbalyze.telephony.voice_biometrics import (
+    BiometricStatus,
+    SpoofType,
+    AntiSpoofResult,
+    BiometricVerificationResult,
+    SpeakerProfile,
+    AcousticFeatureExtractor,
+    AntiSpoofingDetector,
+    AntiSpoofDetector,
+    BiometricVerificationEngine,
+    SpeakerProfileRegistry,
+)
 
 __all__ = [
     "DispatchResult",
@@ -127,6 +139,16 @@ __all__ = [
     "NoAvailableTrunkError",
     "detect_telecom_circle",
     "create_default_indian_trunk_mesh",
+    "BiometricStatus",
+    "SpoofType",
+    "AntiSpoofResult",
+    "BiometricVerificationResult",
+    "SpeakerProfile",
+    "AcousticFeatureExtractor",
+    "AntiSpoofingDetector",
+    "AntiSpoofDetector",
+    "BiometricVerificationEngine",
+    "SpeakerProfileRegistry",
 ]
 
 

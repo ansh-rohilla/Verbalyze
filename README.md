@@ -695,6 +695,49 @@ python3 scripts/test_carrier_trunks_circuit_breaker.py
 
 ---
 
+### 3.9 Live Voice Biometrics & Anti-Spoofing Speaker Verification Engine (RBI Identity Guard & DPDP Act 2023)
+
+In Indian banking, NBFC lending, and debt recovery operations, disclosing sensitive loan EMI amounts or personal debt details to an unverified third party or imposter violates the RBI Fair Practices Code for Lenders, the Digital Personal Data Protection (DPDP) Act 2023, and customer privacy mandates. Verbalyze provides an integrated, pure-math acoustic voice biometrics and anti-spoofing verification engine:
+
+* **Pure-Math Zero-Heavy-Dependency Acoustic Feature Extraction**:
+  * Built entirely using Python and NumPy with zero dependency on heavy C++ or proprietary ML libraries.
+  * Extracts 13-band Mel Frequency Cepstral Coefficients (MFCCs), spectral centroid, spectral rolloff, spectral flatness, zero-crossing rate (ZCR), and normalized autocorrelation fundamental frequency ($F_0$) pitch tracking across 25ms frames with 10ms hops.
+* **Standardized 64-Dimensional Speaker Embedding Vectors**:
+  * Employs cepstral mean centering and $L_2$ unit normalization:
+    $$\hat{\mathbf{e}} = \frac{\mathbf{e}}{\|\mathbf{e}\|_2}$$
+  * Isolates unique vocal tract formants and pitch dynamics while eliminating arbitrary volume or microphone gain biases.
+* **Text-Independent Cosine Similarity Decision Engine**:
+  * Computes cosine similarity between live caller audio probe vectors and enrolled customer voiceprints:
+    $$\text{sim}(\mathbf{u}, \mathbf{v}) = \frac{\mathbf{u} \cdot \mathbf{v}}{\|\mathbf{u}\|_2 \|\mathbf{v}\|_2}$$
+  * **Verified Match ($\ge 0.78$)**: Confirms borrower identity with high confidence and authorizes disclosure of loan EMI details.
+  * **Indeterminate Band ($0.65 - 0.78$)**: Flags low-margin matches and injects a step-up challenge directive (e.g. verify registered Date of Birth or PAN).
+  * **Impostor Mismatch ($< 0.65$)**: Rejects unverified third-party speakers and immediately suppresses sensitive loan disclosures.
+* **Two-Pillar Anti-Spoofing & Deepfake Detection Engine**:
+  * **Pillar 1: Neural Vocoder & Synthetic AI Clone Detection**: Analyzes pitch micro-tremors (jitter) and high-frequency cepstral variance across frames to detect mathematically quantized or overly smoothed synthetic speech (e.g., ElevenLabs, HiFi-GAN, WaveGlow).
+  * **Pillar 2: Loudspeaker Phone Replay Attack Detection**: Detects acoustic resonance coloration (2.0 kHz - 3.5 kHz peak concentration) and elevated ambient room impulse response noise characteristic of physical speakerphone replay attacks.
+* **DPDP Act 2023 In-Memory Voiceprint Registry**:
+  * **Zero Audio Persistence**: Raw customer voice recordings are never saved to disk. Only mathematical unit embeddings and SHA-256 integrity fingerprints are held in memory.
+  * **Right to Erasure**: Implements instantaneous voiceprint removal via `delete_profile(customer_id)`.
+* **Conversational VoiceAgent & Step-Up Security Integration**:
+  * Passively evaluates incoming caller audio in full-duplex telephony turns (`step` and `step_stream`).
+  * When spoofing or an identity mismatch is detected, the agent triggers a security block, preventing disclosure of loan balances and advising the borrower to visit their local branch.
+* **Campaign Dialer Telemetry & CDR Attribution**:
+  * Integrated directly into the `CampaignDialer` pipeline. Every Call Detail Record (CDR) records `biometric_status`, `biometric_confidence`, and `spoof_type`.
+* **FastAPI Biometrics REST API Endpoints**:
+  * `POST /telephony/biometrics/enroll`: Enrolls a customer voiceprint from base64 PCM samples.
+  * `POST /telephony/biometrics/verify`: Verifies incoming caller audio against an enrolled voiceprint.
+  * `POST /telephony/biometrics/anti-spoof`: Standalone forensic anti-spoofing deepfake analysis.
+  * `GET /telephony/biometrics/profile/{customer_id}`: Retrieves DPDP-compliant voiceprint metadata.
+  * `DELETE /telephony/biometrics/profile/{customer_id}`: Permanently erases customer voiceprint per DPDP Act 2023.
+  * `GET /telephony/biometrics/profiles`: Lists enrolled voiceprint summaries.
+
+```bash
+# Verify Live Voice Biometrics & Anti-Spoofing Test Suite (8/8):
+python3 scripts/test_voice_biometrics_and_anti_spoof.py
+```
+
+---
+
 ### 4. Automated Human-Likeness Quality Gate (80% / MOS 4.0)
 
 Every generated speech utterance is evaluated across 5 acoustic dimensions before being accepted or played over the phone:

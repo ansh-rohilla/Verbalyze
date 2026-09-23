@@ -29,6 +29,12 @@ from verbalyze.agent.lid_engine import (
     LanguageIDResult,
     ScriptType,
 )
+from verbalyze.telephony.voice_biometrics import (
+    BiometricVerificationEngine,
+    BiometricVerificationResult,
+    BiometricStatus,
+    SpeakerProfile,
+)
 
 INITIAL_GREETINGS = {
     "muthoot_recovery": {
@@ -113,7 +119,9 @@ class VoiceAgent:
         min_human_likeness: float = 0.80,
         simulate_telephony: bool = False,
         caller_phone: Optional[str] = None,
-        adaptive_language: bool = True
+        adaptive_language: bool = True,
+        biometrics_engine: Optional[BiometricVerificationEngine] = None,
+        enrolled_profile: Optional[SpeakerProfile] = None,
     ):
         self.language = language
         self.persona = persona
@@ -121,6 +129,9 @@ class VoiceAgent:
         self.min_human_likeness = min_human_likeness
         self.simulate_telephony = simulate_telephony
         self.adaptive_language = adaptive_language
+        self.biometrics_engine = biometrics_engine
+        self.enrolled_profile = enrolled_profile
+        self.last_biometric: Optional[BiometricVerificationResult] = None
         self.system_prompt = system_prompt or DEFAULT_SYSTEM_PROMPTS.get(language, DEFAULT_SYSTEM_PROMPTS["hi"])
         self.llm_provider = llm_provider.lower()
         self.api_key = api_key or os.environ.get("GROQ_API_KEY") or os.environ.get("OPENAI_API_KEY")
@@ -379,6 +390,55 @@ class VoiceAgent:
         sentiment = self.sentiment_engine.analyze(user_utterance, pcm_bytes=pcm_bytes)
         self.last_sentiment = sentiment
 
+        # 0.6. Passive Voice Biometrics & Anti-Spoofing Verification
+        if self.biometrics_engine and self.enrolled_profile and pcm_bytes:
+            bio_res = self.biometrics_engine.verify_speaker(pcm_bytes, self.enrolled_profile)
+            self.last_biometric = bio_res
+
+            if bio_res.status == BiometricStatus.SPOOF_DETECTED:
+                safe_reply = (
+                    "सुरक्षा कारणों से आपकी आवाज़ सत्यापित नहीं हो सकी है। कृपया निकटतम शाखा से संपर्क करें।"
+                    if self.language == "hi"
+                    else "For security reasons, synthetic or replayed voice was detected. Loan disclosure is blocked. Please contact your branch."
+                )
+                return {
+                    "text": safe_reply,
+                    "audio_path": self.audio_engine.synthesize(safe_reply) if self.audio_engine else None,
+                    "quality_report": None,
+                    "tool_event": None,
+                    "tool_data": None,
+                    "sentiment": sentiment.to_dict(),
+                    "language_info": lid_result.to_dict(),
+                    "whispers": list(self.whisper_history),
+                    "biometric_result": bio_res.to_dict(),
+                    "security_block": True,
+                    "terminated": False,
+                }
+            elif bio_res.status == BiometricStatus.MISMATCH_IMPOSTOR:
+                safe_reply = (
+                    "सुरक्षा कारणों से आपकी आवाज़ लोन धारक के प्रोफ़ाइल से मेल नहीं खा रही है। मैं आगे की जानकारी साझा नहीं कर सकती।"
+                    if self.language == "hi"
+                    else "For security reasons, your voice does not match the registered borrower profile. Sensitive account details cannot be disclosed."
+                )
+                return {
+                    "text": safe_reply,
+                    "audio_path": self.audio_engine.synthesize(safe_reply) if self.audio_engine else None,
+                    "quality_report": None,
+                    "tool_event": None,
+                    "tool_data": None,
+                    "sentiment": sentiment.to_dict(),
+                    "language_info": lid_result.to_dict(),
+                    "whispers": list(self.whisper_history),
+                    "biometric_result": bio_res.to_dict(),
+                    "security_block": True,
+                    "terminated": False,
+                }
+            elif bio_res.status == BiometricStatus.INDETERMINATE:
+                self.messages.append({
+                    "role": "system",
+                    "content": "[Biometric Alert]: Speaker voice confidence is indeterminate. Require customer to verify last 4 digits of PAN before disclosing overdue amount."
+                })
+
         # 1. Record user turn
         self.messages.append({"role": "user", "content": user_utterance})
 
@@ -531,6 +591,7 @@ class VoiceAgent:
             "sentiment": sentiment.to_dict(),
             "language_info": lid_result.to_dict(),
             "whispers": list(self.whisper_history),
+            "biometric_result": self.last_biometric.to_dict() if self.last_biometric else None,
             "terminated": not self.is_call_active
         }
 
@@ -593,6 +654,30 @@ class VoiceAgent:
         # 0.5. Dual-Channel Emotion & Dispute Analysis
         sentiment = self.sentiment_engine.analyze(user_utterance, pcm_bytes=pcm_bytes)
         self.last_sentiment = sentiment
+
+        # 0.6. Passive Voice Biometrics & Anti-Spoofing Verification
+        if self.biometrics_engine and self.enrolled_profile and pcm_bytes:
+            bio_res = self.biometrics_engine.verify_speaker(pcm_bytes, self.enrolled_profile)
+            self.last_biometric = bio_res
+            if bio_res.status in (BiometricStatus.SPOOF_DETECTED, BiometricStatus.MISMATCH_IMPOSTOR):
+                safe_reply = (
+                    "सुरक्षा कारणों से आपकी आवाज़ सत्यापित नहीं हो सकी है। कृपया निकटतम शाखा से संपर्क करें।"
+                    if self.language == "hi"
+                    else "For security reasons, your voice could not be verified. Sensitive details cannot be disclosed."
+                )
+                yield {
+                    "type": "clause",
+                    "text": safe_reply,
+                    "index": 1,
+                }
+                yield {
+                    "type": "final",
+                    "full_text": safe_reply,
+                    "biometric_result": bio_res.to_dict(),
+                    "security_block": True,
+                    "terminated": False,
+                }
+                return
 
         # Auto-transfer under critical agitation, harassment, legal threat, or human request
         if sentiment.transfer_recommended and (
@@ -711,6 +796,7 @@ class VoiceAgent:
                 "full_text": accumulated_content,
                 "sentiment": sentiment.to_dict(),
                 "language_info": lid_result.to_dict(),
+                "biometric_result": self.last_biometric.to_dict() if self.last_biometric else None,
                 "terminated": not self.is_call_active
             }
             return
@@ -920,6 +1006,7 @@ class VoiceAgent:
             "sentiment": sentiment.to_dict(),
             "language_info": lid_result.to_dict(),
             "whispers": list(self.whisper_history),
+            "biometric_result": self.last_biometric.to_dict() if self.last_biometric else None,
             "terminated": not self.is_call_active
         }
 

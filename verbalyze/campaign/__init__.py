@@ -27,7 +27,7 @@ from verbalyze.campaign.amd import (
     VOICEMAIL_PATTERNS,
     HUMAN_ANSWER_PATTERNS,
 )
-from verbalyze.campaign.dialer import CampaignDialer
+from verbalyze.campaign.dialer import CampaignDialer, OutboundCampaignDialer
 
 __all__ = [
     "Lead",
@@ -48,4 +48,5 @@ __all__ = [
     "VOICEMAIL_PATTERNS",
     "HUMAN_ANSWER_PATTERNS",
     "CampaignDialer",
+    "OutboundCampaignDialer",
 ]
