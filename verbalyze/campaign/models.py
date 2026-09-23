@@ -187,6 +187,11 @@ class CallDetailRecord:
     detected_language: str = "hi"
     is_code_switched: bool = False
     error_message: Optional[str] = None
+    trunk_id: Optional[str] = None
+    carrier_name: Optional[str] = None
+    failover_occurred: bool = False
+    failover_count: int = 0
+    trunk_mos_score: Optional[float] = None
 
     def to_dict(self, mask_pii: bool = True) -> Dict[str, Any]:
         phone = self.phone_number
@@ -237,6 +242,11 @@ class CallDetailRecord:
             "transcripts": transcripts,
             "tool_events": tool_events,
             "error_message": self.error_message,
+            "trunk_id": self.trunk_id,
+            "carrier_name": self.carrier_name,
+            "failover_occurred": self.failover_occurred,
+            "failover_count": self.failover_count,
+            "trunk_mos_score": self.trunk_mos_score,
         }
 
 

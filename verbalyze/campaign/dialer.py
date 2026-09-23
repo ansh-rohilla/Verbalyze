@@ -51,10 +51,12 @@ class CampaignDialer:
         config: Optional[CampaignConfig] = None,
         compliance_engine: Optional[TRAIComplianceEngine] = None,
         amd_classifier: Optional[AMDClassifier] = None,
+        trunk_router: Optional[Any] = None,
     ):
         self.config = config or CampaignConfig()
         self.compliance_engine = compliance_engine or TRAIComplianceEngine()
         self.amd_classifier = amd_classifier or AMDClassifier()
+        self.trunk_router = trunk_router
 
         self.leads: List[Lead] = []
         self.cdrs: List[CallDetailRecord] = []
@@ -152,6 +154,24 @@ class CampaignDialer:
             data = data["leads"]
 
         return self.ingest_leads_from_list(data)
+
+    def load_lead(self, lead: Lead):
+        """Loads a single Lead into the dialing batch."""
+        self.leads.append(lead)
+
+    def start_campaign(self) -> List[CallDetailRecord]:
+        """Synchronously executes the campaign and returns generated CDRs."""
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    pool.submit(asyncio.run, self.run_campaign()).result()
+            else:
+                loop.run_until_complete(self.run_campaign())
+        except RuntimeError:
+            asyncio.run(self.run_campaign())
+        return self.cdrs
 
     # --------------------------------------------------------------------------
     # ASYNCHRONOUS CAMPAIGN EXECUTION
@@ -274,8 +294,23 @@ class CampaignDialer:
         carrier_event = await self._execute_carrier_connection(lead)
         connection_status = carrier_event.get("status")
 
+        trunk_id = carrier_event.get("resolved_trunk_id")
+        carrier_name = carrier_event.get("carrier_name")
+        failover_occurred = carrier_event.get("failover_occurred", False)
+        failover_count = carrier_event.get("failover_count", 0)
+        trunk_mos_score = None
+        if self.trunk_router and trunk_id:
+            resolved_trunk = self.trunk_router.get_trunk(trunk_id)
+            if resolved_trunk:
+                trunk_mos_score = resolved_trunk.qos.mos_score
+
         if connection_status in ("BUSY", "NO_ANSWER", "FAILED"):
-            await self._handle_unconnected_call(call_id, lead, start_time, connection_status)
+            await self._handle_unconnected_call(
+                call_id, lead, start_time, connection_status,
+                trunk_id=trunk_id, carrier_name=carrier_name,
+                failover_occurred=failover_occurred, failover_count=failover_count,
+                trunk_mos_score=trunk_mos_score,
+            )
             return
 
         # Call connected
@@ -299,7 +334,12 @@ class CampaignDialer:
 
         if self.config.amd_enabled and amd_res.decision != AMDDecision.HUMAN_ANSWERED:
             # AMD flagged non-human answer (Voicemail, Operator Announcement, Dead Air)
-            await self._handle_amd_flagged_call(call_id, lead, start_time, amd_res)
+            await self._handle_amd_flagged_call(
+                call_id, lead, start_time, amd_res,
+                trunk_id=trunk_id, carrier_name=carrier_name,
+                failover_occurred=failover_occurred, failover_count=failover_count,
+                trunk_mos_score=trunk_mos_score,
+            )
             return
 
         # ----------------------------------------------------------------------
@@ -359,6 +399,11 @@ class CampaignDialer:
             turns_count=len(call_turns),
             transcript_turns=call_turns,
             tool_events=tool_events,
+            trunk_id=trunk_id,
+            carrier_name=carrier_name,
+            failover_occurred=failover_occurred,
+            failover_count=failover_count,
+            trunk_mos_score=trunk_mos_score,
         )
         self.cdrs.append(cdr)
 
@@ -366,36 +411,35 @@ class CampaignDialer:
     # CARRIER INTERFACE & SIMULATION
     # --------------------------------------------------------------------------
 
-    async def _execute_carrier_connection(self, lead: Lead) -> Dict[str, Any]:
+    async def _simulate_carrier_event(self, lead: Lead) -> Dict[str, Any]:
         """
-        Executes connection to telecom carrier.
-        In simulation mode, supports realistic simulated scenarios based on lead metadata.
+        Simulates raw carrier connection outcome based on lead scenario metadata.
         """
-        # Small network setup delay (simulating SIP INVITE & 180 Ringing)
         await asyncio.sleep(0.01)
 
         sim_type = lead.custom_metadata.get("scenario", "normal_human")
 
         if sim_type == "busy":
-            return {"status": "BUSY"}
+            return {"status": "BUSY", "sip_code": 486}
         elif sim_type == "no_answer":
-            return {"status": "NO_ANSWER"}
+            return {"status": "NO_ANSWER", "sip_code": 487}
         elif sim_type == "network_failed":
-            return {"status": "FAILED"}
+            return {"status": "FAILED", "sip_code": 503}
         elif sim_type == "operator_switched_off":
             return {
                 "status": "CONNECTED",
+                "sip_code": 200,
                 "early_speech_duration_sec": 3.2,
                 "early_transcript": "Aapka dial kiya gaya number abhi switched off hai. Kripya kuch samay baad prayas karein.",
             }
         elif sim_type == "voicemail":
             return {
                 "status": "CONNECTED",
+                "sip_code": 200,
                 "early_speech_duration_sec": 4.1,
                 "early_transcript": "Please leave your message after the tone. At the tone, record your message.",
             }
         elif sim_type == "beep_voicemail":
-            # Synthesize a pure 1000Hz tone for 300ms
             sample_rate = 8000
             import math
             pcm = bytearray()
@@ -404,18 +448,40 @@ class CampaignDialer:
                 pcm.extend(val.to_bytes(2, byteorder='little', signed=True))
             return {
                 "status": "CONNECTED",
+                "sip_code": 200,
                 "early_speech_duration_sec": 3.0,
                 "pcm_bytes": bytes(pcm),
                 "early_transcript": "",
             }
 
-        # Normal human answer
         return {
             "status": "CONNECTED",
+            "sip_code": 200,
             "early_speech_duration_sec": 0.8,
             "silence_after_burst_sec": 1.1,
             "early_transcript": "Hello, kaun bol rahe hain?",
         }
+
+    async def _execute_carrier_connection(self, lead: Lead) -> Dict[str, Any]:
+        """
+        Executes connection to telecom carrier.
+        When trunk_router is provided, dispatches via multi-trunk routing with sub-150ms auto-failover.
+        """
+        if self.trunk_router:
+            async def _dial_on_trunk(trunk: Any) -> Dict[str, Any]:
+                forced_fail_trunks = lead.custom_metadata.get("forced_fail_trunks", [])
+                if trunk.trunk_id in forced_fail_trunks:
+                    return {"status": "FAILED", "sip_code": 503}
+                return await self._simulate_carrier_event(lead)
+
+            pref_carrier = self.config.carrier_type if self.config.carrier_type not in ("simulated", "mock") else None
+            return await self.trunk_router.dispatch_with_failover(
+                destination_phone=lead.phone_number,
+                dial_func=_dial_on_trunk,
+                preferred_carrier=pref_carrier,
+            )
+
+        return await self._simulate_carrier_event(lead)
 
     async def _conduct_conversation(
         self,
@@ -524,6 +590,11 @@ class CampaignDialer:
         lead: Lead,
         start_time: datetime,
         status: str,
+        trunk_id: Optional[str] = None,
+        carrier_name: Optional[str] = None,
+        failover_occurred: bool = False,
+        failover_count: int = 0,
+        trunk_mos_score: Optional[float] = None,
     ):
         """Handles busy, no answer, or failed connections with automated backoff retry."""
         end_time = datetime.now(timezone.utc)
@@ -534,7 +605,12 @@ class CampaignDialer:
         disp = CallDisposition.LINE_BUSY if status == "BUSY" else CallDisposition.NO_ANSWER
         lead.disposition = disp
 
-        self._record_simple_cdr(call_id, lead, start_time, end_time, duration, disp, None)
+        self._record_simple_cdr(
+            call_id, lead, start_time, end_time, duration, disp, None,
+            trunk_id=trunk_id, carrier_name=carrier_name,
+            failover_occurred=failover_occurred, failover_count=failover_count,
+            trunk_mos_score=trunk_mos_score,
+        )
 
         if lead.call_attempts < lead.max_retries:
             lead.status = LeadStatus.RETRY_SCHEDULED
@@ -555,6 +631,11 @@ class CampaignDialer:
         lead: Lead,
         start_time: datetime,
         amd_res: AMDResult,
+        trunk_id: Optional[str] = None,
+        carrier_name: Optional[str] = None,
+        failover_occurred: bool = False,
+        failover_count: int = 0,
+        trunk_mos_score: Optional[float] = None,
     ):
         """Handles non-human answering machine or operator announcements."""
         end_time = datetime.now(timezone.utc)
@@ -578,6 +659,11 @@ class CampaignDialer:
             duration=duration,
             disposition=lead.disposition,
             amd_res=amd_res,
+            trunk_id=trunk_id,
+            carrier_name=carrier_name,
+            failover_occurred=failover_occurred,
+            failover_count=failover_count,
+            trunk_mos_score=trunk_mos_score,
         )
 
         # Retry if attempts remain
@@ -629,6 +715,11 @@ class CampaignDialer:
         duration: float,
         disposition: CallDisposition,
         amd_res: Optional[AMDResult],
+        trunk_id: Optional[str] = None,
+        carrier_name: Optional[str] = None,
+        failover_occurred: bool = False,
+        failover_count: int = 0,
+        trunk_mos_score: Optional[float] = None,
     ):
         cdr = CallDetailRecord(
             call_id=call_id,
@@ -644,6 +735,11 @@ class CampaignDialer:
             payment_link_sent=False,
             amount_recovered_or_promised=0.0,
             turns_count=0,
+            trunk_id=trunk_id,
+            carrier_name=carrier_name,
+            failover_occurred=failover_occurred,
+            failover_count=failover_count,
+            trunk_mos_score=trunk_mos_score,
         )
         self.cdrs.append(cdr)
 

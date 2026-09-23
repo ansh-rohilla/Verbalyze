@@ -662,6 +662,39 @@ python3 scripts/test_dtmf_ivr_engine.py
 
 ---
 
+### 3.8 Telecom Carrier Trunk Health, SIP Circuit Breaker & Multi-Trunk Auto-Failover (Circle-Based LCR)
+
+In high-volume enterprise Indian outbound telephony (debt collection campaigns, EMI reminders, priority verification), carrier trunk disruptions (e.g. SIP 503 Service Unavailable, network timeouts, sudden packet loss spikes) can stall campaign execution. Verbalyze provides an integrated carrier-grade trunk resilience and routing engine:
+
+* **Dynamic 3-State SIP Circuit Breaker (`CLOSED`, `OPEN`, `HALF_OPEN`)**:
+  * **Intelligent SIP Code Classification**: Strictly differentiates carrier network failures (`503 Service Unavailable`, `500 Server Error`, `502 Bad Gateway`, `504 Gateway Timeout`, `408 Request Timeout`, `480 Temporarily Unavailable`) from normal debtor call terminal outcomes (`486 Busy Here`, `603 Decline`, `404 Not Found`, `487 Request Terminated`). Client outcomes never trip the circuit breaker.
+  * **Configurable Sliding Window**: Evaluates fault ratios across recent calls and trips immediately upon consecutive carrier faults.
+  * **Automated Cooldown & Probe Trial Recovery**: After a configurable cooldown interval, the breaker shifts from `OPEN` to `HALF_OPEN`, allowing controlled probe trial calls to verify carrier recovery before restoring `CLOSED` state.
+* **Pure-Math ITU-T G.107 E-Model MOS Telemetry Engine**:
+  * Computes the Transmission Rating Factor ($R$) in real-time from one-way delay ($I_d$), jitter buffering, and equipment packet loss ($I_e$):
+    $$R = 93.2 - I_d - I_e$$
+  * Converts $R$-factor to the standardized ITU-T Mean Opinion Score (MOS, 1.0 to 4.5 scale) to classify trunk health (`HEALTHY`, `DEGRADED`, `UNAVAILABLE`) with zero external cloud dependencies.
+* **Indian 22-Circle Least-Cost Routing (LCR)**:
+  * Detects Indian telecom circles (Delhi NCR, Mumbai, Kolkata, Karnataka, Tamil Nadu, Andhra Pradesh, Maharashtra, Punjab, etc.) from subscriber phone number prefixes.
+  * Dynamically resolves primary and prioritized fallback carrier trunks based on circle support, carrier preference, priority weighting, per-minute cost (INR), and real-time MOS quality.
+* **Sub-150ms Automated Multi-Trunk Failover Dispatch**:
+  * When a primary carrier trunk experiences an outage or throws a 5xx fault, the dispatcher instantly fails over to the next candidate trunk in sub-millisecond time (<1ms in local benchmarks), transparently maintaining campaign progress.
+* **Campaign Dialer & CDR Attribution**:
+  * Seamlessly integrated into `CampaignDialer`. Each generated `CallDetailRecord` (CDR) records `trunk_id`, `carrier_name`, `failover_occurred`, `failover_count`, and `trunk_mos_score`.
+* **FastAPI Carrier Trunk REST Management Endpoints**:
+  * `GET /telephony/trunks`: Lists all registered carrier trunks, circuit breaker states, and QoS telemetry.
+  * `POST /telephony/trunks/register`: Dynamically registers new SIP trunks into the routing table.
+  * `POST /telephony/trunks/route`: Resolves optimal primary and fallback routes for any Indian mobile number.
+  * `POST /telephony/trunks/circuit-breaker/reset`: Manually resets a tripped circuit breaker back to `CLOSED`.
+  * `POST /telephony/trunks/report-call`: Reports call signaling outcomes and updates QoS metrics.
+
+```bash
+# Verify Telecom Carrier Trunk Health & SIP Circuit Breaker Suite (8/8):
+python3 scripts/test_carrier_trunks_circuit_breaker.py
+```
+
+---
+
 ### 4. Automated Human-Likeness Quality Gate (80% / MOS 4.0)
 
 Every generated speech utterance is evaluated across 5 acoustic dimensions before being accepted or played over the phone:

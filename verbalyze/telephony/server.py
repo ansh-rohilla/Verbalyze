@@ -68,6 +68,23 @@ from verbalyze.telephony.ivr_tree import (
     IVRNode,
     create_default_banking_ivr,
 )
+from verbalyze.telephony.circuit_breaker import (
+    CircuitBreakerState,
+    TrunkHealth,
+    SIPResponseCategory,
+    categorize_sip_code,
+    calculate_itu_g107_mos,
+    SIPCircuitBreaker,
+    SIPCircuitBreakerConfig,
+    TrunkQoS,
+)
+from verbalyze.telephony.trunk_router import (
+    TelecomCircle,
+    CarrierTrunk,
+    MultiTrunkRouter,
+    detect_telecom_circle,
+    create_default_indian_trunk_mesh,
+)
 
 # Try importing FastAPI
 try:
@@ -130,6 +147,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
     )
     compliance_qa_registry = ComplianceQARegistry()
     active_ivr_sessions: Dict[str, IVRStateMachine] = {}
+    trunk_router = create_default_indian_trunk_mesh()
 
     @app.get("/health")
     def health():
@@ -138,6 +156,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "active_calls": len(active_calls),
             "active_campaigns": len(active_campaigns),
             "active_ivr_sessions": len(active_ivr_sessions),
+            "active_trunks": len(trunk_router.trunks),
             "supervisor_active_calls": len(supervisor_manager.active_calls),
             "settled_transactions": len([t for t in settlement_ledger.transactions.values() if t.status == SettlementStatus.SETTLED]),
             "audited_calls": len(compliance_qa_registry.scorecards),
@@ -1383,6 +1402,167 @@ def create_app(auth_token: Optional[str] = None) -> Any:
 
         ivr_session = active_ivr_sessions[call_id]
         return JSONResponse(ivr_session.get_summary())
+
+    # --- TELECOM CARRIER TRUNK HEALTH, CIRCUIT BREAKER & ROUTING ---
+
+    @app.get("/telephony/trunks")
+    def list_carrier_trunks(request: Request):
+        """
+        Lists all registered carrier trunks, real-time QoS telemetry (MOS, RTT, loss),
+        and SIP circuit breaker states (CLOSED, OPEN, HALF_OPEN).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        trunks_data = [trunk.to_dict() for trunk in trunk_router.trunks.values()]
+        return JSONResponse({
+            "status": "ok",
+            "total_trunks": len(trunks_data),
+            "trunks": trunks_data,
+        })
+
+    @app.post("/telephony/trunks/register")
+    async def register_carrier_trunk(request: Request):
+        """
+        Registers a new carrier trunk in the routing table.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        trunk_id = body.get("trunk_id")
+        carrier_name = body.get("carrier_name")
+        sip_host = body.get("sip_host")
+        if not trunk_id or not carrier_name or not sip_host:
+            return JSONResponse({"error": "Must provide 'trunk_id', 'carrier_name', and 'sip_host'."}, status_code=400)
+
+        sip_port = int(body.get("sip_port", 5060))
+        priority = int(body.get("priority", 1))
+        cost_per_minute = float(body.get("cost_per_minute_inr", 0.35))
+        supported_circles = body.get("supported_circles") or ["ALL"]
+
+        trunk = CarrierTrunk(
+            trunk_id=trunk_id,
+            carrier_name=carrier_name,
+            sip_host=sip_host,
+            sip_port=sip_port,
+            priority=priority,
+            cost_per_minute_inr=cost_per_minute,
+            supported_circles=supported_circles,
+        )
+        trunk_router.register_trunk(trunk)
+
+        return JSONResponse({
+            "status": "ok",
+            "message": f"Carrier trunk '{trunk_id}' registered successfully.",
+            "trunk": trunk.to_dict(),
+        })
+
+    @app.post("/telephony/trunks/route")
+    async def resolve_carrier_route(request: Request):
+        """
+        Resolves the optimal primary trunk and ordered fallback trunks for an Indian destination phone number.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        destination_phone = body.get("destination_phone") or body.get("phone")
+        if not destination_phone:
+            return JSONResponse({"error": "Must provide 'destination_phone'."}, status_code=400)
+
+        preferred_carrier = body.get("preferred_carrier")
+
+        try:
+            primary, fallbacks = trunk_router.resolve_routes(destination_phone, preferred_carrier)
+        except Exception as e:
+            return JSONResponse({"error": f"Route resolution failed: {e}"}, status_code=503)
+
+        circle = detect_telecom_circle(destination_phone)
+        return JSONResponse({
+            "status": "ok",
+            "destination_phone": destination_phone,
+            "circle": circle,
+            "primary_trunk": primary.to_dict(),
+            "fallback_trunks": [t.to_dict() for t in fallbacks],
+        })
+
+    @app.post("/telephony/trunks/circuit-breaker/reset")
+    async def reset_trunk_circuit_breaker(request: Request):
+        """
+        Manually resets a tripped circuit breaker back to the normal CLOSED state.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        trunk_id = body.get("trunk_id")
+        if not trunk_id or trunk_id not in trunk_router.trunks:
+            return JSONResponse({"error": f"Trunk '{trunk_id}' not found."}, status_code=404)
+
+        trunk = trunk_router.trunks[trunk_id]
+        trunk.circuit_breaker.reset()
+
+        return JSONResponse({
+            "status": "ok",
+            "trunk_id": trunk_id,
+            "state": trunk.circuit_breaker.state.value,
+            "message": f"Circuit breaker for trunk '{trunk_id}' reset to CLOSED.",
+        })
+
+    @app.post("/telephony/trunks/report-call")
+    async def report_trunk_call_outcome(request: Request):
+        """
+        Reports call outcome to update real-time QoS telemetry and evaluate circuit breaker state.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        trunk_id = body.get("trunk_id")
+        sip_code = body.get("sip_code")
+        if not trunk_id or sip_code is None:
+            return JSONResponse({"error": "Must provide 'trunk_id' and 'sip_code'."}, status_code=400)
+
+        if trunk_id not in trunk_router.trunks:
+            return JSONResponse({"error": f"Trunk '{trunk_id}' not found."}, status_code=404)
+
+        rtt_ms = float(body.get("rtt_ms", 25.0))
+        jitter_ms = float(body.get("jitter_ms", 5.0))
+        packet_loss_pct = float(body.get("packet_loss_pct", 0.0))
+
+        trunk = trunk_router.trunks[trunk_id]
+        trunk.record_call_result(
+            sip_code=int(sip_code),
+            rtt_ms=rtt_ms,
+            jitter_ms=jitter_ms,
+            packet_loss_pct=packet_loss_pct,
+        )
+
+        return JSONResponse({
+            "status": "ok",
+            "trunk_id": trunk_id,
+            "circuit_breaker_state": trunk.circuit_breaker.state.value,
+            "health": trunk.circuit_breaker.get_health(trunk.qos).value,
+            "mos_score": trunk.qos.mos_score,
+            "trunk": trunk.to_dict(),
+        })
 
     return app
 

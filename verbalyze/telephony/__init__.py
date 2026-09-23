@@ -49,8 +49,28 @@ from verbalyze.telephony.ivr_tree import (
     IVRTransitionResult,
     create_default_banking_ivr,
 )
+from verbalyze.telephony.circuit_breaker import (
+    CircuitBreakerState,
+    TrunkHealth,
+    SIPResponseCategory,
+    categorize_sip_code,
+    calculate_itu_g107_mos,
+    SIPCircuitBreaker,
+    SIPCircuitBreakerConfig,
+    TrunkQoS,
+)
+from verbalyze.telephony.trunk_router import (
+    TelecomCircle,
+    CarrierTrunk,
+    MultiTrunkRouter,
+    DispatchResult,
+    NoAvailableTrunkError,
+    detect_telecom_circle,
+    create_default_indian_trunk_mesh,
+)
 
 __all__ = [
+    "DispatchResult",
     "SIPTransferDispatcher",
     "TransferContext",
     "AdaptiveJitterBuffer",
@@ -93,6 +113,20 @@ __all__ = [
     "IVRStateMachine",
     "IVRTransitionResult",
     "create_default_banking_ivr",
+    "CircuitBreakerState",
+    "TrunkHealth",
+    "SIPResponseCategory",
+    "categorize_sip_code",
+    "calculate_itu_g107_mos",
+    "SIPCircuitBreaker",
+    "SIPCircuitBreakerConfig",
+    "TrunkQoS",
+    "TelecomCircle",
+    "CarrierTrunk",
+    "MultiTrunkRouter",
+    "NoAvailableTrunkError",
+    "detect_telecom_circle",
+    "create_default_indian_trunk_mesh",
 ]
 
 
