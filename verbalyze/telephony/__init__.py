@@ -100,6 +100,11 @@ from verbalyze.telephony.echo_canceller import (
     SpectralNoiseSuppressor,
     AcousticEchoAndNoiseProcessor,
 )
+from verbalyze.telephony.packet_loss_concealer import (
+    PacketLossConcealer,
+    PLCTelemetry,
+    G711AppendixIPLC,
+)
 
 __all__ = [
     "DispatchResult",
@@ -185,6 +190,9 @@ __all__ = [
     "GeigelDoubleTalkDetector",
     "SpectralNoiseSuppressor",
     "AcousticEchoAndNoiseProcessor",
+    "PacketLossConcealer",
+    "PLCTelemetry",
+    "G711AppendixIPLC",
 ]
 
 

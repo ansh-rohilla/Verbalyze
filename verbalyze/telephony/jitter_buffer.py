@@ -10,7 +10,12 @@ Zero-emoji compliant.
 import time
 import math
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
+from verbalyze.telephony.packet_loss_concealer import (
+    PacketLossConcealer,
+    PLCTelemetry,
+    G711AppendixIPLC,
+)
 
 
 @dataclass
@@ -100,6 +105,12 @@ class AdaptiveJitterBuffer:
 
         # Concealment memory for PLC interpolation
         self.last_valid_pcm: Optional[bytes] = None
+
+        # Packet Loss Concealer (ITU-T G.711 Appendix I)
+        self.plc = PacketLossConcealer(
+            sample_rate=sample_rate,
+            frame_duration_ms=frame_duration_ms,
+        )
 
         # Telemetry counters
         self.stats = JitterBufferStats(current_target_delay_ms=self.target_delay_ms)
@@ -215,20 +226,13 @@ class AdaptiveJitterBuffer:
     def synthesize_concealment_frame(self) -> bytes:
         """
         Packet Loss Concealment (PLC) engine.
-        Generates synthetic audio frame when a packet is missing or delayed past deadline.
-        Applies linear attenuation to previous valid waveform to avoid harsh digital clicks.
+        Synthesizes a missing 20ms audio frame using ITU-T G.711 Appendix I
+        pitch-synchronous waveform replication and progressive attenuation.
         """
         self.stats.concealed_frames_count += 1
-        if not self.last_valid_pcm or len(self.last_valid_pcm) < self.frame_bytes:
-            return b"\x00" * self.frame_bytes
-
-        import audioop
-        try:
-            attenuated = audioop.mul(self.last_valid_pcm[:self.frame_bytes], self.bytes_per_sample, 0.5)
-            self.last_valid_pcm = attenuated
-            return attenuated
-        except Exception:
-            return b"\x00" * self.frame_bytes
+        concealed_pcm, telemetry = self.plc.conceal_frame()
+        self.last_valid_pcm = concealed_pcm
+        return concealed_pcm
 
     def pop(self, current_time_ms: Optional[float] = None) -> Tuple[bytes, bool]:
         """
@@ -248,8 +252,9 @@ class AdaptiveJitterBuffer:
         if next_packet.sequence_number == expected_seq:
             packet = self.buffer.pop(0)
             self.last_played_sequence = packet.sequence_number
-            self.last_valid_pcm = packet.pcm_data
-            return packet.pcm_data, False
+            resynced_pcm, _ = self.plc.ingest_good_frame(packet.pcm_data)
+            self.last_valid_pcm = resynced_pcm
+            return resynced_pcm, False
 
         if next_packet.sequence_number > expected_seq:
             if self.last_played_sequence is not None:
@@ -275,6 +280,7 @@ class AdaptiveJitterBuffer:
         return self.stats
 
     def clear(self):
-        """Resets the jitter buffer queue."""
+        """Resets the jitter buffer queue and PLC state."""
         self.buffer.clear()
         self.last_valid_pcm = None
+        self.plc.reset()

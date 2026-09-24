@@ -108,6 +108,11 @@ from verbalyze.telephony.echo_canceller import (
     AcousticEchoAndNoiseProcessor,
     DSPTelemetry,
 )
+from verbalyze.telephony.packet_loss_concealer import (
+    PacketLossConcealer,
+    PLCTelemetry,
+    G711AppendixIPLC,
+)
 
 # Try importing FastAPI
 try:
@@ -193,6 +198,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "target_glass_to_glass_ms": 300,
             "dsp_echo_cancellation": "ready",
             "dsp_noise_suppression": "ready",
+            "plc_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -1959,6 +1965,109 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "max_dsp_time_ms": round(max_ms, 3),
             "target_sla_ms": 2.5,
             "meets_dsp_sla": avg_ms < 2.5,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    @app.post("/telephony/plc/conceal")
+    async def conceal_packet_loss(request: Request):
+        """
+        Synthesizes lost 20ms audio frames using ITU-T G.711 Appendix I
+        pitch-synchronous waveform replication and progressive multi-frame attenuation.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        audio_b64 = body.get("audio_base64")
+        consecutive_drops = max(1, min(10, int(body.get("consecutive_drops", 1))))
+        sample_rate = int(body.get("sample_rate", 8000))
+        simulate_recovery = bool(body.get("simulate_recovery", True))
+
+        plc = PacketLossConcealer(sample_rate=sample_rate, frame_duration_ms=20.0)
+
+        # Seed with initial good audio if provided, or synthetic voiced vowel
+        if audio_b64:
+            raw_pcm = base64.b64decode(audio_b64)
+            frame_len = int(sample_rate * 0.02 * 2)
+            for i in range(0, len(raw_pcm), frame_len):
+                chunk = raw_pcm[i:i + frame_len]
+                if len(chunk) == frame_len:
+                    plc.ingest_good_frame(chunk)
+        else:
+            # Seed with 200 Hz tone (40 sample period at 8kHz)
+            t = np.linspace(0, 0.06, int(sample_rate * 0.06), endpoint=False)
+            seed = (np.sin(2 * np.pi * 200.0 * t) * 10000).astype(np.int16).tobytes()
+            frame_len = int(sample_rate * 0.02 * 2)
+            for i in range(0, len(seed), frame_len):
+                plc.ingest_good_frame(seed[i:i + frame_len])
+
+        concealed_frames = []
+        for _ in range(consecutive_drops):
+            synth_pcm, telemetry = plc.conceal_frame()
+            concealed_frames.append({
+                "pcm_base64": base64.b64encode(synth_pcm).decode("ascii"),
+                "telemetry": telemetry.to_dict(),
+            })
+
+        resynced_pcm_b64 = None
+        if simulate_recovery:
+            t_rec = np.linspace(0, 0.02, int(sample_rate * 0.02), endpoint=False)
+            good_frame = (np.sin(2 * np.pi * 200.0 * t_rec) * 10000).astype(np.int16).tobytes()
+            resynced_pcm, rec_telemetry = plc.ingest_good_frame(good_frame)
+            resynced_pcm_b64 = base64.b64encode(resynced_pcm).decode("ascii")
+
+        return JSONResponse({
+            "status": "ok",
+            "consecutive_drops": consecutive_drops,
+            "concealed_frames_count": len(concealed_frames),
+            "concealed_frames": concealed_frames,
+            "resynced_good_frame_base64": resynced_pcm_b64,
+            "plc_stats": plc.get_stats(),
+        })
+
+    @app.post("/telephony/plc/benchmark")
+    async def benchmark_plc_pipeline(request: Request):
+        """
+        Benchmarks Packet Loss Concealment (PLC) execution throughput per 20ms frame.
+        Verifies that processing time is < 0.5ms (ensuring zero degradation of glass-to-glass latency).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        plc = PacketLossConcealer(sample_rate=8000, frame_duration_ms=20.0)
+        t = np.linspace(0, 0.06, 480, endpoint=False)
+        seed = (np.sin(2 * np.pi * 200.0 * t) * 10000).astype(np.int16).tobytes()
+        for i in range(0, len(seed), 320):
+            plc.ingest_good_frame(seed[i:i + 320])
+
+        n_frames = 100
+        durations = []
+
+        for i in range(n_frames):
+            if i % 5 == 0:
+                good_pcm = (np.sin(2 * np.pi * 200.0 * np.linspace(0, 0.02, 160)) * 10000).astype(np.int16).tobytes()
+                _, telem = plc.ingest_good_frame(good_pcm)
+            else:
+                _, telem = plc.conceal_frame()
+            durations.append(telem.processing_time_ms)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_frames,
+            "avg_plc_time_ms": round(avg_ms, 3),
+            "p95_plc_time_ms": round(p95_ms, 3),
+            "max_plc_time_ms": round(max_ms, 3),
+            "target_sla_ms": 0.5,
+            "meets_plc_sla": avg_ms < 0.5,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 
