@@ -113,6 +113,12 @@ from verbalyze.telephony.packet_loss_concealer import (
     PLCTelemetry,
     G711AppendixIPLC,
 )
+from verbalyze.telephony.equalizer import (
+    IndicFormantEqualizer,
+    EQTelemetry,
+    EQBandConfig,
+    BiquadFilter,
+)
 
 # Try importing FastAPI
 try:
@@ -199,6 +205,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "dsp_echo_cancellation": "ready",
             "dsp_noise_suppression": "ready",
             "plc_status": "ready",
+            "equalizer_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -2068,6 +2075,99 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "max_plc_time_ms": round(max_ms, 3),
             "target_sla_ms": 0.5,
             "meets_plc_sla": avg_ms < 0.5,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    @app.post("/telephony/eq/process")
+    async def process_equalizer_frame(request: Request):
+        """
+        Processes audio frames through the 5-band Indic Formant Equalizer.
+        Selectively boosts retroflex Formant 3 (F3), palatal sibilants, and nasal resonance.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        audio_b64 = body.get("audio_base64")
+        if not audio_b64:
+            return JSONResponse({"error": "Missing audio_base64 parameter"}, status_code=400)
+
+        preset = str(body.get("preset", "INDIC_RETROFLEX_ENHANCE"))
+        sample_rate = int(body.get("sample_rate", 8000))
+        band_gains = body.get("band_gains")
+
+        eq = IndicFormantEqualizer(sample_rate=sample_rate, preset_name=preset)
+        if isinstance(band_gains, dict):
+            for k, v in band_gains.items():
+                try:
+                    eq.set_band_gain(int(k), float(v))
+                except (ValueError, TypeError):
+                    pass
+
+        raw_pcm = base64.b64decode(audio_b64)
+        frame_len = int(sample_rate * 0.02 * 2)
+
+        out_chunks = []
+        last_telem = None
+        for i in range(0, len(raw_pcm), frame_len):
+            chunk = raw_pcm[i:i + frame_len]
+            if len(chunk) < frame_len:
+                chunk = chunk + (b"\x00" * (frame_len - len(chunk)))
+            enhanced_pcm, telem = eq.process_frame(chunk)
+            out_chunks.append(enhanced_pcm)
+            last_telem = telem
+
+        freq_test = [300.0, 750.0, 1600.0, 2400.0, 3200.0]
+        freq_resp = dict(zip([str(int(f)) for f in freq_test], eq.get_frequency_response(freq_test)))
+
+        return JSONResponse({
+            "status": "ok",
+            "preset": eq.preset_name,
+            "sample_rate": sample_rate,
+            "audio_base64": base64.b64encode(b"".join(out_chunks)).decode("ascii"),
+            "telemetry": last_telem.to_dict() if last_telem else {},
+            "frequency_response_db": freq_resp,
+        })
+
+    @app.post("/telephony/eq/benchmark")
+    async def benchmark_equalizer_pipeline(request: Request):
+        """
+        Benchmarks 5-band biquad equalizer processing latency per 20ms frame.
+        Verifies that processing time is < 0.5ms (ensuring massive real-time headroom).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        eq = IndicFormantEqualizer(sample_rate=8000, preset_name="INDIC_RETROFLEX_ENHANCE")
+
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        frame = (np.sin(2 * np.pi * 2400.0 * t) * 8000.0).astype(np.int16).tobytes()
+
+        eq.process_frame(frame)
+
+        n_frames = 100
+        durations = []
+        for _ in range(n_frames):
+            _, telem = eq.process_frame(frame)
+            durations.append(telem.processing_time_ms)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_frames,
+            "avg_eq_time_ms": round(avg_ms, 3),
+            "p95_eq_time_ms": round(p95_ms, 3),
+            "max_eq_time_ms": round(max_ms, 3),
+            "target_sla_ms": 0.5,
+            "meets_eq_sla": avg_ms < 0.5,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 

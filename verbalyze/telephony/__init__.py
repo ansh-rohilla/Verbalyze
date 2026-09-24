@@ -105,6 +105,12 @@ from verbalyze.telephony.packet_loss_concealer import (
     PLCTelemetry,
     G711AppendixIPLC,
 )
+from verbalyze.telephony.equalizer import (
+    BiquadFilter,
+    EQBandConfig,
+    EQTelemetry,
+    IndicFormantEqualizer,
+)
 
 __all__ = [
     "DispatchResult",
@@ -193,6 +199,10 @@ __all__ = [
     "PacketLossConcealer",
     "PLCTelemetry",
     "G711AppendixIPLC",
+    "BiquadFilter",
+    "EQBandConfig",
+    "EQTelemetry",
+    "IndicFormantEqualizer",
 ]
 
 

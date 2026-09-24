@@ -38,6 +38,10 @@ from verbalyze.telephony.echo_canceller import (
     AcousticEchoAndNoiseProcessor,
     DSPTelemetry,
 )
+from verbalyze.telephony.equalizer import (
+    IndicFormantEqualizer,
+    EQTelemetry,
+)
 
 try:
     import pydub
@@ -137,6 +141,13 @@ class MediaStreamSession:
             filter_length=256,
             aec_enabled=True,
             noise_suppression_enabled=True,
+        )
+
+        # Dynamic Multi-Band Acoustic Equalizer (Indic Telecom Formant Enhancer)
+        self.equalizer = IndicFormantEqualizer(
+            sample_rate=8000,
+            preset_name="INDIC_RETROFLEX_ENHANCE",
+            dynamic_gating=True,
         )
 
         # Inbound VAD state
@@ -517,8 +528,11 @@ class MediaStreamSession:
         # 0. Clean inbound frame via AEC (subtracting bot echo) & Spectral Noise Suppression
         clean_frame, dsp_telemetry = self.dsp_processor.process_inbound_frame(frame)
 
-        # 1. Evaluate acoustic DTMF keypad tones on cleaned inbound PCM
-        detected_dtmf_digits = self.dtmf_pad.process_pcm_chunk(clean_frame)
+        # 0.1 Enhance Indic retroflex formants and nasal clarity via 5-band biquad equalizer
+        enhanced_frame, eq_telemetry = self.equalizer.process_frame(clean_frame)
+
+        # 1. Evaluate acoustic DTMF keypad tones on enhanced inbound PCM
+        detected_dtmf_digits = self.dtmf_pad.process_pcm_chunk(enhanced_frame)
         for dtmf_digit in detected_dtmf_digits:
             await self.handle_dtmf_digit(dtmf_digit)
 
@@ -530,9 +544,9 @@ class MediaStreamSession:
             except (ValueError, KeyError):
                 pass
 
-        # 3. Ingest cleaned frame into AdaptiveTurnTakingManager
+        # 3. Ingest enhanced frame into AdaptiveTurnTakingManager
         state, event_data = await self.turn_manager.ingest_frame(
-            clean_frame,
+            enhanced_frame,
             transcribe_fn=self._transcribe_pcm_audio,
         )
 
