@@ -124,6 +124,10 @@ from verbalyze.telephony.comfort_noise import (
     CNGTelemetry,
     SIDPacket,
 )
+from verbalyze.telephony.bandwidth_expander import (
+    BandwidthExpander,
+    BWETelemetry,
+)
 
 # Try importing FastAPI
 try:
@@ -212,6 +216,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "plc_status": "ready",
             "equalizer_status": "ready",
             "cng_status": "ready",
+            "bwe_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -2268,6 +2273,86 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "max_cng_time_ms": round(max_ms, 3),
             "target_sla_ms": 0.5,
             "meets_cng_sla": avg_ms < 0.5,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    @app.post("/telephony/bwe/process")
+    async def process_bandwidth_expansion(request: Request):
+        """
+        Extends 8kHz narrowband telephony audio to 16kHz wideband audio.
+        Synthesizes high-frequency harmonics (3.5 kHz - 7.5 kHz) using pure-math BWE.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        audio_b64 = body.get("audio_base64")
+        if not audio_b64:
+            return JSONResponse({"error": "Missing audio_base64 parameter"}, status_code=400)
+
+        preset = str(body.get("preset", "HD_VOICE_STANDARD"))
+        bwe = BandwidthExpander(preset_name=preset)
+
+        try:
+            raw_pcm_8k = base64.b64decode(audio_b64)
+        except Exception:
+            return JSONResponse({"error": "Invalid base64 audio"}, status_code=400)
+
+        out_pcm_16k, telemetries = bwe.process_stream(raw_pcm_8k)
+        last_telem = telemetries[-1] if telemetries else None
+
+        return JSONResponse({
+            "status": "ok",
+            "preset": bwe.preset_name,
+            "input_sample_rate": 8000,
+            "output_sample_rate": 16000,
+            "input_bytes": len(raw_pcm_8k),
+            "output_bytes": len(out_pcm_16k),
+            "frames_processed": len(telemetries),
+            "audio_base64": base64.b64encode(out_pcm_16k).decode("ascii"),
+            "telemetry": last_telem.to_dict() if last_telem else {},
+        })
+
+    @app.post("/telephony/bwe/benchmark")
+    async def benchmark_bandwidth_expansion(request: Request):
+        """
+        Benchmarks Bandwidth Expander processing latency per 20ms frame.
+        Verifies that processing time is < 0.5ms (ensuring massive real-time headroom).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        bwe = BandwidthExpander(preset_name="HD_VOICE_STANDARD")
+
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        frame_8k = (np.sin(2 * np.pi * 250.0 * t) * 8000.0).astype(np.int16).tobytes()
+
+        # Warm-up run
+        bwe.process_frame(frame_8k)
+
+        n_frames = 100
+        durations = []
+        for _ in range(n_frames):
+            _, telem = bwe.process_frame(frame_8k)
+            durations.append(telem.processing_time_ms)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_frames,
+            "avg_bwe_time_ms": round(avg_ms, 3),
+            "p95_bwe_time_ms": round(p95_ms, 3),
+            "max_bwe_time_ms": round(max_ms, 3),
+            "target_sla_ms": 0.5,
+            "meets_bwe_sla": avg_ms < 0.5,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 

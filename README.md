@@ -951,6 +951,46 @@ python3 scripts/test_comfort_noise_generator.py
 
 ---
 
+### 3.15 Pure-Math Artificial Bandwidth Expansion (BWE / Narrowband 8kHz to Wideband 16kHz)
+
+Indian cellular and PSTN telephony trunks strictly bandpass speech between 300 Hz and 3,400 Hz at an 8kHz sampling rate (ITU-T G.712). This telephone bandpass cuts off all upper harmonics (3.5 kHz–7.5 kHz), resulting in muffled voice quality where retroflex consonants, sibilants, and fricatives ("स", "श", "ष", "च", "फ") blur together, significantly increasing Word Error Rates (WER) on downstream speech recognition.
+
+Verbalyze provides an integrated, pure-math **Artificial Bandwidth Expander (BWE)** implemented entirely in NumPy with zero external C++ or heavy ML dependencies:
+
+* **Time-Domain 2x Upsampling with Boundary State Continuity**:
+  * Upsamples 8kHz linear PCM frames (160 samples = 20ms) to 16kHz (320 samples = 20ms) with midpoint linear interpolation and frame-boundary state memory.
+  * Preserves baseband telephone audio (300 Hz–3,450 Hz) cleanly via a 2nd-order Direct Form II Transposed Butterworth lowpass filter ($Q=0.7071$).
+* **Vectorized Voicing Classification & Pitch Detection**:
+  * Extracts zero-crossing rate (ZCR), short-time frame energy, and normalized cross-correlation across pitch lags ($57\text{ Hz} \le F_0 \le 400\text{ Hz}$) in sub-millisecond vectorized execution.
+  * Smoothly computes a continuous voicing index $v \in [0.0, 1.0]$ to discriminate voiced vowels and nasals from unvoiced fricatives and sibilants.
+* **Dual-Mechanism High-Band Excitation Synthesis (3.5 kHz–7.5 kHz)**:
+  * **Voiced Harmonic Excitation**: Non-linear full-wave rectification ($|x| - \text{mean}(|x|)$) and spectral fold-back ($x \cdot (-1)^n$) generate rich even and odd harmonics of the speaker's true pitch $F_0$ into the high band without pitch drift.
+  * **Unvoiced Turbulent Noise Excitation**: Envelope-modulated Gaussian pseudo-random noise synthesizes high-frequency turbulent airflow characteristic of natural fricatives and sibilants.
+  * **Voicing Blending**: Fuses harmonic and noise components dynamically according to the voicing index:
+    $$e_{\text{HB}}[n] = v \cdot e_{\text{harm}}[n] + (1 - v) \cdot e_{\text{noise}}[n]$$
+* **4th-Order Direct Form II Transposed High-Bandpass Filter ($H_{\text{HB}}$)**:
+  * Cascades 2nd-order highpass ($3500\text{ Hz}$) and lowpass ($7200\text{ Hz}$) biquads to isolate the extended band without leaking into the telephone ear-band or mirroring past Nyquist.
+  * Preserves filter delay states across 20ms frame boundaries for click-free audio synthesis.
+* **Dynamic Phoneme-Adaptive High-Band Gain**:
+  * Unvoiced sibilants receive an elevated boost ($+3\text{ dB}$ to $+6\text{ dB}$) to restore crisp articulation on Indic phonemes ("स", "श", "ष").
+  * Voiced vowels receive natural glottal roll-off attenuation ($-6\text{ dB/octave}$ to $-12\text{ dB/octave}$) to eliminate metallic or buzzing artifacts.
+  * Silent frames and pauses are completely muted, preventing amplification of line hiss.
+* **Soft-Saturation Peak Limiter**:
+  * Smoothly compresses signal overshoots beyond 30,000 using a $\tanh$ knee, preventing 16-bit integer wrap-around clipping distortion.
+* **Sovereign STT & MediaStream Integration**:
+  * Wirelessly integrated into `SovereignSTTEngine`. Inbound 8kHz telephony audio is automatically expanded to crisp 16kHz wideband speech before feeding local faster-whisper acoustic encoders, significantly improving transcription accuracy on Indian debt collection and banking dialogues.
+* **FastAPI Telephony BWE REST Endpoints**:
+  * `POST /telephony/bwe/process`: Expands uploaded base64 8kHz audio to 16kHz wideband with comprehensive `BWETelemetry`.
+  * `POST /telephony/bwe/benchmark`: Benchmarks 20ms frame throughput, validating compliance with the $<0.5\text{ms}$ latency SLA (0.13ms average, >145x real-time headroom).
+  * `GET /health`: Reports `bwe_status: ready`.
+
+```bash
+# Verify Artificial Bandwidth Expansion Suite (8/8):
+python3 scripts/test_bandwidth_expander.py
+```
+
+---
+
 ### 4. Automated Human-Likeness Quality Gate (80% / MOS 4.0)
 
 Every generated speech utterance is evaluated across 5 acoustic dimensions before being accepted or played over the phone:

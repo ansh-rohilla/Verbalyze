@@ -116,6 +116,10 @@ from verbalyze.telephony.comfort_noise import (
     CNGTelemetry,
     SIDPacket,
 )
+from verbalyze.telephony.bandwidth_expander import (
+    BandwidthExpander,
+    BWETelemetry,
+)
 
 __all__ = [
     "DispatchResult",
@@ -211,6 +215,8 @@ __all__ = [
     "ComfortNoiseGenerator",
     "CNGTelemetry",
     "SIDPacket",
+    "BandwidthExpander",
+    "BWETelemetry",
 ]
 
 

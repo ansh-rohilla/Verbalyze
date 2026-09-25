@@ -46,6 +46,10 @@ from verbalyze.telephony.comfort_noise import (
     ComfortNoiseGenerator,
     CNGTelemetry,
 )
+from verbalyze.telephony.bandwidth_expander import (
+    BandwidthExpander,
+    BWETelemetry,
+)
 
 try:
     import pydub
@@ -158,6 +162,11 @@ class MediaStreamSession:
         self.cng = ComfortNoiseGenerator(
             sample_rate=8000,
             preset_name="INDIAN_ROOM_CEILING_FAN",
+        )
+
+        # Pure-Math Artificial Bandwidth Expansion (BWE: 8kHz Narrowband to 16kHz Wideband)
+        self.bandwidth_expander = BandwidthExpander(
+            preset_name="INDIC_SIBILANT_CRISP",
         )
 
         # Inbound VAD state

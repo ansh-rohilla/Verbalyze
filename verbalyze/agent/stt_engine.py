@@ -20,6 +20,7 @@ import numpy as np
 from typing import Optional, Tuple, Dict, Any
 
 from verbalyze.security import PIIRedactor
+from verbalyze.telephony.bandwidth_expander import BandwidthExpander
 
 # Global model cache to prevent re-loading weights between turns
 _MODEL_CACHE: Dict[str, Any] = {}
@@ -103,6 +104,7 @@ class SovereignSTTEngine:
             else os.environ.get("STRICT_SOVEREIGNTY", "0").lower() in ("1", "true", "yes")
         )
         self._model = None
+        self.bandwidth_expander = BandwidthExpander(preset_name="INDIC_SIBILANT_CRISP")
 
         if self.provider in ["local", "faster-whisper", "sovereign"]:
             self._init_local_model()
@@ -141,7 +143,12 @@ class SovereignSTTEngine:
             return self.language, 0.50, {self.language: 0.50}
 
         try:
-            if sample_rate != 16000:
+            if sample_rate == 8000 and hasattr(self, "bandwidth_expander"):
+                try:
+                    pcm_16k, _ = self.bandwidth_expander.process_stream(pcm_bytes)
+                except Exception:
+                    pcm_16k = audioop.ratecv(pcm_bytes, 2, 1, sample_rate, 16000, None)[0]
+            elif sample_rate != 16000:
                 pcm_16k = audioop.ratecv(pcm_bytes, 2, 1, sample_rate, 16000, None)[0]
             else:
                 pcm_16k = pcm_bytes
@@ -175,8 +182,13 @@ class SovereignSTTEngine:
         # 1. Primary: Local Sovereign faster-whisper decoding
         if self._model is not None and self.provider in ["local", "faster-whisper", "sovereign"]:
             try:
-                # Convert 8kHz to 16kHz if needed
-                if sample_rate != 16000:
+                # Convert 8kHz to 16kHz using Artificial Bandwidth Expansion
+                if sample_rate == 8000 and hasattr(self, "bandwidth_expander"):
+                    try:
+                        pcm_16k, _ = self.bandwidth_expander.process_stream(pcm_bytes)
+                    except Exception:
+                        pcm_16k = audioop.ratecv(pcm_bytes, 2, 1, sample_rate, 16000, None)[0]
+                elif sample_rate != 16000:
                     pcm_16k = audioop.ratecv(pcm_bytes, 2, 1, sample_rate, 16000, None)[0]
                 else:
                     pcm_16k = pcm_bytes
