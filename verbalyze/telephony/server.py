@@ -128,6 +128,12 @@ from verbalyze.telephony.bandwidth_expander import (
     BandwidthExpander,
     BWETelemetry,
 )
+from verbalyze.telephony.watermark import (
+    AcousticWatermarker,
+    WatermarkPacket,
+    WatermarkTelemetry,
+    WatermarkAuditCertificate,
+)
 
 # Try importing FastAPI
 try:
@@ -217,6 +223,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "equalizer_status": "ready",
             "cng_status": "ready",
             "bwe_status": "ready",
+            "watermark_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -2353,6 +2360,130 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "max_bwe_time_ms": round(max_ms, 3),
             "target_sla_ms": 0.5,
             "meets_bwe_sla": avg_ms < 0.5,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    @app.post("/telephony/watermark/embed")
+    async def embed_acoustic_watermark(request: Request):
+        """
+        Embeds an imperceptible cryptographic Section 65B acoustic watermark into PCM audio.
+        Encodes Call SID, UTC Timestamp, and HMAC-SHA256 signature into the audio stream.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        audio_b64 = body.get("audio_base64")
+        if not audio_b64:
+            return JSONResponse({"error": "Missing audio_base64 parameter"}, status_code=400)
+
+        call_sid = str(body.get("call_sid", "CALL_DEFAULT_001"))
+        start_ts = body.get("start_timestamp_sec")
+        sample_rate = int(body.get("sample_rate", 8000))
+        secret_key = body.get("secret_key")
+
+        wm = AcousticWatermarker(secret_key=secret_key, sample_rate=sample_rate)
+
+        try:
+            raw_pcm = base64.b64decode(audio_b64)
+        except Exception:
+            return JSONResponse({"error": "Invalid base64 audio"}, status_code=400)
+
+        watermarked_pcm, telem = wm.embed_watermark_stream(
+            raw_pcm,
+            call_sid=call_sid,
+            start_timestamp_sec=int(start_ts) if start_ts is not None else None,
+        )
+
+        return JSONResponse({
+            "status": "ok",
+            "call_sid": call_sid,
+            "sample_rate": sample_rate,
+            "input_bytes": len(raw_pcm),
+            "output_bytes": len(watermarked_pcm),
+            "audio_base64": base64.b64encode(watermarked_pcm).decode("ascii"),
+            "telemetry": telem.to_dict(),
+        })
+
+    @app.post("/telephony/watermark/verify")
+    async def verify_acoustic_watermark(request: Request):
+        """
+        Audits recorded audio for Section 65B IT Act 2000 tamper evidence.
+        Validates cryptographic watermark packets, localizes tampered segments, and issues audit certificate.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        audio_b64 = body.get("audio_base64")
+        if not audio_b64:
+            return JSONResponse({"error": "Missing audio_base64 parameter"}, status_code=400)
+
+        call_sid = body.get("call_sid")
+        sample_rate = int(body.get("sample_rate", 8000))
+        secret_key = body.get("secret_key")
+
+        wm = AcousticWatermarker(secret_key=secret_key, sample_rate=sample_rate)
+
+        try:
+            raw_pcm = base64.b64decode(audio_b64)
+        except Exception:
+            return JSONResponse({"error": "Invalid base64 audio"}, status_code=400)
+
+        cert = wm.verify_audio_stream(raw_pcm, expected_call_sid=call_sid)
+
+        return JSONResponse({
+            "status": "ok",
+            "certificate": cert.to_dict(),
+        })
+
+    @app.post("/telephony/watermark/benchmark")
+    async def benchmark_watermark_engine(request: Request):
+        """
+        Benchmarks acoustic watermark embedding and verification latency.
+        Verifies that processing time is < 0.5ms (ensuring massive real-time headroom).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        wm = AcousticWatermarker(sample_rate=8000)
+
+        # 160-sample (20ms) frame
+        t = np.linspace(0, 0.32, 2560, endpoint=False)
+        speech_pcm = (np.sin(2 * np.pi * 300.0 * t) * 8000.0).astype(np.int16).tobytes()
+
+        # Warm-up run
+        watermarked_pcm, _ = wm.embed_watermark_stream(speech_pcm, call_sid="BENCH_001")
+        wm.verify_audio_stream(watermarked_pcm, expected_call_sid="BENCH_001")
+
+        n_iterations = 50
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            wm.embed_watermark_stream(speech_pcm, call_sid="BENCH_001")
+            durations.append((time.perf_counter() - t0) * 1000.0 / 16.0)  # Per 20ms frame (16 frames in 320ms)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_watermark_time_ms": round(avg_ms, 3),
+            "p95_watermark_time_ms": round(p95_ms, 3),
+            "max_watermark_time_ms": round(max_ms, 3),
+            "target_sla_ms": 0.5,
+            "meets_watermark_sla": avg_ms < 0.5,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 

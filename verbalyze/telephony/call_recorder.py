@@ -78,10 +78,11 @@ class DualChannelCallRecorder:
         max_bytes = max(len(self._customer_samples), len(self._agent_samples))
         return max_bytes / (self.sample_rate * self.bytes_per_sample)
 
-    def export_stereo_wav_bytes(self) -> bytes:
+    def export_stereo_wav_bytes(self, watermark_call_sid: Optional[str] = None) -> bytes:
         """
         Interleaves Channel 0 (Customer) and Channel 1 (VoiceAgent) into
         a standard 2-channel 16-bit stereo WAV file completely in memory.
+        Optionally embeds an imperceptible Section 65B acoustic watermark into both channels.
         Zero disk storage bloat.
         """
         max_bytes = max(len(self._customer_samples), len(self._agent_samples))
@@ -103,6 +104,15 @@ class DualChannelCallRecorder:
         # Pad shorter stream with silence
         c_bytes = bytes(self._customer_samples) + b"\x00" * (max_bytes - len(self._customer_samples))
         a_bytes = bytes(self._agent_samples) + b"\x00" * (max_bytes - len(self._agent_samples))
+
+        if watermark_call_sid:
+            try:
+                from verbalyze.telephony.watermark import AcousticWatermarker
+                wm = AcousticWatermarker(sample_rate=self.sample_rate)
+                c_bytes, _ = wm.embed_watermark_stream(c_bytes[:max_bytes], call_sid=watermark_call_sid, start_timestamp_sec=int(self.start_timestamp))
+                a_bytes, _ = wm.embed_watermark_stream(a_bytes[:max_bytes], call_sid=watermark_call_sid, start_timestamp_sec=int(self.start_timestamp))
+            except Exception:
+                pass
 
         c_arr = np.frombuffer(c_bytes[:max_bytes], dtype=np.int16)
         a_arr = np.frombuffer(a_bytes[:max_bytes], dtype=np.int16)

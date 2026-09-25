@@ -120,6 +120,12 @@ from verbalyze.telephony.bandwidth_expander import (
     BandwidthExpander,
     BWETelemetry,
 )
+from verbalyze.telephony.watermark import (
+    AcousticWatermarker,
+    WatermarkPacket,
+    WatermarkTelemetry,
+    WatermarkAuditCertificate,
+)
 
 __all__ = [
     "DispatchResult",
@@ -217,6 +223,10 @@ __all__ = [
     "SIDPacket",
     "BandwidthExpander",
     "BWETelemetry",
+    "AcousticWatermarker",
+    "WatermarkPacket",
+    "WatermarkTelemetry",
+    "WatermarkAuditCertificate",
 ]
 
 
