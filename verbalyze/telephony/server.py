@@ -134,6 +134,11 @@ from verbalyze.telephony.watermark import (
     WatermarkTelemetry,
     WatermarkAuditCertificate,
 )
+from verbalyze.telephony.level_controller import (
+    AutomaticLevelController,
+    ALCPreset,
+    ALCTelemetry,
+)
 
 # Try importing FastAPI
 try:
@@ -224,6 +229,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "cng_status": "ready",
             "bwe_status": "ready",
             "watermark_status": "ready",
+            "alc_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -2484,6 +2490,94 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "max_watermark_time_ms": round(max_ms, 3),
             "target_sla_ms": 0.5,
             "meets_watermark_sla": avg_ms < 0.5,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    @app.post("/telephony/alc/process")
+    async def process_alc_audio(request: Request):
+        """
+        Processes uploaded PCM audio through the ITU-T G.169 Automatic Level Controller.
+        Applies target level normalization, dual-rate dynamics, and soft limiting.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        audio_b64 = body.get("audio_base64") or body.get("pcm_base64")
+        if not audio_b64:
+            return JSONResponse({"error": "Missing audio_base64 parameter"}, status_code=400)
+
+        preset_str = body.get("preset", "STUDIO_NATURAL")
+        try:
+            preset = ALCPreset(preset_str)
+        except ValueError:
+            preset = ALCPreset.STUDIO_NATURAL
+
+        sample_rate = int(body.get("sample_rate", 8000))
+        target_dbov = body.get("target_dbov")
+
+        alc = AutomaticLevelController(sample_rate=sample_rate, preset=preset)
+        if target_dbov is not None:
+            alc.target_dbov = float(target_dbov)
+
+        try:
+            raw_pcm = base64.b64decode(audio_b64)
+        except Exception:
+            return JSONResponse({"error": "Invalid base64 audio"}, status_code=400)
+
+        out_pcm, telemetries = alc.process_stream(raw_pcm)
+
+        return JSONResponse({
+            "status": "ok",
+            "preset": preset.value,
+            "sample_rate": sample_rate,
+            "frames_processed": len(telemetries),
+            "audio_base64": base64.b64encode(out_pcm).decode("ascii"),
+            "telemetry": [t.to_dict() for t in telemetries],
+        })
+
+    @app.post("/telephony/alc/benchmark")
+    async def benchmark_alc_engine(request: Request):
+        """
+        Benchmarks ITU-T G.169 Automatic Level Control execution throughput per 20ms frame.
+        Verifies that processing time is < 0.5ms (ensuring massive real-time headroom).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        alc = AutomaticLevelController(sample_rate=8000, preset=ALCPreset.STUDIO_NATURAL)
+
+        # 160-sample (20ms) frame
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        frame_pcm = (np.sin(2 * np.pi * 300.0 * t) * 6000.0).astype(np.int16).tobytes()
+
+        # Warm-up run
+        alc.process_frame(frame_pcm)
+
+        n_iterations = 100
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            alc.process_frame(frame_pcm)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_alc_time_ms": round(avg_ms, 4),
+            "p95_alc_time_ms": round(p95_ms, 4),
+            "max_alc_time_ms": round(max_ms, 4),
+            "target_sla_ms": 0.5,
+            "meets_alc_sla": avg_ms < 0.5,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 

@@ -126,6 +126,11 @@ from verbalyze.telephony.watermark import (
     WatermarkTelemetry,
     WatermarkAuditCertificate,
 )
+from verbalyze.telephony.level_controller import (
+    AutomaticLevelController,
+    ALCPreset,
+    ALCTelemetry,
+)
 
 __all__ = [
     "DispatchResult",
@@ -227,6 +232,9 @@ __all__ = [
     "WatermarkPacket",
     "WatermarkTelemetry",
     "WatermarkAuditCertificate",
+    "AutomaticLevelController",
+    "ALCPreset",
+    "ALCTelemetry",
 ]
 
 

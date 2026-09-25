@@ -50,6 +50,11 @@ from verbalyze.telephony.bandwidth_expander import (
     BandwidthExpander,
     BWETelemetry,
 )
+from verbalyze.telephony.level_controller import (
+    AutomaticLevelController,
+    ALCPreset,
+    ALCTelemetry,
+)
 
 try:
     import pydub
@@ -167,6 +172,12 @@ class MediaStreamSession:
         # Pure-Math Artificial Bandwidth Expansion (BWE: 8kHz Narrowband to 16kHz Wideband)
         self.bandwidth_expander = BandwidthExpander(
             preset_name="INDIC_SIBILANT_CRISP",
+        )
+
+        # Dynamic Multi-Speaker Gain Normalizer & Automatic Level Control (ITU-T G.169 ALC)
+        self.level_controller = AutomaticLevelController(
+            sample_rate=8000,
+            preset=ALCPreset.STUDIO_NATURAL,
         )
 
         # Inbound VAD state
@@ -554,8 +565,11 @@ class MediaStreamSession:
         # 0.2 Enhance Indic retroflex formants and nasal clarity via 5-band biquad equalizer
         enhanced_frame, eq_telemetry = self.equalizer.process_frame(clean_frame)
 
-        # 1. Evaluate acoustic DTMF keypad tones on enhanced inbound PCM
-        detected_dtmf_digits = self.dtmf_pad.process_pcm_chunk(enhanced_frame)
+        # 0.3 Normalize volume and suppress clipping via ITU-T G.169 Automatic Level Controller
+        normalized_frame, alc_telemetry = self.level_controller.process_frame(enhanced_frame)
+
+        # 1. Evaluate acoustic DTMF keypad tones on normalized inbound PCM
+        detected_dtmf_digits = self.dtmf_pad.process_pcm_chunk(normalized_frame)
         for dtmf_digit in detected_dtmf_digits:
             await self.handle_dtmf_digit(dtmf_digit)
 
@@ -567,9 +581,9 @@ class MediaStreamSession:
             except (ValueError, KeyError):
                 pass
 
-        # 3. Ingest enhanced frame into AdaptiveTurnTakingManager
+        # 3. Ingest normalized frame into AdaptiveTurnTakingManager
         state, event_data = await self.turn_manager.ingest_frame(
-            enhanced_frame,
+            normalized_frame,
             transcribe_fn=self._transcribe_pcm_audio,
         )
 
