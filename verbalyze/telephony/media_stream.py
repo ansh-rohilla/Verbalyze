@@ -42,6 +42,10 @@ from verbalyze.telephony.equalizer import (
     IndicFormantEqualizer,
     EQTelemetry,
 )
+from verbalyze.telephony.comfort_noise import (
+    ComfortNoiseGenerator,
+    CNGTelemetry,
+)
 
 try:
     import pydub
@@ -148,6 +152,12 @@ class MediaStreamSession:
             sample_rate=8000,
             preset_name="INDIC_RETROFLEX_ENHANCE",
             dynamic_gating=True,
+        )
+
+        # Adaptive Comfort Noise Generator (ITU-T G.711 App II & RFC 3389)
+        self.cng = ComfortNoiseGenerator(
+            sample_rate=8000,
+            preset_name="INDIAN_ROOM_CEILING_FAN",
         )
 
         # Inbound VAD state
@@ -528,7 +538,11 @@ class MediaStreamSession:
         # 0. Clean inbound frame via AEC (subtracting bot echo) & Spectral Noise Suppression
         clean_frame, dsp_telemetry = self.dsp_processor.process_inbound_frame(frame)
 
-        # 0.1 Enhance Indic retroflex formants and nasal clarity via 5-band biquad equalizer
+        # 0.1 Update adaptive comfort noise model when caller is not speaking and bot is not streaming
+        if not self.is_caller_speaking and not self.is_agent_streaming:
+            self.cng.update_noise_model(clean_frame)
+
+        # 0.2 Enhance Indic retroflex formants and nasal clarity via 5-band biquad equalizer
         enhanced_frame, eq_telemetry = self.equalizer.process_frame(clean_frame)
 
         # 1. Evaluate acoustic DTMF keypad tones on enhanced inbound PCM

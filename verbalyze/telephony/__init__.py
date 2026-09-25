@@ -111,6 +111,11 @@ from verbalyze.telephony.equalizer import (
     EQTelemetry,
     IndicFormantEqualizer,
 )
+from verbalyze.telephony.comfort_noise import (
+    ComfortNoiseGenerator,
+    CNGTelemetry,
+    SIDPacket,
+)
 
 __all__ = [
     "DispatchResult",
@@ -203,6 +208,9 @@ __all__ = [
     "EQBandConfig",
     "EQTelemetry",
     "IndicFormantEqualizer",
+    "ComfortNoiseGenerator",
+    "CNGTelemetry",
+    "SIDPacket",
 ]
 
 

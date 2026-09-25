@@ -119,6 +119,11 @@ from verbalyze.telephony.equalizer import (
     EQBandConfig,
     BiquadFilter,
 )
+from verbalyze.telephony.comfort_noise import (
+    ComfortNoiseGenerator,
+    CNGTelemetry,
+    SIDPacket,
+)
 
 # Try importing FastAPI
 try:
@@ -206,6 +211,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "dsp_noise_suppression": "ready",
             "plc_status": "ready",
             "equalizer_status": "ready",
+            "cng_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -2168,6 +2174,100 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "max_eq_time_ms": round(max_ms, 3),
             "target_sla_ms": 0.5,
             "meets_eq_sla": avg_ms < 0.5,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    @app.post("/telephony/cng/generate")
+    async def generate_comfort_noise(request: Request):
+        """
+        Generates calibrated comfort noise matching ITU-T G.711 App II and RFC 3389.
+        Synthesizes stationary noise frames matching background color (ceiling fan, street noise, line hiss).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        preset = str(body.get("preset", "INDIAN_ROOM_CEILING_FAN"))
+        sample_rate = int(body.get("sample_rate", 8000))
+        frames_count = min(int(body.get("frames_count", 5)), 50)
+        noise_level = body.get("noise_level_dbov")
+        audio_b64 = body.get("adapt_from_audio_b64")
+
+        cng = ComfortNoiseGenerator(sample_rate=sample_rate, preset_name=preset)
+
+        if noise_level is not None:
+            cng.noise_level_dbov = float(noise_level)
+            cng.residual_sigma = max(1.0, float(32767.0 * (10.0 ** (cng.noise_level_dbov / 20.0))))
+
+        if audio_b64:
+            try:
+                raw_pcm = base64.b64decode(audio_b64)
+                frame_len = int(sample_rate * 0.02 * 2)
+                for i in range(0, len(raw_pcm), frame_len):
+                    chunk = raw_pcm[i:i + frame_len]
+                    if len(chunk) == frame_len:
+                        cng.update_noise_model(chunk)
+            except Exception:
+                pass
+
+        out_frames = []
+        last_telem = None
+        for _ in range(frames_count):
+            pcm, telem = cng.generate_comfort_noise_frame()
+            out_frames.append(pcm)
+            last_telem = telem
+
+        sid_pkt = cng.to_sid_packet()
+
+        return JSONResponse({
+            "status": "ok",
+            "preset": cng.preset_name,
+            "frames_generated": len(out_frames),
+            "sample_rate": sample_rate,
+            "noise_level_dbov": round(cng.noise_level_dbov, 2),
+            "audio_base64": base64.b64encode(b"".join(out_frames)).decode("ascii"),
+            "sid_packet_hex": sid_pkt.to_bytes().hex(),
+            "sid_noise_level": sid_pkt.noise_level_dbov,
+            "telemetry": last_telem.to_dict() if last_telem else {},
+        })
+
+    @app.post("/telephony/cng/benchmark")
+    async def benchmark_comfort_noise_generator(request: Request):
+        """
+        Benchmarks Comfort Noise Generator synthesis latency per 20ms frame.
+        Verifies that processing time is < 0.5ms (ensuring massive real-time headroom).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        cng = ComfortNoiseGenerator(sample_rate=8000, preset_name="INDIAN_ROOM_CEILING_FAN")
+
+        # Warm-up run
+        cng.generate_comfort_noise_frame()
+
+        n_frames = 100
+        durations = []
+        for _ in range(n_frames):
+            _, telem = cng.generate_comfort_noise_frame()
+            durations.append(telem.processing_time_ms)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_frames,
+            "avg_cng_time_ms": round(avg_ms, 3),
+            "p95_cng_time_ms": round(p95_ms, 3),
+            "max_cng_time_ms": round(max_ms, 3),
+            "target_sla_ms": 0.5,
+            "meets_cng_sla": avg_ms < 0.5,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 

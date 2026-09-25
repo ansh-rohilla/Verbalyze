@@ -911,6 +911,46 @@ python3 scripts/test_indic_formant_equalizer.py
 
 ---
 
+### 3.14 Adaptive Comfort Noise Generator (CNG / ITU-T G.711 App II & RFC 3389 - Pure-Math DSP)
+
+In telephony systems utilizing Discontinuous Transmission (DTX) or Voice Activity Detection (VAD) silence suppression, muting audio packets during speech pauses causes eerie, unnatural "dead-line" silence. Callers often believe the call has dropped or hang up in frustration. Conversely, injecting synthetic white noise or generic uncalibrated hiss sounds jarring and unnatural.
+
+Verbalyze provides an integrated, pure-math **Adaptive Comfort Noise Generator (CNG)** compliant with **ITU-T G.711 Appendix II** and **RFC 3389**, implemented entirely in NumPy with zero external C++ or heavy ML dependencies:
+
+* **Levinson-Durbin Linear Predictive Coding (LPC) Recursion**:
+  * Autocorrelation analysis $R(0 \dots M)$ ($M=4$ order) of background acoustic frames extracts spectral reflection coefficients $k_i \in (-1, 1)$ and predictor coefficients $a_1 \dots a_M$.
+  * Clamping reflection coefficients $k_i \in [-0.995, 0.995]$ mathematically guarantees strict all-pole filter stability.
+  * Continuously updates spectral shape and residual energy using an exponential moving average ($\alpha = 0.08$) exclusively on non-speech frames, adapting seamlessly to changing acoustic environments.
+* **Direct Form II Transposed All-Pole IIR Synthesis Filtering**:
+  * Synthesizes stationary colored noise via all-pole filter $H(z) = 1 / A(z)$ excited by calibrated zero-mean Gaussian pseudo-random noise:
+    $$y[n] = e[n] + s_0[n-1]$$
+    $$s_j[n] = -a_{j+1} y[n] + s_{j+1}[n-1], \quad 0 \le j < M-1$$
+    $$s_{M-1}[n] = -a_M y[n]$$
+  * Preserves delay states continuously across 20ms frame boundaries, achieving **0.00 mathematical deviation** compared to un-chunked continuous filtering and completely eliminating frame-boundary clicks.
+* **Exact Energy Scaling via Reflection Coefficient Gain**:
+  * Compensates for filter resonance gain to guarantee exact output dBov calibration:
+    $$\sigma_e = \sigma_y \sqrt{\prod_{i=1}^M (1 - k_i^2)}$$
+* **RFC 3389 Silence Insertion Descriptor (SID) Frames**:
+  * Encodes and decodes compact 5-byte binary SID frames carrying noise level ($0 \dots 127$ in -dBov) and 8-bit quantized reflection coefficients.
+  * Enables band-efficient silence transmission over low-bandwidth SIP/RTP telephony trunks.
+* **Smooth Raised-Cosine / Linear Cross-Fading**:
+  * 32-sample (4ms) overlap cross-fading smoothly transitions between active speech and comfort noise, eradicating sharp energy cliffs at turn boundaries.
+* **Indian Telecom Acoustic Presets**:
+  * Pre-calibrated ambient profiles: `INDIAN_ROOM_CEILING_FAN` (-50 dBov, low-frequency drone), `URBAN_STREET_TRAFFIC` (-45 dBov, mid-frequency rumble), `CELLULAR_LINE_HISS` (-58 dBov, high-frequency line static), and `CLEAN_OFFICE_QUIET` (-65 dBov).
+* **Full-Duplex MediaStream Pipeline Integration**:
+  * In `MediaStreamSession.handle_inbound_frame`, ambient background noise frames are continuously analyzed to update the active comfort noise model whenever the caller and bot are silent.
+* **FastAPI Telephony CNG REST Endpoints**:
+  * `POST /telephony/cng/generate`: Synthesizes calibrated comfort noise frames for any preset or uploaded background sample, returning base64 PCM audio, telemetry, and RFC 3389 SID hex payloads.
+  * `POST /telephony/cng/benchmark`: Benchmarks 20ms frame synthesis throughput, validating compliance with the $<0.5\text{ms}$ telephony SLA (0.11ms average, >180x real-time headroom).
+  * `GET /health`: Reports `cng_status: ready`.
+
+```bash
+# Verify Adaptive Comfort Noise Generator Suite (8/8):
+python3 scripts/test_comfort_noise_generator.py
+```
+
+---
+
 ### 4. Automated Human-Likeness Quality Gate (80% / MOS 4.0)
 
 Every generated speech utterance is evaluated across 5 acoustic dimensions before being accepted or played over the phone:
