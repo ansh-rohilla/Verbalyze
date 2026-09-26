@@ -76,8 +76,8 @@ def run_dry_run_check(args):
     train_data = load_conversations(train_file)
     val_data = load_conversations(val_file)
     print(f"\nDataset Verification:")
-    print(f"  ✓ Train split: {len(train_data):,} conversations loaded from {train_file}")
-    print(f"  ✓ Val split:   {len(val_data):,} conversations loaded from {val_file}")
+    print(f"  [OK] Train split: {len(train_data):,} conversations loaded from {train_file}")
+    print(f"  [OK] Val split:   {len(val_data):,} conversations loaded from {val_file}")
 
     # Inspect sample turn count
     turn_counts = [len(item["messages"]) for item in train_data]
@@ -89,9 +89,9 @@ def run_dry_run_check(args):
     )
 
     print(f"\nConversational Structure:")
-    print(f"  ✓ Average turns per dialogue: {avg_turns:.1f}")
-    print(f"  ✓ Maximum turns in dialogue:  {max_turns}")
-    print(f"  ✓ Telephony tool-call samples (`disconnect_tool`): {tool_call_count:,} ({tool_call_count / len(train_data) * 100:.1f}%)")
+    print(f"  [OK] Average turns per dialogue: {avg_turns:.1f}")
+    print(f"  [OK] Maximum turns in dialogue:  {max_turns}")
+    print(f"  [OK] Telephony tool-call samples (`disconnect_tool`): {tool_call_count:,} ({tool_call_count / len(train_data) * 100:.1f}%)")
 
     # Sample dialogue preview
     sample = train_data[0]
@@ -101,7 +101,7 @@ def run_dry_run_check(args):
     if any("tool_calls" in m for m in sample["messages"]):
         print(f"  [TOOL CALL]: disconnect_tool invoked on resolution.")
 
-    print("\n✓ Pipeline checks passed successfully! Ready for GPU training.")
+    print("\n[OK] Pipeline checks passed successfully! Ready for GPU training.")
     print("========================================================\n")
 
 

@@ -3,9 +3,9 @@ app.py - Verbalyze: Indic Voice AI & Synthetic Data Suite
 Hugging Face Spaces & Local Interactive Web Application
 
 Features:
-1. 📞 Interactive Telephony Voicebot (Edge-TTS Neural Voice + Multi-lingual Tool Calling)
-2. 🏆 Indic STT Benchmark Arena (Whisper vs. Sarvam vs. Google on 11 Edge Scenarios)
-3. 📊 Dataset Explorer & Leaderboard (16,370 Dialogues & 172,800 STT Utterances)
+1. Interactive Telephony Voicebot (Edge-TTS Neural Voice + Multi-lingual Tool Calling)
+2. Indic STT Benchmark Arena (Whisper vs. Sarvam vs. Google on 11 Edge Scenarios)
+3. Dataset Explorer & Leaderboard (16,370 Dialogues & 172,800 STT Utterances)
 """
 
 import os
@@ -215,31 +215,31 @@ class WebVoiceSession:
 
         # Synthesize audio with quality evaluation
         audio_file = None
-        quality_badge = "<div class='quality-badge'>🎯 Quality Gate: Verified ✓ (Min Score: 80% / MOS ~4.0 Gate Active)</div>"
+        quality_badge = "<div class='quality-badge'>[OK] Quality Gate: Verified (Min Score: 80% / MOS ~4.0 Gate Active)</div>"
         if self.agent.audio_engine:
             audio_file = self.agent.audio_engine.synthesize(greeting)
             report = self.agent.audio_engine.last_quality_report
             if report:
                 if report.passed and audio_file:
-                    quality_badge = f"<div class='quality-badge'>🎯 Quality Gate: Human-Likeness {report.score*100:.1f}% (MOS {report.mos_equivalent:.2f}/5.0 | Cadence: {report.cadence_score*100:.0f}%) ✓ Accepted</div>"
+                    quality_badge = f"<div class='quality-badge'>[OK] Quality Gate: Human-Likeness {report.score*100:.1f}% (MOS {report.mos_equivalent:.2f}/5.0 | Cadence: {report.cadence_score*100:.0f}%) Accepted</div>"
                 else:
-                    quality_badge = f"<div class='quality-badge-rejected'>⚠️ Quality Gate: Audio Rejected ({report.score*100:.1f}% < {self.min_human_likeness*100:.0f}%) — {report.feedback}</div>"
+                    quality_badge = f"<div class='quality-badge-rejected'>[WARNING] Quality Gate: Audio Rejected ({report.score*100:.1f}% < {self.min_human_likeness*100:.0f}%) — {report.feedback}</div>"
 
         self.recent_quality_badge = quality_badge
-        status_text = "🟢 **IN CALL** (Trunk: SIP-0821-DELHI | 8kHz G.711 Telephony Codec)"
-        event_badge = "📞 Call Connected: Outbound Agent Dialed"
+        status_text = "[ACTIVE] **IN CALL** (Trunk: SIP-0821-DELHI | 8kHz G.711 Telephony Codec)"
+        event_badge = "[TELEPHONY] Call Connected: Outbound Agent Dialed"
         return self.call_history, audio_file, status_text, event_badge, quality_badge
 
     def send_turn(self, user_text: str) -> Tuple[List[Dict[str, str]], Optional[str], str, str, str]:
         """Processes user utterance and returns updated messages, audio, and telephony telemetry."""
-        default_badge = self.recent_quality_badge or "<div class='quality-badge'>🎯 Quality Gate Active</div>"
+        default_badge = self.recent_quality_badge or "<div class='quality-badge'>[OK] Quality Gate Active</div>"
         if not user_text.strip():
-            return self.call_history, None, "🟢 **IN CALL**", self.recent_tool_event or "No action", default_badge
+            return self.call_history, None, "[ACTIVE] **IN CALL**", self.recent_tool_event or "No action", default_badge
 
         if not self.is_connected:
             self.call_history.append({"role": "user", "content": user_text})
             self.call_history.append({"role": "assistant", "content": "[Phone Call Disconnected - Click 'Restart Call' to dial again]"})
-            return self.call_history, None, "🔴 **CALL TERMINATED**", "Call is hung up.", default_badge
+            return self.call_history, None, "[DISCONNECTED] **CALL TERMINATED**", "Call is hung up.", default_badge
 
         # Add user message
         self.call_history.append({"role": "user", "content": user_text})
@@ -256,27 +256,27 @@ class WebVoiceSession:
 
         if terminated:
             self.is_connected = False
-            status_text = "🔴 **CALL TERMINATED** (Remote End Disconnected)"
+            status_text = "[DISCONNECTED] **CALL TERMINATED** (Remote End Disconnected)"
         else:
-            status_text = "🟢 **IN CALL** (SIP Stream Active)"
+            status_text = "[ACTIVE] **IN CALL** (SIP Stream Active)"
 
         tool_data = res.get("tool_data")
         if tool_data:
             self.recent_tool_data = tool_data
 
-        event_text = tool_event if tool_event else ("🗣️ Spoken turn processed" if not terminated else "🔴 Call Hung Up")
+        event_text = tool_event if tool_event else ("[SPEECH] Spoken turn processed" if not terminated else "[TELEPHONY] Call Hung Up")
         self.recent_tool_event = event_text
 
         quality_badge = default_badge
         if report:
             if report.passed and audio_file:
                 quality_badge = (
-                    f"<div class='quality-badge'>🎯 Quality Gate: Human-Likeness {report.score*100:.1f}% "
-                    f"(MOS {report.mos_equivalent:.2f}/5.0 | Cadence: {report.cadence_score*100:.0f}% | Prosody: {report.prosody_score*100:.0f}%) ✓ Accepted</div>"
+                    f"<div class='quality-badge'>[OK] Quality Gate: Human-Likeness {report.score*100:.1f}% "
+                    f"(MOS {report.mos_equivalent:.2f}/5.0 | Cadence: {report.cadence_score*100:.0f}% | Prosody: {report.prosody_score*100:.0f}%) Accepted</div>"
                 )
             else:
                 quality_badge = (
-                    f"<div class='quality-badge-rejected'>⚠️ Quality Gate: Speech Rejected "
+                    f"<div class='quality-badge-rejected'>[WARNING] Quality Gate: Speech Rejected "
                     f"({report.score*100:.1f}% < {self.min_human_likeness*100:.0f}%) — {report.feedback}</div>"
                 )
         self.recent_quality_badge = quality_badge
@@ -373,14 +373,14 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
     # Hero Banner
     gr.HTML("""
     <div class="hero-header">
-        <h1>🇮🇳 Verbalyze: Indic Voice AI & Synthetic Data Suite</h1>
+        <h1>Verbalyze: Indic Voice AI & Synthetic Data Suite</h1>
         <p>Full-Duplex Telephony Voicebot, STT Benchmark Arena, and Multi-lingual Dataset Explorer across 12 Indian Languages.</p>
         <div>
             <a href="https://huggingface.co/datasets/ansh-rohilla/verbalyze-dialogues" target="_blank" style="margin-right: 8px;">
-                <img src="https://img.shields.io/badge/🤗%20Hugging%20Face-verbalyze--dialogues-blue" alt="HF Dialogues" style="display:inline-block; vertical-align:middle;">
+                <img src="https://img.shields.io/badge/Hugging%20Face-verbalyze--dialogues-blue" alt="HF Dialogues" style="display:inline-block; vertical-align:middle;">
             </a>
             <a href="https://huggingface.co/datasets/ansh-rohilla/verbalyze-stt-bench" target="_blank" style="margin-right: 8px;">
-                <img src="https://img.shields.io/badge/🤗%20Hugging%20Face-verbalyze--stt--bench-green" alt="HF STT Bench" style="display:inline-block; vertical-align:middle;">
+                <img src="https://img.shields.io/badge/Hugging%20Face-verbalyze--stt--bench-green" alt="HF STT Bench" style="display:inline-block; vertical-align:middle;">
             </a>
             <a href="https://colab.research.google.com/github/ansh-rohilla/Verbalyze/blob/main/notebooks/train_indic_voice_slm.ipynb" target="_blank" style="margin-right: 8px;">
                 <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Colab" style="display:inline-block; vertical-align:middle;">
@@ -396,10 +396,10 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
         # ======================================================================
         # TAB 1: INTERACTIVE TELEPHONY VOICEBOT
         # ======================================================================
-        with gr.TabItem("📞 Telephony Voicebot Playground", id="tab_voicebot"):
+        with gr.TabItem("Telephony Voicebot Playground", id="tab_voicebot"):
             with gr.Row():
                 with gr.Column(scale=4):
-                    gr.Markdown("### ⚙️ Call Configuration")
+                    gr.Markdown("### Call Configuration")
                     lang_dropdown = gr.Dropdown(
                         choices=list(LANGUAGE_OPTIONS.keys()),
                         value="Hindi (हिंदी)",
@@ -435,33 +435,33 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
                         maximum=0.98,
                         value=0.80,
                         step=0.05,
-                        label="🎯 Quality Gate (Min Human-Likeness)",
+                        label="Quality Gate (Min Human-Likeness)",
                         info="Rejects or auto-tunes speech below score threshold (Default: 80% / MOS ~4.0)",
                         interactive=True
                     )
                     telephony_sim_checkbox = gr.Checkbox(
                         value=False,
-                        label="📞 8kHz Telecom Line Simulator (G.711 A-law)",
+                        label="8kHz Telecom Line Simulator (G.711 A-law)",
                         info="Simulates real Indian PSTN 300Hz–3400Hz bandpass, A-law companding & packet jitter",
                         interactive=True
                     )
                     caller_phone_input = gr.Textbox(
                         value="+91 98765 43210",
-                        label="📱 Caller Mobile Number (for Real SMS/UPI Dispatch)",
+                        label="Caller Mobile Number (for Real SMS/UPI Dispatch)",
                         placeholder="+91 98765 43210",
                         interactive=True
                     )
 
-                    start_btn = gr.Button("📞 Start / Restart Call", variant="primary", size="lg")
+                    start_btn = gr.Button("Start / Restart Call", variant="primary", size="lg")
                     
                     gr.Markdown("---")
-                    status_display = gr.Markdown("🟢 **IN CALL** (SIP Stream Connected)")
-                    telemetry_display = gr.HTML("<div class='telephony-badge'>⚡ Telephony Event: Call Connected</div>")
-                    quality_display = gr.HTML("<div class='quality-badge'>🎯 Quality Gate: Human-Likeness 80% Gate Active ✓</div>")
-                    bot_audio_output = gr.Audio(label="🔊 Agent Voice Response (Neural Edge-TTS)", autoplay=True, type="filepath")
+                    status_display = gr.Markdown("[ACTIVE] **IN CALL** (SIP Stream Connected)")
+                    telemetry_display = gr.HTML("<div class='telephony-badge'>Telephony Event: Call Connected</div>")
+                    quality_display = gr.HTML("<div class='quality-badge'>Quality Gate: Human-Likeness 80% Gate Active</div>")
+                    bot_audio_output = gr.Audio(label="Agent Voice Response (Neural Edge-TTS)", autoplay=True, type="filepath")
 
                 with gr.Column(scale=6):
-                    gr.Markdown("### 💬 Conversational Telephony Channel")
+                    gr.Markdown("### Conversational Telephony Channel")
                     chatbot_ui = gr.Chatbot(
                         label="Phone Conversation",
                         height=440
@@ -473,9 +473,9 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
                             placeholder="Type or reply in Hindi, English, or Romanized Indic (e.g., 'हाँ मैं आज पेमेंट कर दूंगा')...",
                             scale=8
                         )
-                        send_btn = gr.Button("Send Turn ➡️", variant="primary", scale=2)
+                        send_btn = gr.Button("Send Turn", variant="primary", scale=2)
 
-                    gr.Markdown("#### ⚡ Quick Customer Responses:")
+                    gr.Markdown("#### Quick Customer Responses:")
                     with gr.Row():
                         quick_btn_1 = gr.Button("हाँ, मैं आज शाम तक ₹5,420 जमा कर दूंगा।", size="sm")
                         quick_btn_2 = gr.Button("पेमेंट का UPI लिंक WhatsApp या SMS पर भेज दीजिए।", size="sm")
@@ -487,7 +487,7 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
             def handle_start_call(s_id, l_name, p_name, prov, key, min_score, tel_sim=False, phone="+919876543210"):
                 session = get_or_create_session(s_id, l_name, p_name, prov, key, min_score, tel_sim, caller_phone=phone)
                 history, audio, status, event, quality_badge = session.start_call()
-                event_html = f"<div class='telephony-badge'>⚡ Telephony Event: {event}</div>"
+                event_html = f"<div class='telephony-badge'>Telephony Event: {event}</div>"
                 return history, audio, status, event_html, quality_badge
 
             def handle_send_message(s_id, text, l_name, p_name, prov, key, min_score, tel_sim=False, phone="+919876543210"):
@@ -505,13 +505,13 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
                     d = session.recent_tool_data
                     event_html = (
                         f"<div class='telephony-badge' style='background:#e8f5e9;border-left:4px solid #2e7d32;color:#1b5e20;padding:8px 12px;margin:4px 0;'>"
-                        f"📱 <b>Live SMS & UPI Link Sent</b> to <b>{d.get('phone')}</b><br/>"
+                        f"<b>Live SMS & UPI Link Sent</b> to <b>{d.get('phone')}</b><br/>"
                         f"• <b>Amount:</b> ₹{d.get('amount', 5420):,.2f} | <b>Account:</b> {d.get('loan_id', 'MUTH-8921')}<br/>"
-                        f"• <b>NPCI Intent:</b> <a href='{d.get('upi_url')}' target='_blank' style='color:#1565c0;text-decoration:underline;'>⚡ Click to Pay via UPI (GPay/PhonePe)</a>"
+                        f"• <b>NPCI Intent:</b> <a href='{d.get('upi_url')}' target='_blank' style='color:#1565c0;text-decoration:underline;'>Click to Pay via UPI (GPay/PhonePe)</a>"
                         f"</div>"
                     )
                 else:
-                    event_html = f"<div class='telephony-badge'>⚡ Telephony Event: {event}</div>"
+                    event_html = f"<div class='telephony-badge'>Telephony Event: {event}</div>"
                 return history, audio, status, event_html, quality_badge, ""
 
             start_btn.click(
@@ -542,8 +542,8 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
         # ======================================================================
         # TAB 2: INDIC STT BENCHMARK ARENA
         # ======================================================================
-        with gr.TabItem("🏆 Indic STT Benchmark Arena", id="tab_benchmark"):
-            gr.Markdown("### 🔍 Side-by-Side Model Evaluation Across Tricky Indic Speech Scenarios")
+        with gr.TabItem("Indic STT Benchmark Arena", id="tab_benchmark"):
+            gr.Markdown("### Side-by-Side Model Evaluation Across Tricky Indic Speech Scenarios")
             gr.Markdown(
                 "Compare transcription performance on the **172,800 scenario STT benchmark**. Standard Western models (Whisper) "
                 "frequently collapse code-mixing, spell out acronyms phonetically, or drop spoken Indic number patterns."
@@ -562,12 +562,12 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
                         interactive=False,
                         lines=2
                     )
-                    synth_audio_btn = gr.Button("🔊 Synthesize & Play Ground Truth Audio", variant="secondary")
+                    synth_audio_btn = gr.Button("Synthesize & Play Ground Truth Audio", variant="secondary")
                     sample_audio_player = gr.Audio(label="Reference Speech Audio (Edge-TTS)", type="filepath")
                     scenario_insight_box = gr.Markdown("---")
 
                 with gr.Column(scale=7):
-                    gr.Markdown("#### 🥊 Model Transcription & Error Scorecards")
+                    gr.Markdown("#### Model Transcription & Error Scorecards")
 
                     with gr.Tabs():
                         with gr.TabItem("OpenAI Whisper"):
@@ -605,7 +605,7 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
                 s_metrics = calculate_metrics_for_pred(ref, s_out)
                 g_metrics = calculate_metrics_for_pred(ref, g_out)
 
-                insight_md = f"💡 **Evaluation Insight**: {data['insight']}"
+                insight_md = f"**Evaluation Insight**: {data['insight']}"
 
                 return (
                     ref,
@@ -642,7 +642,7 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
 
             # Custom sentence testing
             gr.Markdown("---")
-            gr.Markdown("### 🧪 Live Custom Transcript Evaluation")
+            gr.Markdown("### Live Custom Transcript Evaluation")
             with gr.Row():
                 custom_ref_input = gr.Textbox(
                     label="Ground Truth Transcript",
@@ -654,7 +654,7 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
                     placeholder="Enter model prediction transcript...",
                     value="खाता संख्या 9821034567 में तुरंत के वाई सी अपडेट करें"
                 )
-            calc_btn = gr.Button("Calculate Error Metrics 📊", variant="primary")
+            calc_btn = gr.Button("Calculate Error Metrics", variant="primary")
             with gr.Row():
                 custom_wer_res = gr.Number(label="WER (%)", precision=2)
                 custom_cer_res = gr.Number(label="CER (%)", precision=2)
@@ -674,12 +674,12 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
         # ======================================================================
         # TAB 3: DATASET EXPLORER & LEADERBOARD
         # ======================================================================
-        with gr.TabItem("📊 Dataset Explorer & Leaderboard", id="tab_dataset"):
-            gr.Markdown("### 📚 Browse Synthetic Datasets & Published Benchmark Leaderboards")
+        with gr.TabItem("Dataset Explorer & Leaderboard", id="tab_dataset"):
+            gr.Markdown("### Browse Synthetic Datasets & Published Benchmark Leaderboards")
 
             with gr.Tabs():
                 with gr.TabItem("Telephony Dialogues (16,370 Conversations)"):
-                    gr.Markdown("Explore multi-turn voice conversations from [🤗 `ansh-rohilla/verbalyze-dialogues`](https://huggingface.co/datasets/ansh-rohilla/verbalyze-dialogues):")
+                    gr.Markdown("Explore multi-turn voice conversations from [Hugging Face: `ansh-rohilla/verbalyze-dialogues`](https://huggingface.co/datasets/ansh-rohilla/verbalyze-dialogues):")
                     with gr.Row():
                         ds_lang_filter = gr.Dropdown(
                             choices=["Hindi (hi)", "Gujarati (gu)", "Tamil (ta)", "Telugu (te)", "Marathi (mr)", "Bengali (bn)", "Kannada (kn)", "Malayalam (ml)", "Punjabi (pa)", "English (en)"],
@@ -696,7 +696,7 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
 
                     dialogue_meta_display = gr.Markdown("### Dialogue Metadata")
                     dialogue_chat_display = gr.Chatbot(label="Dialogue Turns Viewer", height=400)
-                    play_turn_audio_btn = gr.Button("🔊 Play First Turn Audio", variant="secondary")
+                    play_turn_audio_btn = gr.Button("Play First Turn Audio", variant="secondary")
                     turn_audio_player = gr.Audio(label="Spoken Turn Audio", type="filepath")
 
                     def view_dialogue(lang_str, idx):
@@ -740,7 +740,7 @@ with gr.Blocks(title="Verbalyze: Indic Voice AI Suite") as demo:
 
                 with gr.TabItem("Public Indic Leaderboard"):
                     gr.Markdown("""
-                    ### 🏆 Benchmark Comparison on Indic Speech (172,800 Utterances)
+                    ### Benchmark Comparison on Indic Speech (172,800 Utterances)
                     Evaluation of leading speech engines across 12 Indian languages on the **Verbalyze STT Benchmark Suite**:
 
                     | Model | Primary Focus | Code-Mixed WER (%) | Spoken Digit Accuracy (%) | Acronym Retention (%) | Latency (TTFT) |

@@ -24,7 +24,7 @@
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         <div>
           <div class="flex items-center gap-3">
-            <span class="text-3xl">🇮🇳</span>
+            <span class="text-2xl font-bold text-indigo-400">[IN]</span>
             <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Verbalyze Indic Voice AI Suite</h1>
           </div>
           <p class="mt-2 text-indigo-200 text-sm sm:text-base max-w-2xl">
@@ -35,15 +35,15 @@
         <div class="flex flex-wrap items-center gap-2">
           <a href="https://huggingface.co/datasets/ansh-rohilla/verbalyze-dialogues" target="_blank" 
              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 border border-blue-400/40 text-xs font-semibold text-blue-100 transition shadow-sm">
-            <span>🤗</span> verbalyze-dialogues (16.3k)
+            <span>[HF]</span> verbalyze-dialogues (16.3k)
           </a>
           <a href="https://huggingface.co/datasets/ansh-rohilla/verbalyze-stt-bench" target="_blank"
              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-400/40 text-xs font-semibold text-emerald-100 transition shadow-sm">
-            <span>🤗</span> verbalyze-stt-bench (172.8k)
+            <span>[HF]</span> verbalyze-stt-bench (172.8k)
           </a>
           <a href="https://colab.research.google.com/github/ansh-rohilla/Verbalyze/blob/main/notebooks/train_indic_voice_slm.ipynb" target="_blank"
              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-600/30 hover:bg-amber-600/50 border border-amber-400/40 text-xs font-semibold text-amber-100 transition shadow-sm">
-            <span>⚡</span> 1-Click Colab SLM
+            <span>[Colab]</span> 1-Click Colab SLM
           </a>
           <a href="https://github.com/ansh-rohilla/Verbalyze" target="_blank"
              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-white transition shadow-sm">
@@ -109,16 +109,16 @@
             <div>
               <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Telephony Persona & Goal</label>
               <select id="select-persona" onchange="initNewCall()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm font-medium text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                <option value="muthoot_recovery" selected>🏦 Muthoot Fincorp (EMI Debt Recovery ₹5,420)</option>
-                <option value="bank_kyc">🏛️ Bank of Baroda (Re-KYC Account Update)</option>
-                <option value="swiggy_delivery">🛵 Swiggy Express (Delivery Gate Confirmation)</option>
+                <option value="muthoot_recovery" selected>Muthoot Fincorp (EMI Debt Recovery ₹5,420)</option>
+                <option value="bank_kyc">Bank of Baroda (Re-KYC Account Update)</option>
+                <option value="swiggy_delivery">Swiggy Express (Delivery Gate Confirmation)</option>
               </select>
             </div>
 
             <!-- Quality Gate Threshold Slider -->
             <div class="pt-3 border-t border-slate-100 space-y-2">
               <div class="flex items-center justify-between">
-                <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">🎯 Quality Gate (Min Score)</label>
+                <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">Quality Gate (Min Score)</label>
                 <span id="quality-threshold-val" class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">80% (MOS ~4.0)</span>
               </div>
               <input type="range" id="slider-quality" min="0.60" max="0.99" step="0.05" value="0.80" oninput="updateQualityThreshold(this.value)" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
@@ -435,7 +435,7 @@
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-100">
           <div>
-            <h2 class="text-xl font-bold text-slate-900">🏆 Indic Speech Leaderboard (172,800 Samples)</h2>
+            <h2 class="text-xl font-bold text-slate-900">Indic Speech Leaderboard (172,800 Samples)</h2>
             <p class="text-slate-500 text-xs mt-1">Cross-language benchmark ranking on the Verbalyze STT test suite:</p>
           </div>
           <div class="flex items-center gap-2">
@@ -460,7 +460,7 @@
             <tbody class="divide-y divide-slate-100 font-medium">
               <tr class="bg-indigo-50/40">
                 <td class="py-3 px-4 font-bold text-indigo-950 flex items-center gap-2">
-                  <span class="text-amber-500">🥇</span> Verbalyze Indic-Voice-SLM (3B)
+                  <span class="text-amber-700 font-bold">[Rank 1]</span> Verbalyze Indic-Voice-SLM (3B)
                 </td>
                 <td class="py-3 px-4 text-indigo-900 text-xs font-semibold">Telephony Outbound Specialization</td>
                 <td class="py-3 px-4 text-center font-bold text-emerald-600">3.8%</td>
@@ -470,7 +470,7 @@
               </tr>
               <tr>
                 <td class="py-3 px-4 font-bold text-slate-800 flex items-center gap-2">
-                  <span class="text-slate-400">🥈</span> Sarvam AI Indic-ASR
+                  <span class="text-slate-600 font-bold">[Rank 2]</span> Sarvam AI Indic-ASR
                 </td>
                 <td class="py-3 px-4 text-slate-500 text-xs">Native Regional Audio</td>
                 <td class="py-3 px-4 text-center font-bold text-slate-800">4.2%</td>
@@ -480,7 +480,7 @@
               </tr>
               <tr>
                 <td class="py-3 px-4 font-bold text-slate-800 flex items-center gap-2">
-                  <span class="text-amber-700">🥉</span> Google Cloud Speech-to-Text v2
+                  <span class="text-amber-800 font-bold">[Rank 3]</span> Google Cloud Speech-to-Text v2
                 </td>
                 <td class="py-3 px-4 text-slate-500 text-xs">Enterprise Cloud</td>
                 <td class="py-3 px-4 text-center font-bold text-amber-600">7.8%</td>
@@ -778,7 +778,7 @@ print(f"Total conversations: {len(dialogues)} | Sample turn: {dialogues[0]['mess
             <span class="flex items-center gap-1.5 text-emerald-800">
               <i class="fas fa-shield-halved text-emerald-600"></i> Quality Gate: ${pct}%
             </span>
-            <span id="quality-mos-tag" class="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 font-bold text-[10px]">MOS ${mos.toFixed(2)}/5.0 ✓ Accepted</span>
+            <span id="quality-mos-tag" class="px-2 py-0.5 rounded bg-emerald-200 text-emerald-900 font-bold text-[10px]">MOS ${mos.toFixed(2)}/5.0 Accepted</span>
           </div>
           <div class="text-[11px] text-emerald-700 flex justify-between font-mono">
             <span>Cadence: 100%</span>
@@ -867,7 +867,7 @@ print(f"Total conversations: {len(dialogues)} | Sample turn: {dialogues[0]['mess
           if (qualityReport.passed) {
             qualityHtml = `<div class="mt-2 text-[11px] font-mono px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between">
               <span class="flex items-center gap-1.5 font-bold"><i class="fas fa-shield-halved text-emerald-600"></i> Quality Score: ${qualityReport.score}%</span>
-              <span class="text-emerald-700 font-medium">MOS ${qualityReport.mos}/5.0 • ✓ Passed</span>
+              <span class="text-emerald-700 font-medium">MOS ${qualityReport.mos}/5.0 • Passed</span>
             </div>`;
           } else {
             qualityHtml = `<div class="mt-2 text-[11px] font-mono px-2.5 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-800 flex items-center justify-between">

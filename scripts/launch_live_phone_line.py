@@ -38,7 +38,7 @@ def get_local_ip() -> str:
 def print_banner():
     print("""
 ================================================================================
-  🇮🇳  VERBALYZE: 1-CLICK LIVE INDIAN PHONE LINE GATEWAY LAUNCHER  🇮🇳
+  VERBALYZE: 1-CLICK LIVE INDIAN PHONE LINE GATEWAY LAUNCHER
 ================================================================================
   Carrier Support: RingTrunk (admin@ringtrunk.com), Asterisk, FreeSWITCH, Twilio
   Audio Pipelining: Token-to-Speech Streaming (<200ms TTFS) | 8kHz G.711 A-law
@@ -78,7 +78,7 @@ def main():
         cf_bin = shutil.which("cloudflared")
 
         if ngrok_bin:
-            print("🚀 Found 'ngrok' in PATH! Initializing background tunnel on port", port)
+            print("[TUNNEL] Found 'ngrok' in PATH! Initializing background tunnel on port", port)
             try:
                 tunnel_proc = subprocess.Popen(
                     [ngrok_bin, "http", str(port)],
@@ -100,10 +100,10 @@ def main():
                 except Exception:
                     pass
             except Exception as e:
-                print(f"⚠️  Could not launch ngrok automatically: {e}")
+                print(f"[WARN] Could not launch ngrok automatically: {e}")
 
         elif cf_bin:
-            print("🚀 Found 'cloudflared' in PATH! Run 'cloudflared tunnel --url http://127.0.0.1:8000' for instant HTTPS.")
+            print("[TUNNEL] Found 'cloudflared' in PATH! Run 'cloudflared tunnel --url http://127.0.0.1:8000' for instant HTTPS.")
 
     if not tunnel_url:
         tunnel_url = f"http://{local_ip}:{port}"
@@ -131,12 +131,12 @@ def main():
     media_stream_url = f"{ws_url}/media-stream?lang={args.lang}&persona={args.persona}&provider={args.provider}&stt_provider={args.stt_provider}&stt_model={args.stt_model}{auth_param}{strict_param}"
 
     print("--------------------------------------------------------------------------------")
-    print("📋 READY-TO-USE TELEPHONY CONFIGURATION FOR RINGTRUNK:")
+    print("READY-TO-USE TELEPHONY CONFIGURATION FOR RINGTRUNK:")
     print("--------------------------------------------------------------------------------")
     print(f"  • Primary Telecom Carrier  : RingTrunk (admin@ringtrunk.com)")
     print(f"  • Inbound SIP Webhook URL  : {sip_inbound_url}")
     print(f"  • Conversational Turn URL  : {sip_turn_url}")
-    print(f"  • ⚡ WebSocket Media Stream : {media_stream_url}")
+    print(f"  • WebSocket Media Stream   : {media_stream_url}")
     print(f"  • Active Telephony Persona : {args.persona.upper()}")
     print(f"  • Language & Voice Codec   : {args.lang.upper()} | ITU-T G.711 A-law (8kHz PCMA)")
     print(f"  • Sovereign Local STT      : {args.stt_provider.upper()} ({args.stt_model}) [On-Premises]")
@@ -148,7 +148,7 @@ def main():
 
     if is_local:
         print("""
-💡 NOTE: You are currently running on a Local Network IP.
+NOTE: You are currently running on a Local Network IP.
    To connect with RingTrunk's live PSTN trunk over the internet:
    1. Install ngrok: 'brew install ngrok' or download from ngrok.com
    2. Run ngrok:     'ngrok http 8000'
@@ -156,7 +156,7 @@ def main():
    OR provide your public cloud VPS IP / domain directly via '--tunnel-url https://YOUR_DOMAIN'.
 """)
 
-    print("✉️  EMAIL TEMPLATE TO SEND TO RINGTRUNK (admin@ringtrunk.com):")
+    print("EMAIL TEMPLATE TO SEND TO RINGTRUNK (admin@ringtrunk.com):")
     print("--------------------------------------------------------------------------------")
     print(f"""Subject: Live Indian Test Line Webhook Configuration - Verbalyze
 
@@ -188,7 +188,7 @@ Verbalyze Voice AI Team
         return
 
     # Launch FastAPI Telephony Server
-    print(f"🟢 Starting Verbalyze Live Telephony Gateway on {args.host}:{port}...")
+    print(f"[GATEWAY] Starting Verbalyze Live Telephony Gateway on {args.host}:{port}...")
     print("   Press Ctrl+C to disconnect gateway and terminate session.\n")
 
     os.environ["SMS_DISPATCH_PROVIDER"] = args.sms_provider
@@ -204,7 +204,7 @@ Verbalyze Voice AI Team
         app = create_app(auth_token=args.auth_token)
         uvicorn.run(app, host=args.host, port=port, log_level="info")
     except KeyboardInterrupt:
-        print("\n🛑 Shutting down Verbalyze Live Phone Line Gateway. Goodbye!")
+        print("\nShutting down Verbalyze Live Phone Line Gateway. Goodbye!")
     finally:
         if tunnel_proc:
             try:

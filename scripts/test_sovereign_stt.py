@@ -16,7 +16,8 @@ from pathlib import Path
 
 # Add project root to sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from verbalyze.agent.stt_engine import SovereignSTTEngine
 from verbalyze.telephony.media_stream import MediaStreamSession
@@ -34,18 +35,18 @@ def test_model_initialization_and_caching():
     t0 = time.time()
     stt1 = SovereignSTTEngine(model_size="tiny", language="hi", provider="local")
     init1_ms = (time.time() - t0) * 1000.0
-    print(f"✓ Initial instantiation: {init1_ms:.2f} ms")
+    print(f"[PASS] Initial instantiation: {init1_ms:.2f} ms")
 
     # Second initialization must reuse global cache instantaneously (<5ms)
     t1 = time.time()
     stt2 = SovereignSTTEngine(model_size="tiny", language="hi", provider="local")
     init2_ms = (time.time() - t1) * 1000.0
-    print(f"✓ Cached re-instantiation: {init2_ms:.2f} ms")
+    print(f"[PASS] Cached re-instantiation: {init2_ms:.2f} ms")
 
     assert stt1._model is not None, "STT Model was not loaded!"
     assert stt1._model is stt2._model, "Model caching failed; new instance created!"
     assert init2_ms < 20.0, f"Cache lookup too slow ({init2_ms:.2f}ms)!"
-    print("✅ Model Initialization & Global Caching PASSED!\n")
+    print("Model Initialization & Global Caching PASSED!\n")
 
 
 def test_in_memory_pcm_transcription():
@@ -68,12 +69,12 @@ def test_in_memory_pcm_transcription():
     # Transcribe directly from raw bytes in RAM (zero disk I/O)
     text, latency_ms = stt.transcribe_pcm(pcm_8k_bytes, sample_rate=8000, language="hi")
 
-    print(f"⚡ Measured STT Inference Latency: {latency_ms:.2f} ms")
-    print(f"📝 Transcribed Text: '{text}'")
+    print(f"[METRIC] Measured STT Inference Latency: {latency_ms:.2f} ms")
+    print(f"[TRANSCRIPT] Transcribed Text: '{text}'")
 
     assert len(text) > 5, "Transcription text was unexpectedly empty!"
     assert latency_ms < 500.0, f"STT Latency exceeded SLA ({latency_ms:.2f}ms > 500ms)!"
-    print("✅ In-Memory 8kHz PCM Decoding PASSED!\n")
+    print("In-Memory 8kHz PCM Decoding PASSED!\n")
 
 
 def test_multilingual_hinglish_decoding():
@@ -92,11 +93,11 @@ def test_multilingual_hinglish_decoding():
     pcm_8k_bytes = seg.raw_data
 
     text, latency_ms = stt.transcribe_pcm(pcm_8k_bytes, sample_rate=8000, language="en")
-    print(f"⚡ Latency: {latency_ms:.2f} ms")
-    print(f"📝 Hinglish Transcript: '{text}'")
+    print(f"[METRIC] Latency: {latency_ms:.2f} ms")
+    print(f"[TRANSCRIPT] Hinglish Transcript: '{text}'")
 
     assert len(text) > 5, "Hinglish transcription was empty!"
-    print("✅ Multi-Lingual Hinglish Decoding PASSED!\n")
+    print("Multi-Lingual Hinglish Decoding PASSED!\n")
 
 
 def test_zero_failure_fallback():
@@ -109,9 +110,9 @@ def test_zero_failure_fallback():
     dummy_pcm = b"\x00\x00" * 4000  # 0.5s silence
     text, lat = mock_stt.transcribe_pcm(dummy_pcm, sample_rate=8000, language="hi")
 
-    print(f"✓ Mock / Offline fallback transcript: '{text}' in {lat:.2f} ms")
+    print(f"[PASS] Mock / Offline fallback transcript: '{text}' in {lat:.2f} ms")
     assert "हाँ जी, मैं सुन रहा हूँ" in text, f"Unexpected fallback text: {text}"
-    print("✅ Zero-Failure Fallback PASSED!\n")
+    print("Zero-Failure Fallback PASSED!\n")
 
 
 class MockWebSocket:
@@ -160,10 +161,10 @@ async def test_mediastream_sovereign_stt_integration():
     await session.process_caller_turn()
     total_turn_ms = (time.time() - t0) * 1000.0
 
-    print(f"✓ Full turn completed in: {total_turn_ms:.1f} ms")
-    print(f"✓ Dispatched outbound carrier frames: {len(mock_ws.sent_texts)}")
+    print(f"[PASS] Full turn completed in: {total_turn_ms:.1f} ms")
+    print(f"[PASS] Dispatched outbound carrier frames: {len(mock_ws.sent_texts)}")
     assert len(mock_ws.sent_texts) > 0, "No audio frames dispatched to carrier!"
-    print("✅ Full MediaStreamSession Sovereign STT Integration PASSED!\n")
+    print("Full MediaStreamSession Sovereign STT Integration PASSED!\n")
 
 
 def main():
@@ -173,7 +174,7 @@ def main():
     test_zero_failure_fallback()
     asyncio.run(test_mediastream_sovereign_stt_integration())
     print("=================================================================")
-    print("🎉 ALL SOVEREIGN ON-PREM STT TESTS PASSED!")
+    print("ALL SOVEREIGN ON-PREM STT TESTS PASSED!")
     print("=================================================================")
 
 

@@ -6,7 +6,7 @@ Comprehensive test suite for the Bi-directional WebSocket Media Stream (/media-s
 1. Connection & Twilio/RingTrunk JSON Handshake ('start' event).
 2. Outbound 20ms G.711 A-law audio pacing (160 bytes per frame).
 3. Inbound caller speech streaming & VAD turn-taking.
-4. ⚡ Real-Time WebSocket Barge-In:
+4. Real-Time WebSocket Barge-In:
    - Caller speaks while bot is streaming.
    - Verifies instant playback cutoff and 'clear' event frame.
 5. Binary frame streaming (Asterisk AudioSocket compatibility).
@@ -88,16 +88,16 @@ def test_websocket_handshake_and_greeting():
             except Exception:
                 break
 
-        print(f"✓ Received {frames_received} G.711 A-law media frames ({total_audio_bytes} bytes audio)")
-        print(f"✓ StreamSid verified: {stream_sid_verified}")
+        print(f"[PASS] Received {frames_received} G.711 A-law media frames ({total_audio_bytes} bytes audio)")
+        print(f"[PASS] StreamSid verified: {stream_sid_verified}")
         assert frames_received >= 5, "Failed to receive audio frames from greeting!"
         assert stream_sid_verified, "StreamSid did not match carrier start event!"
-        print("✅ Handshake and Outbound Paced Audio Streaming PASSED!\n")
+        print("Handshake and Outbound Paced Audio Streaming PASSED!\n")
 
 
 def test_websocket_barge_in_interruption():
     print("=================================================================")
-    print("2. Testing ⚡ Real-Time WebSocket Barge-In Interruption (<50ms)")
+    print("2. Testing Real-Time WebSocket Barge-In Interruption (<50ms)")
     print("=================================================================")
     app = create_app()
     client = TestClient(app)
@@ -122,7 +122,7 @@ def test_websocket_barge_in_interruption():
                 bot_is_streaming = True
                 break
         assert bot_is_streaming, "Bot did not start streaming audio!"
-        print("✓ Bot is actively streaming voice packets over WebSocket...")
+        print("[PASS] Bot is actively streaming voice packets over WebSocket...")
 
         # Caller interrupts! Generate high-energy speech audio (8kHz sine wave, 16-bit PCM -> G.711 A-law)
         speech_pcm = generate_synthetic_tone(freq_hz=440.0, duration_sec=0.20, sample_rate=8000, amplitude=18000)
@@ -154,11 +154,11 @@ def test_websocket_barge_in_interruption():
                 assert data.get("streamSid") == "MZ_barge_in_stream"
                 break
 
-        print(f"✓ Received instant 'clear' frame: {clear_received}")
-        print(f"⚡ Measured WebSocket Interruption Cutoff: {cutoff_latency_ms:.2f} ms")
+        print(f"[PASS] Received instant 'clear' frame: {clear_received}")
+        print(f"[METRIC] Measured WebSocket Interruption Cutoff: {cutoff_latency_ms:.2f} ms")
         assert clear_received, "Bot did not send 'clear' event upon caller interruption!"
         assert cutoff_latency_ms < 100.0, f"Barge-in latency too high ({cutoff_latency_ms}ms)!"
-        print("✅ WebSocket Real-Time Barge-In PASSED!\n")
+        print("WebSocket Real-Time Barge-In PASSED!\n")
 
 
 def test_binary_mode_streaming():
@@ -174,13 +174,13 @@ def test_binary_mode_streaming():
         speech_alaw = audioop.lin2alaw(speech_pcm, 2)
 
         ws.send_bytes(speech_alaw[:160])
-        print("✓ Sent raw 160-byte binary G.711 A-law frame")
+        print("[PASS] Sent raw 160-byte binary G.711 A-law frame")
 
         # Receive binary audio frames
         bin_frame = ws.receive_bytes()
-        print(f"✓ Received binary frame from agent: {len(bin_frame)} bytes")
+        print(f"[PASS] Received binary frame from agent: {len(bin_frame)} bytes")
         assert len(bin_frame) == 160, f"Expected 160 bytes, got {len(bin_frame)}"
-        print("✅ Binary Mode Streaming PASSED!\n")
+        print("Binary Mode Streaming PASSED!\n")
 
 
 if __name__ == "__main__":
@@ -188,5 +188,5 @@ if __name__ == "__main__":
     test_websocket_barge_in_interruption()
     test_binary_mode_streaming()
     print("=================================================================")
-    print("🎉 ALL WEBSOCKET MEDIA STREAM TESTS PASSED!")
+    print("ALL WEBSOCKET MEDIA STREAM TESTS PASSED!")
     print("=================================================================")

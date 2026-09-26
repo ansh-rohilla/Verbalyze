@@ -293,7 +293,7 @@ class MicrophoneListener:
                             t0 = time.time()
                             audio_engine.stop_playback()
                             cutoff_ms = round((time.time() - t0) * 1000.0, 1)
-                            print(f"\n⚡ [Barge-In Detected! Interrupted agent in {cutoff_ms}ms]")
+                            print(f"\n[BARGE-IN] Interrupted agent in {cutoff_ms}ms")
                             tmp_wav = self.record_push_to_talk()
                             return True, tmp_wav, cutoff_ms
                     except Exception:

@@ -47,7 +47,7 @@ def generate_mac_say(text: str, voice: str, out_file: Path):
 
 
 async def main():
-    print(f"🔊 Generating TTS Samples in: {SAMPLE_DIR}\n")
+    print(f"Generating TTS Samples in: {SAMPLE_DIR}\n")
     results = []
 
     # 1. Edge-TTS Swara (Hindi Female)

@@ -183,6 +183,8 @@ class AudioEngine:
             cached_sample = sample_dir / "1_edgetts_swara_hindi.mp3"
             if cached_sample.exists():
                 shutil.copyfile(str(cached_sample), dest_path)
+                report = self.scorer.evaluate(dest_path, text)
+                self.last_quality_report = report
                 return dest_path
         except Exception:
             pass

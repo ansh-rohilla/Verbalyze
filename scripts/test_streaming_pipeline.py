@@ -12,12 +12,14 @@ Comprehensive Verification Suite for Streaming LLM-to-TTS Pipelining (<200ms TTF
 
 import sys
 import time
+import math
 import asyncio
 from pathlib import Path
 
 # Add project root to sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from verbalyze.agent.voice_bot import VoiceAgent
 from verbalyze.telephony.media_stream import MediaStreamSession
@@ -35,15 +37,14 @@ async def test_clause_streaming_and_currency_protection():
     ttfs_ms = None
 
     async for event in agent.step_stream("हाँ मुझे तुरंत पेमेंट लिंक भेज दीजिए"):
-        events.append(event)
         if event["type"] == "clause":
             if ttfs_ms is None:
                 ttfs_ms = (time.time() - t0) * 1000.0
             clauses.append(event["text"])
             print(f"   [Clause {event['index']}] ({len(event['text'])} chars): '{event['text']}'")
 
-    print(f"\n✓ Extracted {len(clauses)} discrete speech clauses")
-    print(f"⚡ Time-to-First-Clause (TTFC): {ttfs_ms:.2f} ms")
+    print(f"\n[PASS] Extracted {len(clauses)} discrete speech clauses")
+    print(f"[METRIC] Time-to-First-Clause (TTFC): {ttfs_ms:.2f} ms")
 
     # Assertions
     assert len(clauses) >= 2, f"Expected at least 2 clauses, got {len(clauses)}"
@@ -52,8 +53,8 @@ async def test_clause_streaming_and_currency_protection():
     # Verify Indian currency number formatting is not broken across clauses
     full_text = " ".join(clauses)
     assert "₹5,420" in full_text or "₹5, 420" in full_text or "5,420" in full_text, "Currency was corrupted across clauses!"
-    print("✓ Currency notation preserved intact without broken digits")
-    print("✅ Clause Streaming & Currency Preservation PASSED!\n")
+    print("[PASS] Currency notation preserved intact without broken digits")
+    print("Clause Streaming & Currency Preservation PASSED!\n")
 
 
 async def test_streaming_tool_execution_and_upi():
@@ -80,8 +81,8 @@ async def test_streaming_tool_execution_and_upi():
     assert tool_call_found, "Tool call was not triggered during stream!"
     assert sms_delivered, "NPCI UPI link was not generated in tool data!"
     assert len(final_text) > 10, "Final assistant text was empty!"
-    print(f"✓ Spoken confirmation emitted: '{final_text}'")
-    print("✅ Streaming Tool Execution & UPI Dispatch PASSED!\n")
+    print(f"[PASS] Spoken confirmation emitted: '{final_text}'")
+    print("Streaming Tool Execution & UPI Dispatch PASSED!\n")
 
 
 class MockWebSocket:
@@ -110,7 +111,6 @@ async def test_mediastream_streaming_pipeline():
     )
 
     # 1. Simulate inbound caller audio buffer (1 second of 8kHz PCM)
-    import math
     num_samples = 8000
     samples = bytearray()
     for i in range(num_samples):
@@ -134,12 +134,12 @@ async def test_mediastream_streaming_pipeline():
     await session.process_caller_turn()
     elapsed_ms = (time.time() - t0) * 1000.0
 
-    print(f"✓ Pipelined turn completed in {elapsed_ms:.1f} ms")
-    print(f"✓ WebSocket frames dispatched to carrier: {len(mock_ws.sent_texts)}")
+    print(f"[PASS] Pipelined turn completed in {elapsed_ms:.1f} ms")
+    print(f"[PASS] WebSocket frames dispatched to carrier: {len(mock_ws.sent_texts)}")
     assert len(mock_ws.sent_texts) > 0, "No media frames sent during streaming turn!"
 
     # 3. Test Mid-Stream Interruption (Barge-In)
-    print("\n⚡ Testing Mid-Stream Interruption during streaming clause...")
+    print("\nTesting Mid-Stream Interruption during streaming clause...")
     session.is_agent_streaming = True
     session.cancel_playback_event.clear()
 
@@ -147,19 +147,20 @@ async def test_mediastream_streaming_pipeline():
     await session.interrupt_agent_playback()
     cutoff_ms = (time.time() - t_barge_0) * 1000.0
 
-    print(f"✓ Playback cancelled: {session.cancel_playback_event.is_set()}")
-    print(f"✓ Measured Barge-In Cutoff: {cutoff_ms:.3f} ms")
+    print(f"[PASS] Playback cancelled: {session.cancel_playback_event.is_set()}")
+    print(f"[METRIC] Measured Barge-In Cutoff: {cutoff_ms:.3f} ms")
     assert session.cancel_playback_event.is_set(), "Cancel event was not set!"
     assert cutoff_ms < 20.0, f"Cutoff took too long ({cutoff_ms}ms)"
-    print("✅ MediaStreamSession Streaming Pipeline & Barge-In PASSED!\n")
+    print("MediaStreamSession Streaming Pipeline & Barge-In PASSED!\n")
 
 
 async def main_async():
     await test_clause_streaming_and_currency_protection()
     await test_streaming_tool_execution_and_upi()
     await test_mediastream_streaming_pipeline()
+
     print("=================================================================")
-    print("🎉 ALL STREAMING PIPELINE TESTS PASSED (<200ms TTFS VERIFIED)!")
+    print("ALL STREAMING PIPELINE TESTS PASSED (<200ms TTFS VERIFIED)!")
     print("=================================================================")
 
 

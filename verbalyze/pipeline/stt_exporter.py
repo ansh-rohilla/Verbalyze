@@ -225,7 +225,7 @@ def export_stt_dataset(
             records = load_language_stt(base_path, lang)
             lang_counts[lang] = len(records)
             all_records.extend(records)
-            print(f"  ✓ {SUPPORTED_LANGUAGES.get(lang, lang)} ({lang}): {len(records):,} records")
+            print(f"  [PASS] {SUPPORTED_LANGUAGES.get(lang, lang)} ({lang}): {len(records):,} records")
 
             if split:
                 tr, va, te = split_records(records, seed=seed)
@@ -233,7 +233,7 @@ def export_stt_dataset(
                 all_val.extend(va)
                 all_test.extend(te)
         except FileNotFoundError as e:
-            print(f"  ✗ {lang}: {e}")
+            print(f"  [SKIP] {lang}: {e}")
 
     # Write files
     if split:

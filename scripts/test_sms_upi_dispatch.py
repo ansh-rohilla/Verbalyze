@@ -14,7 +14,8 @@ from pathlib import Path
 
 # Add project root to sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from verbalyze.telephony.sms_dispatch import (
     clean_indian_phone,
@@ -40,8 +41,8 @@ def test_phone_cleaning():
     for inp, expected in test_cases:
         res = clean_indian_phone(inp)
         assert res == expected, f"Failed for {inp}: expected {expected}, got {res}"
-        print(f"✓ '{inp}' -> '{res}'")
-    print("✅ Phone normalization PASSED!\n")
+        print(f"[PASS] '{inp}' -> '{res}'")
+    print("Phone normalization PASSED!\n")
 
 
 def test_upi_intent_url():
@@ -55,7 +56,7 @@ def test_upi_intent_url():
     assert "am=5420.00" in upi_url, "Amount missing or misformatted!"
     assert "cu=INR" in upi_url, "Currency INR missing!"
     assert "tn=Loan" in upi_url or "MUTH-8921" in upi_url, "Transaction note missing!"
-    print("✅ NPCI UPI intent generator PASSED!\n")
+    print("NPCI UPI intent generator PASSED!\n")
 
 
 def test_sms_formatting_and_dispatch():
@@ -76,7 +77,7 @@ def test_sms_formatting_and_dispatch():
     assert res.get("phone") == "+919876543210", "Phone mismatch!"
     assert res.get("amount") == 5420.0, "Amount mismatch!"
     assert "upi://pay?" in res.get("upi_url", ""), "UPI URL missing!"
-    print("✅ Mock SMS dispatch PASSED!\n")
+    print("Mock SMS dispatch PASSED!\n")
 
 
 def test_end_to_end_voice_agent_sms_trigger():
@@ -102,14 +103,14 @@ def test_end_to_end_voice_agent_sms_trigger():
 
     tool_data = res.get("tool_data")
     assert tool_data is not None, "tool_data was not returned in agent.step()!"
-    print(f"✓ Dispatched to phone: {tool_data.get('phone')}")
-    print(f"✓ UPI Deep-Link: {tool_data.get('upi_url')}")
-    print(f"✓ Amount: ₹{tool_data.get('amount')}")
+    print(f"[PASS] Dispatched to phone: {tool_data.get('phone')}")
+    print(f"[PASS] UPI Deep-Link: {tool_data.get('upi_url')}")
+    print(f"[PASS] Amount: Rs. {tool_data.get('amount')}")
 
     assert tool_data.get("phone") == "+919812345678", f"Expected +919812345678, got {tool_data.get('phone')}"
     assert tool_data.get("amount") == 5420.0, "Expected amount 5420.0"
     assert "upi://pay?" in tool_data.get("upi_url", ""), "UPI link missing!"
-    print("✅ End-to-End Voice Agent Spoken Turn -> SMS Dispatch PASSED!\n")
+    print("End-to-End Voice Agent Spoken Turn -> SMS Dispatch PASSED!\n")
 
 
 if __name__ == "__main__":
@@ -118,5 +119,5 @@ if __name__ == "__main__":
     test_sms_formatting_and_dispatch()
     test_end_to_end_voice_agent_sms_trigger()
     print("=================================================================")
-    print("🎉 ALL LIVE SMS & UPI PAYMENT GATEWAY TESTS PASSED!")
+    print("ALL LIVE SMS & UPI PAYMENT GATEWAY TESTS PASSED!")
     print("=================================================================")

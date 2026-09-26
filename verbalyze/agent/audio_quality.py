@@ -307,7 +307,7 @@ class HumanLikenessScorer:
         if s_signal < 0.8:
             issues.append("Digital clipping detected")
 
-        feedback = " ✓ Excellent human-likeness." if not issues else f"Issues: {', '.join(issues)}"
+        feedback = " [PASS] Excellent human-likeness." if not issues else f"Issues: {', '.join(issues)}"
         if do_telephony:
             feedback = f"[8kHz G.711 Telephony Line] {feedback}"
 

@@ -190,9 +190,9 @@ def export_dialogue_dataset(
             convs = load_and_validate_dialogue_file(file_path)
             lang_counts[lang] = len(convs)
             all_conversations.extend(convs)
-            print(f"  ✓ {lang.upper()} ({fname}): {len(convs):,} conversations validated")
+            print(f"  [PASS] {lang.upper()} ({fname}): {len(convs):,} conversations validated")
         else:
-            print(f"  ✗ {lang.upper()}: file {fname} not found")
+            print(f"  [SKIP] {lang.upper()}: file {fname} not found")
 
     rng = random.Random(seed)
     rng.shuffle(all_conversations)
