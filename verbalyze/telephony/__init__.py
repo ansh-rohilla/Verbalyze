@@ -131,6 +131,12 @@ from verbalyze.telephony.level_controller import (
     ALCPreset,
     ALCTelemetry,
 )
+from verbalyze.telephony.diarization import (
+    DualChannelDiarizer,
+    DiarizationState,
+    SpeakerTurn,
+    FrameDiarizationTelemetry,
+)
 
 __all__ = [
     "DispatchResult",
@@ -235,6 +241,10 @@ __all__ = [
     "AutomaticLevelController",
     "ALCPreset",
     "ALCTelemetry",
+    "DualChannelDiarizer",
+    "DiarizationState",
+    "SpeakerTurn",
+    "FrameDiarizationTelemetry",
 ]
 
 

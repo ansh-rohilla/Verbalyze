@@ -139,6 +139,12 @@ from verbalyze.telephony.level_controller import (
     ALCPreset,
     ALCTelemetry,
 )
+from verbalyze.telephony.diarization import (
+    DualChannelDiarizer,
+    DiarizationState,
+    SpeakerTurn,
+    FrameDiarizationTelemetry,
+)
 
 # Try importing FastAPI
 try:
@@ -230,6 +236,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "bwe_status": "ready",
             "watermark_status": "ready",
             "alc_status": "ready",
+            "diarization_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -2578,6 +2585,110 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "max_alc_time_ms": round(max_ms, 4),
             "target_sla_ms": 0.5,
             "meets_alc_sla": avg_ms < 0.5,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    @app.post("/telephony/diarization/process")
+    async def process_diarization_audio(request: Request):
+        """
+        Diarizes dual-channel telephony audio (Caller Ch0 and Agent Ch1) in real time.
+        Detects active speaker ownership, simultaneous double-talk, and cross-talk acoustic bleed.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        caller_b64 = body.get("caller_audio_base64")
+        agent_b64 = body.get("agent_audio_base64")
+        stereo_b64 = body.get("stereo_audio_base64")
+
+        sample_rate = int(body.get("sample_rate", 8000))
+        vad_thresh = float(body.get("vad_threshold_dbov", -45.0))
+        cc_thresh = float(body.get("cross_corr_threshold", 0.58))
+
+        diarizer = DualChannelDiarizer(
+            sample_rate=sample_rate,
+            vad_threshold_dbov=vad_thresh,
+            cross_corr_threshold=cc_thresh,
+        )
+
+        if stereo_b64:
+            try:
+                stereo_pcm = base64.b64decode(stereo_b64)
+            except Exception:
+                return JSONResponse({"error": "Invalid base64 stereo audio"}, status_code=400)
+            telemetries, turns = diarizer.process_stereo_pcm(stereo_pcm)
+        elif caller_b64 and agent_b64:
+            try:
+                caller_pcm = base64.b64decode(caller_b64)
+                agent_pcm = base64.b64decode(agent_b64)
+            except Exception:
+                return JSONResponse({"error": "Invalid base64 dual audio"}, status_code=400)
+            telemetries, turns = diarizer.process_dual_streams(caller_pcm, agent_pcm)
+        else:
+            return JSONResponse({"error": "Missing caller_audio_base64/agent_audio_base64 or stereo_audio_base64"}, status_code=400)
+
+        total_frames = len(telemetries)
+        dt_frames = sum(1 for t in telemetries if t.state == DiarizationState.DOUBLE_TALK)
+        bleed_frames = sum(1 for t in telemetries if t.cross_talk_bleed_detected)
+
+        formatted_transcript = diarizer.format_diarized_transcript(turns)
+
+        return JSONResponse({
+            "status": "ok",
+            "sample_rate": sample_rate,
+            "total_frames": total_frames,
+            "total_duration_seconds": round(total_frames * 0.020, 3),
+            "turns_count": len(turns),
+            "double_talk_percentage": round((dt_frames / max(1, total_frames)) * 100.0, 1),
+            "cross_talk_bleed_percentage": round((bleed_frames / max(1, total_frames)) * 100.0, 1),
+            "turns": [turn.to_dict() for turn in turns],
+            "formatted_transcript": formatted_transcript,
+        })
+
+    @app.post("/telephony/diarization/benchmark")
+    async def benchmark_diarization_engine(request: Request):
+        """
+        Benchmarks Dual-Channel Diarization execution throughput per 20ms dual frame.
+        Verifies that processing time is < 0.5ms (ensuring massive real-time headroom).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        diarizer = DualChannelDiarizer(sample_rate=8000)
+
+        # 160-sample (20ms) dual frames
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        caller_pcm = (np.sin(2 * np.pi * 250.0 * t) * 6000.0).astype(np.int16).tobytes()
+        agent_pcm = (np.sin(2 * np.pi * 350.0 * t) * 7000.0).astype(np.int16).tobytes()
+
+        # Warm-up run
+        diarizer.process_frame(caller_pcm, agent_pcm)
+
+        n_iterations = 100
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            diarizer.process_frame(caller_pcm, agent_pcm)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_diarization_time_ms": round(avg_ms, 4),
+            "p95_diarization_time_ms": round(p95_ms, 4),
+            "max_diarization_time_ms": round(max_ms, 4),
+            "target_sla_ms": 0.5,
+            "meets_diarization_sla": avg_ms < 0.5,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 

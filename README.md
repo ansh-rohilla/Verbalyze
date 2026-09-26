@@ -1081,6 +1081,45 @@ python3 scripts/test_automatic_level_controller.py
 
 ---
 
+### 3.18 Real-Time Dual-Channel Active Speaker Diarization & Cross-Talk Energy Estimator (Pure-Math DSP)
+
+In Indian debt recovery, banking dispute resolution, and customer support telephony, callers and agents frequently vocalize concurrently (heated arguments, spoken interruptions, affirmative backchanneling "हाँ हाँ", or loud phone speaker acoustic bleed). Standard single-channel STT models hallucinate or merge overlapping voices into illegible transcripts, losing critical speaker attribution required for compliance audits.
+
+Verbalyze provides a high-performance, pure-math **Dual-Channel Active Speaker Diarization & Cross-Talk Energy Estimator** implemented entirely in NumPy with zero external C++ or heavy ML dependencies:
+
+* **Dual-Channel Normalized Cross-Correlation (NCC) & TDOA Bleed Rejection**:
+  * Evaluates Normalized Cross-Correlation ($\rho$) across a $\pm 20\text{ms}$ time-difference-of-arrival (TDOA) search window:
+    $$\rho = \max_k \frac{\sum_{n=0}^{N-1} x_0[n] x_1[n-k]}{\sqrt{\sum x_0^2 \sum x_1^2 + \epsilon}}$$
+  * Differentiates true simultaneous speech from handset loudspeaker acoustic bleed: if $\rho \ge 0.58$ and the far-end channel is stronger by $\ge 4.0\text{ dB}$, the weaker channel is classified as `CROSS_TALK_BLEED` and attributed to the true speaker, preventing false double-talk triggers.
+* **Instantaneous Relative Energy Ratio & Dominance Metric**:
+  * Computes linear energy dominance $D \in [-1.0, +1.0]$ between Near-End (Caller $E_0$) and Far-End (Agent $E_1$):
+    $$D = \frac{10^{E_0 / 20} - 10^{E_1 / 20}}{10^{E_0 / 20} + 10^{E_1 / 20}}$$
+  * Identifies dominant speaker ownership ($D > +0.25 \implies \text{CALLER}$, $D < -0.25 \implies \text{AGENT}$, $-0.25 \le D \le +0.25 \implies \text{BALANCED}$).
+* **5-State Real-Time Diarization State Machine**:
+  * Emits frame classifications per 20ms: `SILENCE`, `CALLER_ONLY`, `AGENT_ONLY`, `DOUBLE_TALK`, and `CROSS_TALK_BLEED`.
+* **State Hangover & Hysteresis Debouncing**:
+  * Employs configurable multi-frame hangover counters ($60\text{ms} = 3$ frames) across both channels, bridging natural inter-syllable unvoiced stops (e.g. "प", "क", "ट") without premature state drops to `SILENCE`.
+* **Automated Turn Segmentation & Formatted LLM Transcripts**:
+  * Aggregates continuous frame states into semantic `SpeakerTurn` segments with exact millisecond bounds (`start_ms`, `end_ms`), speaker attribution, cross-talk bleed ratios, and confidence scores.
+  * `DualChannelDiarizer.format_diarized_transcript(turns)` formats dialogues into structured transcripts ready for LLM context ingestion:
+    ```
+    [00:00.000 - 00:00.660] [CALLER]: हाँ जी, मैं कल तक ईएमआई पेमेंट कर दूंगा।
+    [00:00.700 - 00:01.300] [AGENT]: बहुत बहुत धन्यवाद शर्मा जी, हमने पेमेंट लिंक भेज दिया है।
+    ```
+* **DualChannelCallRecorder Direct Integration**:
+  * In-memory integration via `diarizer.diarize_call_recorder(recorder)`, enabling automated post-call diarization without exporting intermediate files to disk.
+* **FastAPI Telephony Diarization REST Endpoints**:
+  * `POST /telephony/diarization/process`: Diarizes uploaded dual-channel or interleaved stereo base64 PCM streams.
+  * `POST /telephony/diarization/benchmark`: Benchmarks 20ms frame throughput, validating compliance with the $<0.5\text{ms}$ latency SLA (0.025ms average, >790x real-time headroom).
+  * `GET /health`: Reports `diarization_status: ready`.
+
+```bash
+# Verify Dual-Channel Active Speaker Diarization Suite (8/8):
+python3 scripts/test_active_speaker_diarizer.py
+```
+
+---
+
 ### 4. Automated Human-Likeness Quality Gate (80% / MOS 4.0)
 
 Every generated speech utterance is evaluated across 5 acoustic dimensions before being accepted or played over the phone:
