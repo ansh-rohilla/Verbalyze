@@ -145,6 +145,12 @@ from verbalyze.telephony.diarization import (
     SpeakerTurn,
     FrameDiarizationTelemetry,
 )
+from verbalyze.telephony.line_quality import (
+    CellularLineQualityClassifier,
+    LineImpairmentType,
+    AcousticQualityTelemetry,
+    AcousticQualityReport,
+)
 
 # Try importing FastAPI
 try:
@@ -237,6 +243,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "watermark_status": "ready",
             "alc_status": "ready",
             "diarization_status": "ready",
+            "quality_classifier_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -2689,6 +2696,87 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "max_diarization_time_ms": round(max_ms, 4),
             "target_sla_ms": 0.5,
             "meets_diarization_sla": avg_ms < 0.5,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    @app.post("/telephony/quality/analyze")
+    async def analyze_audio_quality(request: Request):
+        """
+        Analyzes audio quality and detects physical cellular line impairments.
+        Estimates ITU-T P.862 PESQ and POLQA-MOS, and issues LCR failover recommendations.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        audio_b64 = body.get("audio_base64") or body.get("pcm_base64")
+        if not audio_b64:
+            return JSONResponse({"error": "Missing audio_base64 parameter"}, status_code=400)
+
+        sample_rate = int(body.get("sample_rate", 8000))
+        failover_thresh = float(body.get("failover_mos_threshold", 2.80))
+
+        classifier = CellularLineQualityClassifier(
+            sample_rate=sample_rate,
+            failover_mos_threshold=failover_thresh,
+        )
+
+        try:
+            raw_pcm = base64.b64decode(audio_b64)
+        except Exception:
+            return JSONResponse({"error": "Invalid base64 audio"}, status_code=400)
+
+        telemetries, report = classifier.analyze_stream(raw_pcm)
+
+        return JSONResponse({
+            "status": "ok",
+            "sample_rate": sample_rate,
+            "report": report.to_dict(),
+            "telemetry": [t.to_dict() for t in telemetries],
+        })
+
+    @app.post("/telephony/quality/benchmark")
+    async def benchmark_quality_engine(request: Request):
+        """
+        Benchmarks Cellular Line Impairment & Speech Quality Classifier execution throughput.
+        Verifies that processing time per 20ms frame is < 0.5ms (ensuring massive real-time headroom).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        classifier = CellularLineQualityClassifier(sample_rate=8000)
+
+        # 160-sample (20ms) frame
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        frame_pcm = (np.sin(2 * np.pi * 300.0 * t) * 6000.0).astype(np.int16).tobytes()
+
+        # Warm-up run
+        classifier.process_frame(frame_pcm)
+
+        n_iterations = 100
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            classifier.process_frame(frame_pcm)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_quality_time_ms": round(avg_ms, 4),
+            "p95_quality_time_ms": round(p95_ms, 4),
+            "max_quality_time_ms": round(max_ms, 4),
+            "target_sla_ms": 0.5,
+            "meets_quality_sla": avg_ms < 0.5,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 

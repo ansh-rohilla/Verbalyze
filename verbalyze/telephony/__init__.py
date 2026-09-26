@@ -137,6 +137,12 @@ from verbalyze.telephony.diarization import (
     SpeakerTurn,
     FrameDiarizationTelemetry,
 )
+from verbalyze.telephony.line_quality import (
+    CellularLineQualityClassifier,
+    LineImpairmentType,
+    AcousticQualityTelemetry,
+    AcousticQualityReport,
+)
 
 __all__ = [
     "DispatchResult",
@@ -245,6 +251,10 @@ __all__ = [
     "DiarizationState",
     "SpeakerTurn",
     "FrameDiarizationTelemetry",
+    "CellularLineQualityClassifier",
+    "LineImpairmentType",
+    "AcousticQualityTelemetry",
+    "AcousticQualityReport",
 ]
 
 
