@@ -6,7 +6,7 @@
 [![Hugging Face STT Benchmark](https://img.shields.io/badge/Hugging%20Face-verbalyze--stt--bench-green)](https://huggingface.co/datasets/ansh-rohilla/verbalyze-stt-bench)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A unified suite for Indic Voice AI: 172.8k scenario-weighted STT benchmark, 16.3k multi-turn telephony conversations with function calling, low-latency Voice SLM fine-tuning recipes, and real-time SIP voicebots across 12 Indian languages.
+A unified suite for Indic Voice AI: 172.8k scenario-weighted STT benchmark, 16.3k multi-turn telephony conversations with function calling, low-latency Voice SLM fine-tuning recipes, pure-math ITU-T telephony DSP engines, and real-time SIP voicebots across 12 Indian languages.
 
 ---
 
@@ -54,270 +54,72 @@ flowchart TD
     end
 ```
 
-<details>
-<summary><b>View ASCII Architecture Diagram</b></summary>
-
-```
-                              ┌───────────────────────────────────────────────┐
-                              │         Incoming Indian Phone Call            │
-                              │    (RingTrunk / Asterisk / Twilio / SIP)      │
-                              └───────────────────────┬───────────────────────┘
-                                                      │
-                                                      ▼
-                              ┌───────────────────────────────────────────────┐
-                              │  Bi-directional WebSocket (/media-stream)     │
-                              │   8kHz ITU-T G.711 A-law / Linear 16-bit PCM  │
-                              └───────┬───────────────────────────────▲───────┘
-                                      │                               │
-                      [Inbound 20ms Frames]              [Outbound 20ms Frames]
-                                      │                               │
-                                      ▼                               │
-                       ┌─────────────────────────────┐                │
-                       │   Microphone VAD & Engine   │                │
-                       │   Sub-50ms Barge-In Cutoff  │                │
-                       └──────────────┬──────────────┘                │
-                                      │                               │
-                                      ▼                               │
-                       ┌─────────────────────────────┐                │
-                       │   Sovereign STT Engine      │                │
-                       │ (faster-whisper / 8kHz PCM) │                │
-                       └──────────────┬──────────────┘                │
-                                      │                               │
-                                      ▼                               │
-                       ┌─────────────────────────────┐                │
-                       │  verbalyze-indic SLM Engine │                │
-                       │  (Ollama 3B / Groq / OpenAI)│                │
-                       └──────────────┬──────────────┘                │
-                                      │ (Streaming SSE Tokens)        │
-                                      ▼                               │
-                       ┌─────────────────────────────┐                │
-                       │  Clause-Level Stream Parser │                │
-                       │    (। , ? ! . Delimiters)   │                │
-                       └──────────────┬──────────────┘                │
-                                      │                               │
-                    ┌─────────────────┴─────────────────┐             │
-                    │                                   │             │
-                    ▼                                   ▼             │
-      ┌───────────────────────────┐       ┌───────────────────────────┤
-      │  Telephony Tool Execution │       │  Neural TTS Audio Engine  │
-      │   (NPCI UPI / Live SMS)   │       │   (synthesize_async <40ms)│
-      └─────────────┬─────────────┘       └─────────────┬─────────────┘
-                    │                                   │
-                    ▼                                   ▼
-      ┌───────────────────────────┐       ┌───────────────────────────┐
-      │  Live SMS + UPI Deep-Link │       │ Human-Likeness Quality    │
-      │  (Fast2SMS / Twilio)      │       │ Gate (80% MOS Acceptance) │
-      └───────────────────────────┘       └─────────────┬─────────────┘
-                                                        │
-                                                        └─────────────┘
-```
-
-</details>
-
 ---
 
 ## Supported Languages (12)
 
-You can generate data for any of the following languages:
-* **Assamese** (`as`)
-* **Bengali** (`bn`)
-* **English** (`en`)
-* **Gujarati** (`gu`)
-* **Hindi** (`hi`)
-* **Kannada** (`kn`)
-* **Malayalam** (`ml`)
-* **Marathi** (`mr`)
-* **Odia** (`or`)
-* **Punjabi** (`pa`)
-* **Tamil** (`ta`)
-* **Telugu** (`te`)
+| Code | Language | Code | Language | Code | Language | Code | Language |
+|---|---|---|---|---|---|---|---|
+| `as` | Assamese | `gu` | Gujarati | `ml` | Malayalam | `pa` | Punjabi |
+| `bn` | Bengali | `hi` | Hindi | `mr` | Marathi | `ta` | Tamil |
+| `en` | English | `kn` | Kannada | `or` | Odia | `te` | Telugu |
 
 ---
 
-## File Structure
+## Repository Structure
 
 ```
-├── .gitignore
-├── README.md
-├── generate_dataset.py               # Unified conversation generator (10 languages)
-├── generate_gujarati_dataset.py      # Standalone Gujarati conversation generator
-├── generate_english_dataset.py       # Standalone English conversation generator
-├── generate_stt_data.py              # Scenario-wise STT data and audio generator (12 languages)
-├── dataset_En.json                   # Pre-generated English dataset (1,000 dialogues)
-├── dataset_Gu.json                   # Pre-generated Gujarati dataset (1,000 dialogues)
-├── dataset_Hi.json                   # Pre-generated Hindi dataset (1,000 dialogues)
-├── dataset_Kn.json                   # Pre-generated Kannada dataset (1,000 dialogues)
-├── dataset_Ml.json                   # Pre-generated Malayalam dataset (1,000 dialogues)
-├── dataset_Mr.json                   # Pre-generated Marathi dataset (1,000 dialogues)
-├── dataset_Or.json                   # Pre-generated Odia dataset (1,000 dialogues)
-├── dataset_Pa.json                   # Pre-generated Punjabi dataset (1,000 dialogues)
-├── dataset_Ta.json                   # Pre-generated Tamil dataset (1,000 dialogues)
-└── dataset_Te.json                   # Pre-generated Telugu dataset (1,000 dialogues)
+├── verbalyze/
+│   ├── agent/            # Voice bot, sovereign STT, streaming audio engine, tools
+│   ├── benchmark/        # ASR evaluation harness across 11 scenarios & metrics
+│   ├── campaign/         # Outbound batch dialer, TRAI compliance, dual-stage AMD
+│   ├── pipeline/         # Hugging Face dataset exporters (ChatML, ShareGPT, Parquet)
+│   ├── security/         # DPDP/RBI PII redactor, constant-time HMAC, tool sanitizers
+│   └── telephony/        # MediaStream WebSocket, Pure-Math DSP suite, FastAPI server
+├── scripts/              # Verification test suites, benchmarks, and training harnesses
+├── notebooks/            # 1-Click Google Colab fine-tuning notebooks
+├── app.py                # Interactive Gradio Web App with Quality Gate
+└── generate_dataset.py   # Unified 12-language conversation & STT data generator
 ```
 
 ---
 
-## Part 1: Voice Assistant Dialogues
+## Part 1: Synthetic Data Suite
 
-Each generated conversation dataset outputs a JSON array matching the target **276-dialogue distribution**:
-* **Core Scenarios (64.5%)**: Normal (71), Hinglish/Gujlish Code-Switch (30), Emotional (18), STT Errors (13), Interruptions (10), Barge-ins (12), Corrections (16), Multi-turn (8)
-* **Switch & Confusion (19.2%)**: Switch to English (21), Switch to Hindi (9), Switch to any regional language (5), Switch back (8), Wrong language response (7), Ambiguous language detection (3)
-* **Other Languages (16.3%)**: Replicates baseline data for 5 other regional languages (Totaling 45 dialogues: 26, 6, 4, 4, 3, 2). The script dynamically assigns these other languages from the remaining supported list.
+### 1. Multi-Turn Telephony Conversations (`generate_dataset.py`)
+Generates structured multi-turn customer recovery and banking dialogues across 12 languages matching a calibrated 276-dialogue scenario distribution (Core, Code-Switching, Emotion, Interruptions, Language Transitions).
 
-### Usage
-
-All scripts are completely self-contained, use Python's standard libraries, and connect directly via REST requests to the Google Gemini and OpenAI APIs (no external client package dependencies).
-
-#### 1. Offline Test (Mock Mode)
-Run a fast, local generation without using API credits (useful for checking output format):
-* **Using the Unified Generator**:
-  ```bash
-  python3 generate_dataset.py --lang gu --run-mock --output dataset_Gu.json
-  python3 generate_dataset.py --lang en --run-mock --output dataset_En.json
-  ```
-* **Using the Standalone Scripts**:
-  ```bash
-  python3 generate_gujarati_dataset.py --run-mock --output dataset_Gu.json
-  python3 generate_english_dataset.py --run-mock --output dataset_En.json
-  ```
-
-#### 2. Generating with Gemini API
-Set your key and select the target language code:
-* **Unified**:
-  ```bash
-  export GEMINI_API_KEY="your-gemini-api-key"
-  python3 generate_dataset.py --lang hi --provider gemini --model gemini-1.5-flash --output dataset_Hi.json
-  ```
-* **Standalone Gujarati**:
-  ```bash
-  export GEMINI_API_KEY="your-gemini-api-key"
-  python3 generate_gujarati_dataset.py --provider gemini --model gemini-1.5-flash --output dataset_Gu.json
-  ```
-
-#### 3. Generating with OpenAI API
-Set your key and select the target language code:
-* **Unified**:
-  ```bash
-  export OPENAI_API_KEY="your-openai-api-key"
-  python3 generate_dataset.py --lang ta --provider openai --model gpt-4o-mini --output dataset_Ta.json
-  ```
-* **Standalone English**:
-  ```bash
-  export OPENAI_API_KEY="your-openai-api-key"
-  python3 generate_english_dataset.py --provider openai --model gpt-4o-mini --output dataset_En.json
-  ```
-
-#### Advanced Options
-
-* `--scale <float>`: Multiplies the output size (e.g. `--scale 3.2` will scale the baseline 276 up to ~880 conversations while maintaining the exact scenario distribution proportions).
-* `--delay <seconds>`: Adds a sleep interval between API calls (default is 1.5s) to stay within API rate limit quotas.
-* **Auto-Resume**: If a run is interrupted, running the script again with the same parameters will pick up from the temporary `*_checkpoint.json` file.
-
----
-
-## Part 2: Scenario-Wise STT Data & Audio Generator
-
-The [`generate_stt_data.py`](file:///Users/anshrohilla/Documents/Verbalyze/generate_stt_data.py) script generates scenario-weighted, normalized speech transcripts mapped to synthesized audio files for model validation and training. It supports all 12 languages.
-
-### Scenario Distribution Profiles
-1. **normal_native_speech** (20%)
-2. **code_mixed_speech** (15%)
-3. **numeric_normalization** (12%)
-4. **spoken_number_patterns** (8%)
-5. **units_measurements** (8%)
-6. **abbreviations_acronyms** (8%)
-7. **named_entities** (8%)
-8. **english_word_retention** (6%)
-9. **language_script_consistency** (5%)
-10. **similar_language_confusion** (5%)
-11. **domain_specific_terms** (3%)
-12. **noisy_or_real_world_audio** (2%)
-
-### Usage
-
-The script generates text transcripts instantly. Optional audio synthesis requires the `gTTS` library.
-
-#### 1. Setup (Optional - for Audio Synthesis)
-If you want the script to automatically generate synthesized audio files (`.mp3`), install `gTTS`:
 ```bash
-pip install gTTS
+# Offline Mock generation (format verification)
+python3 generate_dataset.py --lang hi --run-mock --output dataset_Hi.json
+
+# Production generation via Gemini or OpenAI
+python3 generate_dataset.py --lang hi --provider gemini --model gemini-1.5-flash --output dataset_Hi.json
+python3 generate_dataset.py --lang ta --provider openai --model gpt-4o-mini --output dataset_Ta.json
 ```
 
-#### 2. Generate Text Transcripts only (Fast)
-To generate metadata containing formatted, scenario-weighted text data (without synthesizing audio):
+### 2. Scenario-Weighted STT Benchmark Data (`generate_stt_data.py`)
+Generates normalized transcripts and optional synthesized audio across 12 acoustic edge scenarios (numeric normalization, code-mixing, spoken numbers, units, abbreviations, and noisy audio).
+
 ```bash
+# Generate normalized STT metadata (CSV)
 python3 generate_stt_data.py --lang hi --limit 1000 --output-dir stt_dataset
-```
-This generates `stt_dataset/hi/metadata_hi.csv`.
 
-#### 3. Generate Transcripts AND Audio (Synthesized)
-To generate text data and automatically synthesize the audio files:
-```bash
+# Generate transcripts with synthesized audio files
 python3 generate_stt_data.py --lang gu --limit 100 --synthesize --output-dir stt_dataset
 ```
-This creates:
-- `stt_dataset/gu/metadata_gu.csv` containing metadata mapping text to audio files.
-- `stt_dataset/gu/audio/` directory filled with synthesized audio files.
 
 ---
 
-## Part 3: Indic Voice AI Suite (`verbalyze`)
+## Part 2: Benchmarking & SLM Fine-Tuning
 
-A modular framework converting Verbalyze synthetic data into production benchmarks, fine-tuned Small Language Models (SLMs), and telephony voicebots.
+### 1. Indic Speech & Telephony Benchmark Leaderboard
+Evaluate speech engines against the 172.8k scenario dataset across code-mixed WER, spoken digit accuracy, and acronym retention:
 
-```
-verbalyze/
-├── campaign/
-│   ├── __init__.py           # Campaign exports
-│   ├── models.py             # Lead, LeadStatus, CallDisposition, AMDResult, CDR, CampaignSummary
-│   ├── trai_compliance.py   # TRAI 9am-7pm IST calling window, DND registry, 3-call daily cap
-│   ├── amd.py                # Dual-stage AMD: cadence analysis, beep tone detection, operator phrases
-│   └── dialer.py             # Concurrent campaign batch dialer, retry backoff, PII-masked CDR export
-├── security/
-│   ├── __init__.py           # Security exports
-│   └── pii_redactor.py       # PII redactor (DPDP/RBI), HMAC token auth, tool sanitizers, injection guard
-├── pipeline/
-│   ├── stt_exporter.py       # Packages 172.8k STT dataset for Hugging Face Hub
-│   └── dialogue_exporter.py  # Formats 16.3k conversations into ChatML & ShareGPT
-├── benchmark/
-│   ├── evaluator.py          # ASR evaluation harness across 11 scenarios
-│   └── metrics.py            # WER, CER, Digit Accuracy, Acronym Retention
-├── agent/
-│   ├── stt_engine.py         # SovereignSTTEngine: faster-whisper + strict_sovereignty zero-cloud egress
-│   ├── audio_quality.py      # 5-dimension HumanLikenessScorer & MOS Gate
-│   ├── audio_engine.py       # Edge-TTS neural audio synthesis + Auto-Healing loop + 0600 permissions
-│   ├── voice_bot.py          # Telephony collection agent (Ollama / Groq / OpenAI) + prompt injection guard
-│   ├── mic_listener.py       # Mac hands-free microphone input & VAD
-│   └── tools.py              # Telephony tools (EMI bounds check, loan regex sanitization, payment links)
-├── telephony/
-│   ├── media_stream.py       # Bi-directional WebSocket MediaStreamSession + memory buffer scrubbing
-│   ├── sms_dispatch.py       # NPCI UPI generator + Fast2SMS, Twilio & PII-masked logging
-│   └── server.py             # FastAPI Exotel/Twilio SIP webhook bridge & token auth guards
-app.py                        # Interactive Gradio Web App with Quality Gate
-scripts/
-├── launch_live_phone_line.py # 1-Click Live Indian Phone Line Gateway Launcher (--auth-token)
-├── test_campaign_dialer_amd.py # Comprehensive Outbound Campaign & AMD Verification Suite (8/8)
-├── test_end_to_end_security.py # Comprehensive End-to-End Security Verification Suite (8/8)
-├── test_sovereign_stt.py     # Sovereign On-Prem STT Engine (<200ms) verification suite
-├── test_streaming_pipeline.py # Streaming LLM-to-TTS (<200ms TTFS) verification suite
-├── show_leaderboard.py       # Terminal benchmark comparison leaderboard
-└── test_ollama_integration.py # 100% offline local SLM test harness
-```
-
-### 1. Phase 1: Benchmark Speech Models (`verbalyze benchmark`)
-Evaluate any speech engine (Whisper, Sarvam, Google, Azure) against the 172,800 STT scenario dataset:
 ```bash
-# Evaluate on Hindi across 11 edge scenarios
 python3 -m verbalyze.cli benchmark --lang hi --samples 20 --output-report LEADERBOARD.md
-
-# Package the 172.8k dataset for Hugging Face
-python3 -m verbalyze.cli export-stt --output-dir data/stt_bench
-
-# Display the Benchmark Leaderboard in terminal
 python3 scripts/show_leaderboard.py
 ```
-
-#### Indic Speech & Telephony Benchmark Leaderboard
 
 | Model / System | Target Focus | Code-Mixed WER (%) | Spoken Digit Accuracy (%) | Acronym Retention (%) | Latency (TTFT) |
 |---|---|:---:|:---:|:---:|:---:|
@@ -327,910 +129,109 @@ python3 scripts/show_leaderboard.py
 | **OpenAI Whisper-Large-v3** | Global Multilingual | **9.6%** | **82.4%** | **71.2%** | **~620ms** |
 | **OpenAI Whisper-Base** | Lightweight General | **14.2%** | **76.1%** | **64.0%** | **~240ms** |
 
----
+### 2. Voice SLM Fine-Tuning
+Fine-tune low-latency 1B–3B models (Llama 3.2 / Qwen 2.5) on 16,370 telephony conversations using 4-bit QLoRA:
 
-### 2. Phase 2: Indic Voice SLM Fine-Tuning
-
-Fine-tune low-latency 1B–3B models (Llama 3.2 / Qwen 2.5) on 16,370 telephony conversations directly using Hugging Face datasets:
-
-#### Option A: 1-Click Google Colab Notebook (Recommended)
-Train in ~35 minutes on a Google Colab GPU (T4 / A100) and automatically push your adapter to Hugging Face Hub:
-
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ansh-rohilla/Verbalyze/blob/main/notebooks/train_indic_voice_slm.ipynb)
-
-* Pre-configured 4-bit QLoRA with `bitsandbytes`, `peft`, and `trl`
-* Supports `meta-llama/Llama-3.2-3B-Instruct` and `Qwen/Qwen2.5-3B-Instruct`
-* Built-in multi-turn evaluation + automatic push to your HF profile
-
-#### Option B: Local / Cluster GPU Training (`scripts/train_voice_slm.py`)
-```bash
-# 1. Compile conversations into ChatML & ShareGPT splits
-python3 -m verbalyze.cli export-dialogues --output-dir data/dialogues
-
-# 2. Verify dataset and pipeline (Dry Run)
-python3 scripts/train_voice_slm.py --dry-run
-
-# 3. Start QLoRA Fine-Tuning on GPU
-python3 scripts/train_voice_slm.py --model llama3.2-3b --epochs 3 --batch-size 4
-```
+* **Google Colab (1-Click)**: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ansh-rohilla/Verbalyze/blob/main/notebooks/train_indic_voice_slm.ipynb)
+* **Local GPU Training**:
+  ```bash
+  python3 -m verbalyze.cli export-dialogues --output-dir data/dialogues
+  python3 scripts/train_voice_slm.py --model llama3.2-3b --epochs 3 --batch-size 4
+  ```
 
 ---
 
-### 3. Phase 3: Outbound Debt/EMI Telephony Voicebot (`verbalyze agent`)
+## Part 3: Conversational Voicebot & Telephony Gateway
 
-Simulate real phone calls with natural Indic fillers, emotion handling, neural audio playback, and automatic call hangup (`disconnect_tool`).
+### 1. 100% Sovereign Local SLM (`verbalyze-indic`)
+Run offline without external API costs using a custom Ollama Modelfile with baked-in telephony personas and function calling:
 
-#### 100% Offline Turn-Key Local SLM (`verbalyze-indic`)
-Run completely sovereign and disconnected from cloud APIs with zero per-minute costs:
 ```bash
-# 1. Build and register the turn-key model in your local Ollama daemon (1 command):
+# Register sovereign model in local Ollama daemon
 ollama create verbalyze-indic -f Modelfile
 
-# 2. Test conversational telephony agent directly in terminal:
-ollama run verbalyze-indic
-
-# 3. Launch full-duplex hands-free voice agent with live barge-in & Quality Gate:
+# Launch full-duplex hands-free voice agent with live barge-in
 python3 -m verbalyze.cli agent --provider ollama --model verbalyze-indic --lang hi --mic
-
-# 4. Run automated multi-turn telephony verification suite:
-python3 scripts/test_verbalyze_indic_model.py
 ```
 
-* **Pre-Baked Telephony Intelligence**: The `Modelfile` bakes Indic telephony personas, concise spoken dialogue rules, filler tokens, and function calling tools directly into `llama3.2:3b`.
-* **Instant Re-use**: `ollama create` re-uses base weights and creates the sovereign model in seconds (~100MB manifest layer, no re-downloading).
-* **Performance**: Sub-400ms turn latency on Apple Silicon Metal GPU (~2.0 GB active RAM).
-* **Telephony Function Calling**: Seamlessly emits local tools (`send_payment_link`, `disconnect_tool`, `schedule_callback`) with automatic voice synthesis cleaning.
-
-#### Cloud & Microphone Modes
+### 2. Telephony Server & Live Phone Line Launcher
 ```bash
-# Live Hands-Free Voice Mode on Mac (Speak into your microphone with Barge-In enabled)
-python3 -m verbalyze.cli agent --lang hi --mic
-
-# Hands-Free Auto VAD with Live Barge-In Interruption (<150ms cutoff)
-python3 -m verbalyze.cli agent --provider ollama --lang hi --mic --mode auto
-
-# Real-world 8kHz Indian Telecom Line Simulation Mode
-python3 -m verbalyze.cli agent --provider ollama --lang hi --telephony-sim
-
-# Switch personas (Banking KYC or Swiggy delivery)
-python3 -m verbalyze.cli agent --lang hi --persona bank_kyc --mic
-
-# Start FastAPI Telephony Webhook Server for Unmetered SIP Trunks (RingTrunk) & CPaaS (Exotel / Twilio)
+# Start FastAPI telephony server for SIP trunks (RingTrunk) & CPaaS (Twilio / Exotel)
 python3 -m verbalyze.cli server --port 8000
-```
 
-#### Real-Time "Barge-In" Interruption Engine (<150ms Cutoff)
-Enables callers to naturally interrupt the voice agent while it is speaking:
-* **Sub-150ms Playback Cutoff**: Benchmarked at **~4ms** atomic termination speed via process-level audio management.
-* **Concurrent VAD Monitoring**: Listens to the microphone stream in 30ms frames while audio plays through speakers.
-* **Seamless Audio Handover**: Preserves onset speech frames without syllable clipping and passes them directly to the STT recognizer.
-* **Anti-Echo Thresholding**: Dynamic energy multiplier ($2.2\times$) and 2-frame confirmation prevents the bot's own speaker output from falsely interrupting itself.
-
-```bash
-# Verify Barge-In Interruption speed:
-python3 scripts/test_barge_in_engine.py
-```
-
-#### Flat-Rate Unmetered SIP Trunking (RingTrunk.com / Asterisk)
-Eliminate per-minute telecom bills by routing calls through unmetered SIP trunks:
-* `/webhook/sip/inbound`: RFC 3261-compliant inbound SIP webhook.
-* `/webhook/sip/turn`: High-speed spoken turn-taking stream.
-* Works with flat-rate channel providers (e.g. [RingTrunk.com](https://ringtrunk.com/)) or private Asterisk / FreeSWITCH deployments with **$0 per-minute carrier markup**.
-
-#### Bi-Directional WebSocket Media Stream (`/media-stream`)
-Carrier-grade real-time audio bridge for live telephone trunks (RingTrunk, Twilio Media Streams, Asterisk AudioSocket, FreeSWITCH):
-* **Dual-Protocol Compatibility**: Supports standard Twilio/RingTrunk JSON packets (`{"event": "media", "media": {"payload": "<base64>"}}`) and raw binary 8kHz G.711 A-law / $\mu$-law frames.
-* **Telephony Pacing**: Streams outbound speech in 20ms frames (160 bytes per packet) strictly synchronized with the carrier's RTP clock.
-* **Sub-50ms WebSocket Barge-In**: Instantly cuts off audio transmission in $\sim 1\text{ms}$ upon caller speech onset and emits a `{"event": "clear"}` frame to flush carrier jitter buffers.
-
-```bash
-# Verify WebSocket Media Stream & Live Barge-In:
-python3 scripts/test_media_stream_websocket.py
-```
-
-#### Live SMS & Real NPCI UPI Payment Gateway Dispatch
-When the customer agrees to pay or asks for a payment link during a call, Verbalyze automatically executes the `send_payment_link` tool and dispatches a live SMS with an NPCI-compliant UPI deep-link directly to the caller's mobile device:
-* **NPCI-Compliant UPI Deep-Links**: Constructs compliant `upi://pay?pa=muthootfincorp@icici&am=5420.00...` URIs that directly launch Google Pay, PhonePe, Paytm, or BHIM when tapped on mobile.
-* **Pluggable SMS Adapters**: Supports **Fast2SMS** (`FAST2SMS_API_KEY`), **Twilio SMS** (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`), generic enterprise webhooks (`SMS_WEBHOOK_URL`), and a zero-config sandbox mode.
-* **Carrier Caller-ID Auto-Binding**: Automatically extracts incoming phone numbers from SIP trunks/Twilio (`From` / `Caller`) to send payment links without asking the caller to spell out their phone number.
-
-```bash
-# Verify Live SMS & UPI Payment Gateway Dispatch:
-python3 scripts/test_sms_upi_dispatch.py
-```
-
-#### Streaming Token-to-Speech Pipelining (<200ms Time-to-First-Sound)
-Traditional voicebots wait for the full LLM completion before initiating TTS synthesis, resulting in awkward 1.5–3.0 second pauses. Verbalyze eliminates this conversational latency with asynchronous **clause-level pipelining**:
-* **Real-Time Delimiter Streaming**: Intercepts SSE token streams from Ollama (`verbalyze-indic`), Groq, or OpenAI, detecting punctuation clause boundaries (`।`, `.`, `?`, `!`, `,`).
-* **Instant First-Sound Synthesis**: As soon as the first clause (e.g. *"हाँ जी शर्मा जी,"*) is formed, it is dispatched to `AudioEngine.synthesize_async()`, reaching the caller's ear in **<200ms**.
-* **Zero Audio Stutter**: Subsequent clauses synthesize concurrently in the background while the previous clause is being streamed over 20ms G.711 WebSocket frames.
-* **Indian Currency Protection**: Prevents broken digits across Indian currency numbers (e.g. `₹5,420`).
-
-```bash
-# Benchmark and verify Streaming LLM-to-TTS Pipelining:
-python3 scripts/test_streaming_pipeline.py
-```
-
-#### Sovereign On-Prem Streaming STT Engine (faster-whisper / ctranslate2)
-For banking, debt collection, and financial calls governed by strict data localization and latency requirements, Verbalyze provides a sovereign on-prem speech-to-text engine with zero cloud API dependencies:
-* **Zero Disk I/O & Direct In-Memory Decoding**: Raw 8kHz Linear PCM carrier audio frames are upsampled to 16kHz float32 arrays in RAM (`audioop.ratecv` + `np.frombuffer`) and fed straight into `ctranslate2` Whisper models, eliminating temporary `.wav` files and disk writes.
-* **Sub-200ms Latency**: Delivers real-time Indic and Hinglish speech transcription in ~120-170ms on local CPU and Apple Silicon Metal.
-* **Process-Level Model Cache**: The `WhisperModel` singleton caches once at worker startup; subsequent session instantiations take 0.01ms with zero reload penalty.
-* **Multi-Tier Zero-Failure Fallback**: If local model weights are missing or uninitialized, transcription gracefully falls back to Google Speech Recognition, ensuring uninterrupted calls.
-* **Carrier & CLI Integration**: Configurable via `--stt-provider` (`local`, `google`) and `--stt-model` (`tiny`, `base`, `small`, `medium`, `large-v3`) across `verbalyze agent`, `verbalyze live-line`, and the `/media-stream` WebSocket gateway.
-
-```bash
-# Verify Sovereign On-Prem STT Engine & In-Memory Decoding:
-python3 scripts/test_sovereign_stt.py
-```
-
-#### 1-Click Live Indian Phone Line Gateway Launcher (RingTrunk / Asterisk)
-Connect your local Verbalyze instance directly to a live Indian phone number (DID) or telecom trunk with a single command:
-* Starts the production telephony FastAPI server on port 8000.
-* Auto-detects public tunnels (`ngrok`, `cloudflared`) or accepts `--tunnel-url`.
-* Outputs ready-to-use configuration and email templates for telecom providers (e.g., [RingTrunk](mailto:admin@ringtrunk.com)).
-* Monitors live incoming calls, streaming latencies, and SMS UPI dispatches in the terminal.
-
-```bash
-# Launch live phone line gateway:
+# 1-Click live Indian phone line gateway launcher (with ngrok/cloudflared tunnel detection)
 python3 scripts/launch_live_phone_line.py --persona muthoot_recovery --lang hi
-
-# With custom ngrok/cloud domain:
-python3 scripts/launch_live_phone_line.py --tunnel-url https://my-subdomain.ngrok-free.app
 ```
 
-#### End-to-End Security Architecture (RBI & DPDP Act 2023 Compliance)
-To support production deployments in regulated banking, financial services, and debt recovery environments, Verbalyze incorporates five layers of defense-in-depth security:
-* **Indian PII Redaction & Data Masking Engine**: Automatically intercepts and masks Personally Identifiable Information across logs, console output, and telemetry streams. Masks Indian mobile numbers (`+91*****3210`), UIDAI Aadhaar numbers (`****-****-9012`), PAN cards (`ABCDE****F`), bank account numbers (`********9012`), and UPI deep-link URLs (`upi://pay?pa=m***p@icici...`).
-* **Constant-Time HMAC Token Verification**: All inbound webhooks (`/webhook/sip/*`, `/webhook/twilio/*`) and `/media-stream` WebSocket endpoints require token validation using timing-attack resistant `hmac.compare_digest`. Unauthorized requests receive HTTP 401, while unauthorized WebSockets are immediately rejected with Policy Violation Code 1008.
-* **Strict Data Sovereignty (Zero Cloud Egress)**: When enabled via `--strict-sovereignty` or `STRICT_SOVEREIGNTY=1`, customer voice audio is strictly forbidden from being sent to external cloud STT APIs (e.g. Google), guaranteeing complete data residency compliance under RBI mandates.
-* **Temporary File Hardening**: Replaced deprecated `tempfile.mktemp()` with atomic `tempfile.mkstemp()` enforced with `0600` permissions (owner read/write only). Temporary audio files are cleaned up upon completion.
-* **Tool Input Sanitization & Bounds Checking**: Enforces monetary bounds on EMI amounts (Re. 1.00 to Rs. 5,00,000.00), sanitizes loan IDs against script tags and path traversal (`^[A-Za-z0-9\-_]{3,30}$`), and validates Indian mobile phone formats.
-* **Conversational Prompt Injection Guard**: Inspects incoming speech transcripts for prompt injection, system prompt override, or jailbreak attempts, neutralizing adversarial attacks before they reach the language model.
-
-```bash
-# Verify End-to-End Security & Privacy Guardrails:
-python3 scripts/test_end_to_end_security.py
-```
-
-#### Outbound Campaign Batch Dialer & Answering Machine Detection (AMD)
-For banking institutions and loan recovery operations dialing customer accounts concurrently, Verbalyze includes an asynchronous campaign dialer and answering machine detection engine:
-* **TRAI Calling Hours Window (09:00 - 19:00 IST)**: Enforces lawful tele-calling hours under TRAI and RBI Fair Practices Code for loan recovery. Outside this window, calls are deferred (bypassable with `--ignore-calling-window` for testing).
-* **NCPR / DND Registry Filtering**: Rejects calls to numbers registered on the National Customer Preference Register.
-* **Daily Frequency Capping**: Strictly enforces a maximum of 3 call attempts per customer per calendar day.
-* **Dual-Stage Answering Machine Detection (AMD)**: Classifies human vs voicemail vs operator announcements within 800ms - 1500ms using acoustic cadence analysis (burst duration, pause ratios, 1000Hz voicemail beep detection) and fast lexical parsing for Indian carrier announcements ("switched off", "out of coverage", "vyast").
-* **Concurrent Channel Queue**: Managed via `asyncio.Semaphore` channels with automated exponential backoff retries on `BUSY` and `NO_ANSWER`.
-* **DPDP-Sanitized Call Detail Records (CDRs)**: Exports complete turn-by-turn logs and disposition statistics in JSON and CSV format with all PII masked.
-
-```bash
-# Run Outbound Campaign & AMD Verification Suite (8/8):
-python3 scripts/test_campaign_dialer_amd.py
-
-# Launch CLI Campaign across 5 concurrent channels:
-python3 -m verbalyze.cli campaign --csv leads.csv --channels 5 --persona muthoot_recovery --lang hi --ignore-calling-window
-```
-
-#### Real-Time Acoustic Sentiment Detection & Human Warm Transfer (SIP REFER)
-To handle complex debt recovery, customer distress, and regulatory escalations during live voice calls, Verbalyze features dual-channel emotion intelligence and carrier-grade human warm handoff:
-* **Dual-Channel Emotion & Dispute Detection**:
-  * **Acoustic Agitation Scorer**: Evaluates raw linear PCM volume dynamics (normal 800 - 2,500 RMS vs shouting >6,000 RMS), frame-to-frame energy variance (erratic bursts), and zero-crossing rate volatility (pitch jitter and screeching).
-  * **Lexical Dispute Classifier**: Detects Indian financial and regulatory dispute patterns across Hindi, English, and Hinglish, including payment disputes ("paise jama kar diye", "receipt"), legal threats ("police FIR", "court case", "rbi ombudsman"), harassment claims ("bar bar call kyu", "stop calling me"), supervisor demands ("manager se baat karao", "talk to human"), and wrong person flags ("galat number").
-  * **Composite Agitation Index**: Synthesizes acoustic and lexical features into a normalized score (0.00 to 1.00) categorized into `CALM`, `ELEVATED`, `AGITATED`, and `CRITICAL`.
-* **Empathetic Conversational De-escalation**: When elevated customer distress or annoyance is detected, the agent shifts to an empathetic de-escalation posture, validating customer concerns before discussing obligations.
-* **Carrier SIP REFER Warm Transfer (RFC 3515)**:
-  * Automatically terminates bot turn-taking upon critical agitation or legal threats, playing a reassurance announcement and initiating call transfer.
-  * Injects an `X-Verbalyze-Context` metadata header containing URL-safe Base64 encoded JSON (caller phone, loan ID, amount due, agitation score, dispute reason, and conversational briefing).
-  * Formats standard RFC 3515 SIP `REFER` directives for Asterisk/FreeSWITCH, Twilio/Exotel XML `<Dial>` payloads with `<Sip>` or `<Number>`, and WebSocket media stream transfer control frames.
-  * Captures `TRANSFERRED_TO_SUPERVISOR` and `LEGAL_DISPUTE_ESCALATED` dispositions in campaign Call Detail Records (CDRs) with DPDP-compliant PII masking.
-
-```bash
-# Verify Acoustic Sentiment Detection & Warm Transfer Suite (8/8):
-python3 scripts/test_sentiment_and_transfer.py
-```
-
-#### Multi-Lingual Code-Switching STT Tuning & Language Identification (LID) Gate
-Indian telephone dialogues frequently transition between native regional languages, English, and Romanized colloquial dialects (Hinglish, Gujlish, Tanglish). Verbalyze integrates real-time Language Identification and prompt conditioning to guarantee natural code-switching comprehension:
-* **Multi-Modal Language Identification Gate (`LanguageIdentificationGate`)**:
-  * **Unicode Script Analyzer (`LexicalLIDClassifier`)**: Instantly categorizes native scripts across Devanagari, Gujarati, Tamil, Telugu, Bengali, Kannada, Malayalam, Gurmukhi, Odia, and Arabic.
-  * **Romanized Dialect Classifier**: Evaluates Latin-script inputs against distinctive lexical marker dictionaries to classify English vs Hinglish vs Gujlish vs Tanglish. Detects code-switching when English banking loanwords (EMI, UPI, statement, payment, loan, penalty) blend with Indic grammar.
-  * **Acoustic LID Classifier (`AcousticLIDClassifier`)**: Evaluates incoming 8kHz linear PCM speech through Whisper's sub-30ms `detect_language()` acoustic mel-filterbank.
-  * **Signal Fusion & Hysteresis Gating**: Fuses acoustic and lexical signals. Protects against erratic voice flickering by enforcing confidence thresholds and transition confirmation before triggering mid-call language switches.
-* **Code-Switching STT Prompt Conditioning**:
-  * Conditions `faster-whisper` decoders with `INDIC_CODE_SWITCH_PROMPTS` across all 12 Indian languages.
-  * Injects banking-specific terminology (`UPI`, `EMI`, `statement`, `net banking`, `QR code`, `reference number`) into the decoding context, preventing phonetic corruption into bizarre native script transliterations.
-* **Dynamic Mid-Call Voice Adaptation**:
-  * When a caller switches languages (e.g. from Hindi to English or Gujarati), `VoiceAgent` and `AudioEngine` dynamically reconfigure the active neural synthesis voice (`hi-IN-SwaraNeural`, `en-IN-NeerjaNeural`, `gu-IN-DhwaniNeural`, `ta-IN-PallaviNeural`, etc.) on the fly.
-  * Emits `{"event": "language_switch", ...}` control frames over WebSocket media streams to alert telecom carriers and supervisor consoles.
-* **Campaign Disposition & Language Breakdown Tracking**:
-  * `CallDetailRecord` records `detected_language` and `is_code_switched` per call.
-  * `CampaignSummary` aggregates real-time language breakdowns and total code-switched interactions.
-  * Exports sanitized CSV and JSON audits compliant with DPDP Act 2023.
-* **FastAPI Telephony REST API (`POST /telephony/lid`)**:
-  * Standalone endpoint accepting text and/or base64 PCM audio, returning detected primary language, confidence, script, code-switching flags, and recommended neural voice.
-
-```bash
-# Verify Multi-Lingual Code-Switching & LID Suite (8/8):
-python3 scripts/test_lid_and_code_switching.py
-```
-
-#### Real-Time Telephony Supervisor Live Console, Adaptive Jitter Buffer & In-Browser Audio Gateway
-Verbalyze provides a comprehensive live observability stack for debt-collection and banking voicebot operations, telecom jitter resilience across Indian mobile corridors, and direct in-browser testing:
-* **Adaptive Telecom Network Jitter Buffer & PLC (`AdaptiveJitterBuffer`)**:
-  * **RFC 3550 Inter-Arrival Jitter**: Continuous mathematical estimation of network packet arrival variance: $J(i) = J(i-1) + (|D(i, j)| - J(i-1)) / 16$.
-  * **Dynamic Playout Delay**: Adapts buffer depth dynamically between 30ms and 200ms depending on cellular jitter conditions across Indian 2G/3G/4G GSM corridors, preventing buffer underruns and audio chopping.
-  * **Packet Loss Concealment (PLC)**: Interpolates missing speech frames using linear waveform attenuation and comfort noise synthesis when frames are lost or delayed past playout deadlines.
-  * **Packet Reordering**: Re-sequences out-of-order packets based on sequence indices and timestamps.
-* **Telephony Supervisor Observability Hub (`SupervisorManager`)**:
-  * **Fleet-Wide Active Call Registry**: Tracks live calls, duration, turn counts, sentiment agitation scores, MOS quality, jitter telemetry, and DPDP-masked caller identifiers.
-  * **Whisper Coaching Bus**: Allows call center supervisors to inject private coaching guidance into active calls without the customer hearing. The bot absorbs instructions into its reasoning context on the very next turn.
-  * **1-Click Barge-In & Takeover**: Enables supervisors to immediately cut bot audio playback and execute an instant warm transfer / takeover with complete context transfer.
-  * **Real-Time WebSocket Pub/Sub Stream (`/telephony/supervisor/stream`)**: Pushes instant updates, agitation alerts, and fleet health metrics to supervisor dashboards.
-* **In-Browser Full-Duplex Audio Streaming Gateway (`BrowserAudioSession`)**:
-  * Enables developers and QA engineers to test full-duplex voice telephony directly in any modern browser over WebSockets without requiring a paid Twilio or Exotel SIP trunk.
-  * Streams 16-bit linear PCM audio (16kHz / 8kHz) with sub-150ms round-trip latency, real-time VAD, and barge-in.
-* **Enterprise Web Consoles**:
-  * **Supervisor Live Dashboard (`GET /telephony/supervisor/dashboard`)**: Responsive live operations console displaying fleet KPI cards, active calls table, agitation badges, and whisper coaching modals.
-  * **In-Browser Voice Client (`GET /telephony/browser-client`)**: Interactive phone simulator with microphone streaming, live audio waveform canvas, transcript view, and dynamic language chips.
-
-```bash
-# Verify Telephony Supervisor, Jitter Buffer & In-Browser Gateway Suite (8/8):
-python3 scripts/test_supervisor_and_browser_gateway.py
-```
-
-#### Omnichannel Voice-to-WhatsApp & NPCI UPI Instant Settlement Gateway
-Verbalyze closes the debt collection loop by seamlessly bridging dropped or unattended voice calls to interactive WhatsApp channels and instantly reconciling NPCI UPI settlements:
-* **Automated Voice-to-WhatsApp Fallback (`WhatsAppGateway`)**:
-  * Automatically detects call drop-offs, line busy signals, and unanswered dials (`NO_ANSWER`, `BUSY`, `CUSTOMER_HANGUP`) in the outbound campaign dialer and immediately triggers a personalized WhatsApp interactive notice.
-  * Integrates with Meta WhatsApp Business Cloud API, On-Premises API, and sandbox environments.
-* **Interactive Templates & Quick Reply Actions**:
-  * Dispatches rich templates with localized Hindi and English copy, loan details, overdue duration, and 3 quick-reply buttons: `Pay via UPI`, `Request Callback`, and `Raise Dispute`.
-  * Inbound webhook listener (`POST /webhook/whatsapp`) captures customer button responses; callback requests and disputes are instantly dispatched to the supervisor live console.
-* **NPCI UPI Intent Generation & Payment Webhook Ingestion**:
-  * Formats official NPCI-compliant UPI deep-links (`upi://pay?pa=...`) that directly launch PhonePe, Google Pay, Paytm, or BHIM.
-  * Secure webhook receivers for **Razorpay** (`POST /webhook/payment/razorpay`), **Cashfree** (`POST /webhook/payment/cashfree`), and **Direct UPI/BBPS** (`POST /webhook/payment/upi`) with constant-time HMAC-SHA256 signature verification.
-* **Automated Reconciliation & Dialer Retry Halt (`SettlementLedger`)**:
-  * When payment confirmation arrives, the ledger reconciles the order, transitions status to `SETTLED`, and halts all future retry dials across active campaigns.
-  * Broadcasts a `payment_settled` event to the live supervisor console and dispatches an official settlement receipt over WhatsApp.
-* **Zero-Disk-Bloat In-Memory PDF Receipt Generation**:
-  * Uses `fpdf2` to dynamically generate official PDF payment receipts entirely in memory (`GET /settlement/receipt/{transaction_id}`).
-  * Zero temporary disk storage overhead, complete DPDP Act 2023 borrower PII redaction, and compliant with RBI data sovereignty guidelines.
-
-```bash
-# Verify Omnichannel WhatsApp & UPI Settlement Gateway Suite (8/8):
-python3 scripts/test_whatsapp_settlement_gateway.py
-```
-
-#### Regulatory Dual-Channel Call Recording & Post-Call AI Compliance QA Engine (RBI / TRAI)
-Under the RBI Fair Practices Code for Lenders, RBI Master Directions on Recovery Agents, and TRAI TCCCPR regulations, financial institutions must record and conduct 100% compliance auditing on debt collection calls:
-* **Dual-Channel In-Memory Call Recording (`DualChannelCallRecorder`)**:
-  * Captures caller audio and bot audio on separated stereo channels (Channel 0: Borrower, Channel 1: VoiceAgent) in standard 16-bit linear PCM at 8kHz or 16kHz.
-  * Interleaves dual channels using fast vectorized operations into standard stereo WAV bytes in memory (`export_stereo_wav_bytes()`).
-  * Zero disk bloat, temporary buffers cleared on demand, adhering strictly to RBI data sovereignty and DPDP Act 2023.
-* **Automated 4-Pillar Compliance Scoring Matrix (0–100 Scale)**:
-  * **Pillar 1: Mandatory Identity & NBFC Authorization Disclosure (25 pts)**: Verifies that the agent clearly stated the lending institution name (Muthoot Fincorp), performed borrower identity confirmation, and disclosed overdue debt details.
-  * **Pillar 2: Zero Prohibited Conduct & Harassment Check (25 pts)**: Scans for prohibited conduct under RBI guidelines (abusive language, coercive physical threats, intimidation, breach of privacy/third-party disclosure threats, or calling outside legal TRAI hours of 08:00–19:00 IST). Any critical infraction zeroes this pillar and marks the call `NON_COMPLIANT`.
-  * **Pillar 3: Professionalism, Empathy & Active De-escalation (25 pts)**: Evaluates polite opening greetings, respectful closings, and empathetic de-escalation responses when the borrower reports distress or medical hardship.
-  * **Pillar 4: Resolution & Terms Confirmation (25 pts)**: Validates whether a concrete Promise-to-Pay (PTP) date/amount, formal dispute escalation, callback window, or instant UPI payment link was secured.
-* **Automated CRM Notes & Next Best Action (NBA) Generator**:
-  * Synthesizes structured borrower dispositions (`PAYMENT_PROMISED`, `DISPUTE_RAISED`, `CALLBACK_REQUESTED`, `HARDSHIP_UNEMPLOYMENT`, `REFUSAL_TO_PAY`).
-  * Suggests immediate next best actions for human loan officers (e.g. automated WhatsApp reminders, routing to disputes desk, restructuring review).
-* **Official In-Memory RBI Compliance Certificate PDF**:
-  * Uses `fpdf2` to dynamically synthesize official compliance audit certificates with DPDP-masked identifiers, 4-pillar score breakdown, findings table, and SHA-256 digital integrity seal (`GET /telephony/qa/certificate/{call_id}`).
-* **Supervisor QA REST API**:
-  * `POST /telephony/qa/evaluate`: Real-time post-call audit evaluation.
-  * `GET /telephony/qa/audits`: List scorecards and compliance summaries.
-  * `GET /telephony/qa/audit/{call_id}`: Inspect detailed scorecard and CRM notes.
-  * `GET /telephony/qa/recording/{call_id}`: Stream dual-channel stereo WAV audio directly from memory.
-
-```bash
-# Verify Regulatory Call Recording & Post-Call QA Engine Suite (8/8):
-python3 scripts/test_regulatory_qa_engine.py
-```
+### 3. Core Conversational Architecture
+* **Clause-Level Stream Pipeliner (<200ms TTFS)**: Intercepts LLM token streams on punctuation boundaries (`।`, `.`, `?`, `!`, `,`) and synthesizes speech immediately, cutting conversational dead-air to <200ms.
+* **Sub-50ms WebSocket Barge-In**: Real-time microphone/RTP VAD terminates outbound audio playback within ~4ms and emits a `{"event": "clear"}` frame to flush carrier buffers upon caller speech onset.
+* **Sovereign On-Prem STT Engine**: In-memory 8kHz to 16kHz conversion feeding local `ctranslate2` Whisper models in 120-170ms with zero cloud egress (`--strict-sovereignty`).
+* **NPCI UPI & Live SMS Dispatch**: Executes `send_payment_link` tool during calls to construct compliant `upi://pay` deep-links dispatched via Fast2SMS, Twilio, or webhooks.
 
 ---
 
-### 3.7 Telecom DTMF Keypad Engine & Multi-Level IVR State Machine
+## Part 4: Pure-Math Telephony DSP Suite (ITU-T Compliant)
 
-In enterprise Indian telephony environments (banking, micro-finance, customer service), callers frequently navigate multi-level IVR menus using both touch-tone keypad buttons and spoken responses. Verbalyze provides an integrated, pure-math DTMF detection and stateful IVR navigation suite:
+Verbalyze contains a carrier-grade, pure-math DSP suite implemented entirely in NumPy with **zero external heavy ML or C++ dependencies**. All engines operate on 20ms frames ($N=160$ at 8kHz, $N=320$ at 16kHz) and comply with international telecommunication standards:
 
-* **In-Band Acoustic Goertzel Algorithm (ITU-T Q.23 / Q.24 & Bellcore)**:
-  * Efficient $O(N)$ discrete tone detection on 8kHz and 16kHz 16-bit linear PCM audio.
-  * Detects all 16 standard touch-tone keypad frequencies (`0`-`9`, `*`, `#`, `A`-`D`).
-  * Enforces second-harmonic dominance, ITU-T twist ratio tolerance (-8 dB to +4 dB), and wideband noise immunity.
-* **Out-of-Band RFC 4733 / RFC 2833 RTP Telephone-Event Decoder**:
-  * Parses standard 4-byte RTP payloads (Event ID, End bit, Volume in -dBm0, Duration).
-  * Automatically filters redundant triplicate end packets (RFC 4733 Section 2.5.1) to avoid duplicate keypress registrations.
-* **Acoustic DTMF Pad & Debouncer**:
-  * Enforces minimum tone duration (40ms) and inter-digit silence intervals to cleanly differentiate sustained keypresses from subsequent identical digits.
-* **Indic Multi-Level IVR State Machine**:
-  * Hierarchical tree structure supporting multilingual prompts (Hindi, English, Gujarati, Marathi).
-  * **Hybrid Traversal**: Navigates states on DTMF keypresses (`1`, `2`, `*`, `#`) or spoken words (`"hindi"`, `"payment"`, `"agent"`).
-  * **Multi-Digit Sequence Collection**: Gathers fixed-length sequences (e.g. 4-digit PINs, OTPs) with inter-digit timeouts.
-  * **Automated Action Hooks**: Triggers language switching, WhatsApp UPI payment link dispatch, SIP warm transfer, or conversational voicebot handoff.
-* **DPDP Act 2023 Keypad Masking**:
-  * Sensitive digits (PINs, OTPs, account numbers) are automatically masked (`****`) across all transition results, session summaries, and audit logs.
-* **FastAPI DTMF & IVR REST Endpoints**:
-  * `POST /telephony/dtmf/decode`: Decodes raw PCM audio or RFC 4733 packets.
-  * `POST /telephony/ivr/start`: Initializes a stateful IVR session.
-  * `POST /telephony/ivr/action`: Advances IVR on DTMF keypress, speech text, or timeout.
-  * `GET /telephony/ivr/session/{call_id}`: Retrieves DPDP-sanitized session audit summary.
-
-```bash
-# Verify Telecom DTMF & Multi-Level IVR Engine Suite (8/8):
-python3 scripts/test_dtmf_ivr_engine.py
-```
+| Module | Standard / Method | Telecom Problem Solved | Latency SLA | Headroom | Verification Command |
+|---|---|---|:---:|:---:|---|
+| **Line Quality Classifier** | ITU-T P.862 PESQ & POLQA proxy | Detects 50Hz mains hum, carrier clipping, RF fading dropouts; triggers LCR trunk failover | < 0.50 ms | 453x | `python3 scripts/test_line_quality_classifier.py` |
+| **Active Speaker Diarizer** | Dual-Channel NCC & TDOA | Resolves caller vs agent speech; rejects loudspeaker bleed; tags double-talk | < 0.50 ms | 757x | `python3 scripts/test_active_speaker_diarizer.py` |
+| **Automatic Level Controller** | ITU-T G.169 & P.56 dBov | Normalizes rural whispered audio (-38 dBov) & attenuated loud speech with zero clicks | < 0.50 ms | 1,930x | `python3 scripts/test_automatic_level_controller.py` |
+| **Acoustic Watermarker** | Sec 65B Indian Evidence Act | Embeds 32-bit DSSS watermark (Call SID, timestamp, HMAC) for court-admissible records | < 0.50 ms | 2,352x | `python3 scripts/test_acoustic_watermarker.py` |
+| **Bandwidth Expander (BWE)** | Non-linear harmonic fold-back | Expands 8kHz telephone audio to 16kHz wideband to clarify Indic sibilants ("स", "श", "ष") | < 0.50 ms | 116x | `python3 scripts/test_bandwidth_expander.py` |
+| **Comfort Noise Generator** | ITU-T G.711 App II & RFC 3389 | Generates calibrated background noise (fan, traffic) during silence to eliminate dead-line hangup | < 0.50 ms | 180x | `python3 scripts/test_comfort_noise_generator.py` |
+| **Indic Formant Equalizer** | 5-Band Biquad IIR | Direct Form II Transposed filter boosting retroflex Formant 3 ($F_3$) transitions by +4.5 dB | < 0.50 ms | 82x | `python3 scripts/test_indic_formant_equalizer.py` |
+| **Packet Loss Concealment** | ITU-T G.711 App I & RFC 3550 | Pitch-synchronous waveform replication & OLA resynchronization for 2-5% cellular packet loss | < 0.50 ms | 840x | `python3 scripts/test_packet_loss_concealment_and_jitter.py` |
+| **Acoustic Echo Canceller** | NLMS FIR & Geigel DTD | 256-tap adaptive filter + Wiener noise suppression eliminating phantom bot barge-in | < 2.50 ms | 160x | `python3 scripts/test_echo_canceller_and_noise_suppression.py` |
+| **Turn-Taking & Pipelining** | Multi-feature VAD & prosody | Pitch ($F_0$) declination & syntax cue fusion achieving sub-300ms glass-to-glass latency | < 0.50 ms | 600x | `python3 scripts/test_turn_taking_and_latency.py` |
 
 ---
 
-### 3.8 Telecom Carrier Trunk Health, SIP Circuit Breaker & Multi-Trunk Auto-Failover (Circle-Based LCR)
+## Part 5: Enterprise Telephony & Regulatory Security
 
-In high-volume enterprise Indian outbound telephony (debt collection campaigns, EMI reminders, priority verification), carrier trunk disruptions (e.g. SIP 503 Service Unavailable, network timeouts, sudden packet loss spikes) can stall campaign execution. Verbalyze provides an integrated carrier-grade trunk resilience and routing engine:
-
-* **Dynamic 3-State SIP Circuit Breaker (`CLOSED`, `OPEN`, `HALF_OPEN`)**:
-  * **Intelligent SIP Code Classification**: Strictly differentiates carrier network failures (`503 Service Unavailable`, `500 Server Error`, `502 Bad Gateway`, `504 Gateway Timeout`, `408 Request Timeout`, `480 Temporarily Unavailable`) from normal debtor call terminal outcomes (`486 Busy Here`, `603 Decline`, `404 Not Found`, `487 Request Terminated`). Client outcomes never trip the circuit breaker.
-  * **Configurable Sliding Window**: Evaluates fault ratios across recent calls and trips immediately upon consecutive carrier faults.
-  * **Automated Cooldown & Probe Trial Recovery**: After a configurable cooldown interval, the breaker shifts from `OPEN` to `HALF_OPEN`, allowing controlled probe trial calls to verify carrier recovery before restoring `CLOSED` state.
-* **Pure-Math ITU-T G.107 E-Model MOS Telemetry Engine**:
-  * Computes the Transmission Rating Factor ($R$) in real-time from one-way delay ($I_d$), jitter buffering, and equipment packet loss ($I_e$):
-    $$R = 93.2 - I_d - I_e$$
-  * Converts $R$-factor to the standardized ITU-T Mean Opinion Score (MOS, 1.0 to 4.5 scale) to classify trunk health (`HEALTHY`, `DEGRADED`, `UNAVAILABLE`) with zero external cloud dependencies.
-* **Indian 22-Circle Least-Cost Routing (LCR)**:
-  * Detects Indian telecom circles (Delhi NCR, Mumbai, Kolkata, Karnataka, Tamil Nadu, Andhra Pradesh, Maharashtra, Punjab, etc.) from subscriber phone number prefixes.
-  * Dynamically resolves primary and prioritized fallback carrier trunks based on circle support, carrier preference, priority weighting, per-minute cost (INR), and real-time MOS quality.
-* **Sub-150ms Automated Multi-Trunk Failover Dispatch**:
-  * When a primary carrier trunk experiences an outage or throws a 5xx fault, the dispatcher instantly fails over to the next candidate trunk in sub-millisecond time (<1ms in local benchmarks), transparently maintaining campaign progress.
-* **Campaign Dialer & CDR Attribution**:
-  * Seamlessly integrated into `CampaignDialer`. Each generated `CallDetailRecord` (CDR) records `trunk_id`, `carrier_name`, `failover_occurred`, `failover_count`, and `trunk_mos_score`.
-* **FastAPI Carrier Trunk REST Management Endpoints**:
-  * `GET /telephony/trunks`: Lists all registered carrier trunks, circuit breaker states, and QoS telemetry.
-  * `POST /telephony/trunks/register`: Dynamically registers new SIP trunks into the routing table.
-  * `POST /telephony/trunks/route`: Resolves optimal primary and fallback routes for any Indian mobile number.
-  * `POST /telephony/trunks/circuit-breaker/reset`: Manually resets a tripped circuit breaker back to `CLOSED`.
-  * `POST /telephony/trunks/report-call`: Reports call signaling outcomes and updates QoS metrics.
-
-```bash
-# Verify Telecom Carrier Trunk Health & SIP Circuit Breaker Suite (8/8):
-python3 scripts/test_carrier_trunks_circuit_breaker.py
-```
+* **DPDP Act 2023 & RBI Security Guardrails**: Constant-time HMAC token verification on all SIP/WebSocket webhooks, automatic PII masking (mobile, Aadhaar, PAN, account numbers), and strict in-memory audio processing without disk persistence (`scripts/test_end_to_end_security.py`).
+* **Outbound Campaign Batch Dialer & Dual-Stage AMD**: Concurrent batch dialing with automated TRAI calling window enforcement (09:00-19:00 IST), NCPR/DND filtering, 3-call daily frequency capping, and 800ms Answering Machine Detection (`scripts/test_campaign_dialer_amd.py`).
+* **22-Circle Least-Cost Routing & SIP Circuit Breaker**: Circle-based carrier trunk routing (Airtel, Jio, Tata, Vi) with ITU-T G.107 E-model MOS telemetry and 3-state SIP circuit breakers (`scripts/test_carrier_trunks_circuit_breaker.py`).
+* **Voice Biometrics & Deepfake Anti-Spoofing**: 64-dimensional unit speaker embeddings with text-independent cosine verification, neural vocoder artifact detection, and loudspeaker replay detection (`scripts/test_voice_biometrics_and_anti_spoof.py`).
+* **Telecom DTMF Keypad & Multi-Level IVR**: Pure-math Goertzel tone detector (ITU-T Q.23/Q.24) and RFC 4733 RTP decoder with stateful multilingual IVR tree navigation (`scripts/test_dtmf_ivr_engine.py`).
+* **Acoustic Sentiment & SIP REFER Warm Transfer**: Real-time agitation scoring and dispute detection triggering automated RFC 3515 SIP `REFER` warm transfer to human supervisors with `X-Verbalyze-Context` metadata (`scripts/test_sentiment_and_transfer.py`).
+* **Post-Call Compliance QA & WhatsApp UPI Settlement**: In-memory dual-channel call recording (`DualChannelCallRecorder`), automated RBI 4-pillar compliance audits, and WhatsApp UPI settlement receipts (`scripts/test_regulatory_qa_engine.py`, `scripts/test_whatsapp_settlement_gateway.py`).
 
 ---
 
-### 3.9 Live Voice Biometrics & Anti-Spoofing Speaker Verification Engine (RBI Identity Guard & DPDP Act 2023)
+## Part 6: Automated Human-Likeness Quality Gate (MOS 4.0)
 
-In Indian banking, NBFC lending, and debt recovery operations, disclosing sensitive loan EMI amounts or personal debt details to an unverified third party or imposter violates the RBI Fair Practices Code for Lenders, the Digital Personal Data Protection (DPDP) Act 2023, and customer privacy mandates. Verbalyze provides an integrated, pure-math acoustic voice biometrics and anti-spoofing verification engine:
+Every generated speech utterance is evaluated across 5 acoustic dimensions before playout:
+1. **Cadence Naturalness (30%)**: Target 80–150 WPM.
+2. **Pauses & Phrasing (25%)**: Evaluates silence ratios (18–38%) and pause variance.
+3. **Prosodic Dynamics (25%)**: Evaluates pitch and energy variation.
+4. **Harmonic Smoothness (10%)**: Analyzes frame jitter to eliminate click artifacts.
+5. **Signal Integrity (10%)**: Enforces headroom and prevents digital clipping.
 
-* **Pure-Math Zero-Heavy-Dependency Acoustic Feature Extraction**:
-  * Built entirely using Python and NumPy with zero dependency on heavy C++ or proprietary ML libraries.
-  * Extracts 13-band Mel Frequency Cepstral Coefficients (MFCCs), spectral centroid, spectral rolloff, spectral flatness, zero-crossing rate (ZCR), and normalized autocorrelation fundamental frequency ($F_0$) pitch tracking across 25ms frames with 10ms hops.
-* **Standardized 64-Dimensional Speaker Embedding Vectors**:
-  * Employs cepstral mean centering and $L_2$ unit normalization:
-    $$\hat{\mathbf{e}} = \frac{\mathbf{e}}{\|\mathbf{e}\|_2}$$
-  * Isolates unique vocal tract formants and pitch dynamics while eliminating arbitrary volume or microphone gain biases.
-* **Text-Independent Cosine Similarity Decision Engine**:
-  * Computes cosine similarity between live caller audio probe vectors and enrolled customer voiceprints:
-    $$\text{sim}(\mathbf{u}, \mathbf{v}) = \frac{\mathbf{u} \cdot \mathbf{v}}{\|\mathbf{u}\|_2 \|\mathbf{v}\|_2}$$
-  * **Verified Match ($\ge 0.78$)**: Confirms borrower identity with high confidence and authorizes disclosure of loan EMI details.
-  * **Indeterminate Band ($0.65 - 0.78$)**: Flags low-margin matches and injects a step-up challenge directive (e.g. verify registered Date of Birth or PAN).
-  * **Impostor Mismatch ($< 0.65$)**: Rejects unverified third-party speakers and immediately suppresses sensitive loan disclosures.
-* **Two-Pillar Anti-Spoofing & Deepfake Detection Engine**:
-  * **Pillar 1: Neural Vocoder & Synthetic AI Clone Detection**: Analyzes pitch micro-tremors (jitter) and high-frequency cepstral variance across frames to detect mathematically quantized or overly smoothed synthetic speech (e.g., ElevenLabs, HiFi-GAN, WaveGlow).
-  * **Pillar 2: Loudspeaker Phone Replay Attack Detection**: Detects acoustic resonance coloration (2.0 kHz - 3.5 kHz peak concentration) and elevated ambient room impulse response noise characteristic of physical speakerphone replay attacks.
-* **DPDP Act 2023 In-Memory Voiceprint Registry**:
-  * **Zero Audio Persistence**: Raw customer voice recordings are never saved to disk. Only mathematical unit embeddings and SHA-256 integrity fingerprints are held in memory.
-  * **Right to Erasure**: Implements instantaneous voiceprint removal via `delete_profile(customer_id)`.
-* **Conversational VoiceAgent & Step-Up Security Integration**:
-  * Passively evaluates incoming caller audio in full-duplex telephony turns (`step` and `step_stream`).
-  * When spoofing or an identity mismatch is detected, the agent triggers a security block, preventing disclosure of loan balances and advising the borrower to visit their local branch.
-* **Campaign Dialer Telemetry & CDR Attribution**:
-  * Integrated directly into the `CampaignDialer` pipeline. Every Call Detail Record (CDR) records `biometric_status`, `biometric_confidence`, and `spoof_type`.
-* **FastAPI Biometrics REST API Endpoints**:
-  * `POST /telephony/biometrics/enroll`: Enrolls a customer voiceprint from base64 PCM samples.
-  * `POST /telephony/biometrics/verify`: Verifies incoming caller audio against an enrolled voiceprint.
-  * `POST /telephony/biometrics/anti-spoof`: Standalone forensic anti-spoofing deepfake analysis.
-  * `GET /telephony/biometrics/profile/{customer_id}`: Retrieves DPDP-compliant voiceprint metadata.
-  * `DELETE /telephony/biometrics/profile/{customer_id}`: Permanently erases customer voiceprint per DPDP Act 2023.
-  * `GET /telephony/biometrics/profiles`: Lists enrolled voiceprint summaries.
-
-```bash
-# Verify Live Voice Biometrics & Anti-Spoofing Test Suite (8/8):
-python3 scripts/test_voice_biometrics_and_anti_spoof.py
-```
+Audio is stress-tested against an 8kHz ITU-T G.712 bandpass filter, G.711 A-law companding, and 1.5% packet loss jitter (`python3 scripts/test_telephony_audio_gate.py`).
 
 ---
 
-### 3.10 Adaptive Conversational Turn-Taking & Speculative Early-Pipelining Engine (Sub-300ms Telephony Latency)
+## Part 7: Interactive Web Application & Datasets
 
-In conversational voice agents, turn-taking delay directly determines perceived human likeness. Traditional telephony bots wait for a fixed, conservative silence timeout (e.g. 700ms - 1000ms) before starting speech transcription (STT), resulting in sluggish 1200ms - 1800ms response delays. Conversely, aggressive timeouts cut callers off mid-thought during digit entry or complex explanations.
-
-Verbalyze provides an integrated **Adaptive Conversational Turn-Taking & Speculative Early-Pipelining Engine** that achieves true **Sub-300ms Glass-to-Glass Telephony Latency**:
-
-* **Multi-Feature Acoustic Voice Activity Detection (VAD)**:
-  * Ingests 20ms frames (160 samples at 8kHz, 320 at 16kHz) with pure-math NumPy execution.
-  * Fuses short-time log energy (dB), zero-crossing rate (ZCR), and FFT-based normalized spectral entropy.
-  * Continuously tracks an ambient background noise floor via exponential moving average ($\alpha = 0.05$), adapting dynamically to noisy street backgrounds or cellular line static.
-* **Consonant Hangover State Machine**:
-  * Unvoiced consonant closures (e.g. stops /p/, /t/, /k/) produce 20ms - 60ms energy dips mid-sentence.
-  * Employs a 6-frame (120ms) hangover counter that smoothly bridges brief unvoiced gaps without prematurely truncating speech.
-* **Context-Aware Dynamic Pause Threshold Policies**:
-  * **CONFIRMATION (Snappy Affirmation)**: 200ms - 350ms (optimized for single-word responses such as "हाँ जी", "yes", "ठीक है").
-  * **STANDARD_CONVERSATION**: 400ms - 500ms (balanced for multi-clause explanations and inquiries).
-  * **DIGIT_COLLECTION (Cognitive Thinking)**: 700ms - 950ms (extended silence tolerance for reading debit card numbers, OTPs, or dates of birth).
-* **Turn Completion Confidence Scoring (Prosody + Multilingual Syntax)**:
-  * **Acoustic Pitch ($F_0$) Declination**: Evaluates trailing pitch trajectory in semitones:
-    $$\Delta F_0 = 12 \log_2\left(\frac{F_{0,\text{end}}}{F_{0,\text{start}}}\right)$$
-    Falling pitch ($\le -1.5\text{st}$) signals terminal completion, while rising pitch indicates continuation questions or mid-sentence hesitation.
-  * **Multilingual Lexical Indicators**: Detects terminal affirmations ("हाँ", "yes", "બરાબર", "हो") and continuation connectors ("क्योंकि", "because", "પરંતુ", "आणि") across Hindi, English, Gujarati, and Marathi.
-  * Fuses acoustic and syntactic cues into a composite confidence score (0.0 to 1.0) to dynamically tune active pause timeouts.
-* **Speculative Background Pre-Fetching & Atomic Commit**:
-  * When trailing pause reaches $\ge 140$ms, the engine speculatively launches early STT transcription and LLM token pre-fetching in a background task while audio ingestion continues uninterrupted.
-  * **Turn Completed**: Commits pre-fetched results immediately, cutting perceived STT delay to 0ms and eliminating waiting time before TTS streaming begins.
-  * **User Resumed Speech**: Instantly aborts background execution with zero loss of buffered audio frames, preserving seamless conversational flow.
-* **Full-Duplex Telephony Barge-In & State Machine Lifecycle**:
-  * Transitions cleanly across `IDLE`, `SPEECH_ONSET`, `SPEAKING`, `TRAILING_PAUSE`, `SPECULATIVE_PREFETCH`, `TURN_COMPLETED`, and `BARGE_IN`.
-  * Detects caller interruptions while the agent is speaking and triggers immediate playback cancellation.
-* **Glass-to-Glass Latency Profiling & Sub-300ms SLA Telemetry**:
-  * Tracks high-resolution timestamps from user speech termination ($t_{\text{speech\_end}}$) to turn detection ($t_{\text{turn}}$), STT completion ($t_{\text{stt}}$), LLM first token ($t_{\text{llm}}$), TTS first audio chunk ($t_{\text{tts}}$), and first outbound 20ms RTP packet dispatch ($t_{\text{rtp}}$).
-  * Enforces the $<300\text{ms}$ conversational telephony latency SLA.
-* **FastAPI Turn-Taking REST Endpoints**:
-  * `POST /telephony/turn-taking/evaluate`: Evaluates acoustic VAD features, pitch declination, and syntactic terminal cues for audio/text inputs.
-  * `POST /telephony/turn-taking/benchmark`: Benchmarks pipelined telephony stages and validates Sub-300ms SLA conformance.
-  * `GET /health`: Reports `turn_taking_status: ready` and target latency metrics.
-
+### Launch Interactive Gradio Web App
 ```bash
-# Verify Turn-Taking & Sub-300ms Latency Test Suite (8/8):
-python3 scripts/test_turn_taking_and_latency.py
-```
-
----
-
-### 3.11 Real-Time Acoustic Echo Cancellation (AEC) & Spectral Noise Suppression Engine (Pure-Math DSP)
-
-In Indian telephony environments, mobile borrowers frequently engage on speakerphone or amidst noisy surroundings (traffic honking, ceiling fan rumble, busy street chatter, or line static). Without acoustic echo cancellation, the voicebot's outbound playback feeds back through the caller's microphone, triggering **phantom barge-in** loops where the bot interrupts its own speech.
-
-Verbalyze provides a high-performance, pure-math **Acoustic Echo Cancellation (AEC) & Spectral Noise Suppression Engine** implemented entirely in NumPy with zero external C++ or heavy ML dependencies:
-
-* **Normalized Least Mean Squares (NLMS) Adaptive FIR Filter**:
-  * Employs a 256-tap adaptive transversal FIR filter (32ms acoustic echo path memory at 8kHz).
-  * Continuously models the physical speakerphone-to-microphone room impulse response with dynamic step-size normalization:
-    $$\mathbf{w}(n+1) = \mathbf{w}(n) + \frac{\mu}{\epsilon + \|\mathbf{x}(n)\|^2} e(n) \mathbf{x}(n)$$
-  * Vectorized ring buffer implementation executes sample-by-sample adaptation in ~0.12ms per 20ms frame (over 160x faster than real-time), achieving $>22.8\text{dB}$ Echo Return Loss Enhancement (ERLE).
-* **Geigel Double-Talk Detector (DTD / ITU-T G.168)**:
-  * Computes the maximum near-end to far-end magnitude ratio across the echo path memory:
-    $$\xi(n) = \frac{|d(n)|}{\max_{0 \le k < L} |x(n-k)|}$$
-  * Declares double-talk when $\xi(n) \ge 0.50$ ($-6\text{dB}$), instantly freezing filter weight adaptation and holding the hangover state for 4 frames (80ms).
-  * Prevents the adaptive filter from diverging on caller speech, preserving the borrower's vocal formants without clipping.
-* **Frequency-Domain Spectral Noise Suppression & Wiener Filtering**:
-  * Ingests 160-sample (20ms) microphone frames via direct discrete Fast Fourier Transform (FFT).
-  * Tracks the stationary background noise power spectrum $P_{\text{noise}}(k)$ during non-speech intervals.
-  * Applies Wiener over-subtraction ($\beta = 1.60$) with a calibrated spectral noise floor ($\gamma = 0.03$):
-    $$G(k) = \max\left(\gamma, \sqrt{1.0 - \beta \frac{P_{\text{noise}}(k)}{\max(P_{\text{mic}}(k), 10^{-6})}}\right)$$
-  * Attenuates stationary ceiling fan drone and cellular line hiss by $>14.8\text{dB}$ while preserving near-end speech with a $1.0000$ waveform correlation.
-* **Zero Phantom Barge-In Elimination**:
-  * Outbound bot speech leaking through the borrower's loudspeaker is cancelled down by up to $>50\text{dB}$, keeping residual clean energy below the voice activity threshold.
-  * Inbound audio is cleaned in real time before reaching the Turn-Taking Acoustic VAD, permanently eliminating phantom interruptions and bot self-triggering loops.
-* **Full-Duplex MediaStream Pipeline Integration**:
-  * Outbound 20ms G.711/PCM audio frames dispatched via `stream_audio_to_carrier` are automatically registered as far-end reference samples.
-  * Inbound carrier frames in `handle_inbound_frame` pass through `AcousticEchoAndNoiseProcessor` before reaching DTMF decoders and `turn_manager.ingest_frame`.
-* **FastAPI Telephony DSP REST Endpoints**:
-  * `POST /telephony/dsp/process`: Ingests base64-encoded PCM audio frames and returns cleaned speech with real-time `DSPTelemetry` (ERLE, SNR gain, double-talk state, noise floor).
-  * `POST /telephony/dsp/benchmark`: Benchmarks DSP execution throughput per 20ms frame, validating compliance with the $<2.5\text{ms}$ latency budget.
-  * `GET /health`: Reports `dsp_echo_cancellation: ready` and `dsp_noise_suppression: ready`.
-
-```bash
-# Verify Acoustic Echo Cancellation & Spectral Noise Suppression Suite (8/8):
-python3 scripts/test_echo_canceller_and_noise_suppression.py
-```
-
----
-
-### 3.12 Real-Time Acoustic Packet Loss Concealment (PLC) & Adaptive Jitter Buffer Smoothing (ITU-T G.711 Appendix I Pure-Math DSP)
-
-Variable-latency Indian cellular networks (2G, 3G, VoLTE, and fluctuating rural 4G/5G handoffs) frequently suffer 2-5% random packet bursts and inter-arrival jitter spikes. Under standard telephony pipelines, missing 20ms audio frames produce jarring digital silence dropouts, harsh robotic clicks, or corrupt acoustic VAD turn-taking states.
-
-Verbalyze provides a high-performance, pure-math **Packet Loss Concealment (PLC) & Adaptive Jitter Buffer Smoothing Engine** compliant with the **ITU-T G.711 Appendix I** international telecommunication standard, implemented entirely in NumPy with zero external C++ or heavy ML dependencies:
-
-* **Normalized Cross-Correlation Pitch Estimation**:
-  * Tracks the trailing 60ms (480 samples at 8kHz) of decoded linear PCM speech in a vectorized ring buffer.
-  * Searches human vocal fundamental frequencies across 50Hz to 400Hz (pitch lags $k \in [20, 160]$ samples at 8kHz):
-    $$r(k) = \frac{\sum_{n=0}^{M-1} x(t - M + n) x(t - M - k + n)}{\sqrt{\sum_{n=0}^{M-1} x(t - M + n)^2 \sum_{n=0}^{M-1} x(t - M - k + n)^2 + \epsilon}}$$
-  * Identifies the optimal pitch period $P = \arg\max_k r(k)$ and discriminates voiced phonation ($r(P) \ge 0.55$) from unvoiced consonants and cellular line static ($r(P) < 0.55$).
-* **Pitch-Synchronous Waveform Replication & Click Elimination**:
-  * For voiced speech, replicates the most recent pitch period forward across the missing 20ms frame, achieving $>0.99$ Pearson correlation with the true continuation waveform.
-  * Applies boundary derivative smoothing at pitch repetition boundaries to eliminate phase cliffs and prevent high-frequency spectral click artifacts.
-* **Phase-Randomized Unvoiced Spectral Synthesis**:
-  * For unvoiced consonants and ambient background noise, applies discrete FFT phase angle randomization ($-\pi$ to $+\pi$) while preserving the spectral magnitude envelope.
-  * Eradicates the metallic buzzing and robotic comb filtering caused by naive sample repetition.
-* **Multi-Frame Burst Loss Progressive Energy Attenuation**:
-  * Adheres strictly to the ITU-T G.711 Appendix I attenuation specification across consecutive dropped frames:
-    * **Frame 1 (0–20ms)**: Full energy retention ($1.0 \to 0.95$).
-    * **Frame 2 (20–40ms)**: Progressive linear decay from $0.95 \to 0.70$.
-    * **Frame 3 (40–60ms)**: Progressive linear decay from $0.70 \to 0.35$.
-    * **Frame 4 (60–80ms)**: Linear decay from $0.35 \to 0.00$ (fading to comfort silence).
-    * **Frame 5+ (>80ms)**: Exact zero silence, preventing infinite feedback loops or sustained droning during call drop-offs.
-* **Post-Loss Good Packet Overlap-Add (OLA) Resynchronization**:
-  * Synthesizes an extra 32-sample (4ms) continuation tail into the future during packet loss.
-  * When the next good packet arrives, an Overlap-Add (OLA) cross-fade blends the synthetic tail into the true speech frame:
-    $$y(n) = \left(1 - \frac{n}{L_{\text{resync}}}\right) s_{\text{synthetic\_tail}}(n) + \left(\frac{n}{L_{\text{resync}}}\right) s_{\text{good}}(n), \quad 0 \le n < 32$$
-  * Reduces worst-case anti-phase boundary cliffs by $>98\%$ (e.g. from 23,259 down to 418), eliminating acoustic clicking upon network recovery.
-* **Integrated Telecom Jitter Buffer (`AdaptiveJitterBuffer`)**:
-  * Implements RFC 3550 inter-arrival jitter estimation, out-of-order packet reordering, and dynamic playout delay adaptation.
-  * Automatically invokes `PacketLossConcealer.conceal_frame()` at scheduled playout deadlines when packets are missing, seamlessly feeding downstream AEC and VAD engines.
-* **Ultra-Low Latency Throughput**:
-  * Executes frame concealment in **~0.024 ms per 20ms frame** (over **840x faster than real time**), providing enormous headroom under the $<0.5\text{ms}$ telephony SLA.
-* **FastAPI Telephony PLC REST Endpoints**:
-  * `POST /telephony/plc/conceal`: Simulates packet loss on uploaded base64 PCM frames and returns concealed audio with real-time `PLCTelemetry`.
-  * `POST /telephony/plc/benchmark`: Benchmarks 20ms frame throughput, validating sub-0.5ms SLA compliance.
-  * `GET /health`: Reports `plc_status: ready`.
-
-```bash
-# Verify Packet Loss Concealment & Adaptive Jitter Buffer Suite (8/8):
-python3 scripts/test_packet_loss_concealment_and_jitter.py
-```
-
----
-
-### 3.13 Dynamic Multi-Band Acoustic Equalizer (Indic Telecom Formant Enhancer - Pure-Math DSP)
-
-In Indian narrowband telephony (8kHz sampling rate, ITU-T G.712 bandpass filtering 300Hz–3400Hz), high-frequency sibilants, retroflex bursts, and nasal pole-zero anti-formants are heavily attenuated. In Indic languages (Hindi, Marathi, Gujarati, Punjabi, Bengali, etc.), retroflex consonants (ट-वर्ग: ट, ठ, ड, ढ, ण, ड़, ढ़, ष) and palatal sibilants (श) depend critically on Formant 3 ($F_3$) acoustic transitions (around 2400Hz) and upper burst energy (3000Hz–3400Hz) to prevent phonetic confusion (e.g., distinguishing "सड़क" from "सदक", "पचास" from "पसास", or "ऋण" from "रिन").
-
-Verbalyze provides a high-performance, pure-math **5-Band Parametric Biquad Acoustic Equalizer (Indic Telecom Formant Enhancer)** implemented entirely in NumPy with zero external C++ or heavy ML dependencies:
-
-* **Direct Form II Transposed Biquad Architecture**:
-  * Implements 5 cascaded second-order IIR biquad filter stages derived from the Robert Bristow-Johnson Audio EQ Cookbook:
-    $$y[n] = b_0 x[n] + s_1[n-1]$$
-    $$s_1[n] = b_1 x[n] - a_1 y[n] + s_2[n-1]$$
-    $$s_2[n] = b_2 x[n] - a_2 y[n]$$
-  * Preserves filter delay states ($s_1, s_2$) continuously across 20ms frame boundaries, achieving **0.00 LSB state deviation** compared to un-chunked continuous processing and completely eliminating frame-boundary clicks.
-* **5 Indic Telecom Phonetic Bands ($f_s = 8000\text{ Hz}$)**:
-  * **Band 1 (300 Hz, $Q=1.0$, $+2.0\text{dB}$)**: Low-end nasal warmth and anti-formant clarity ("ण", "म", "न").
-  * **Band 2 (750 Hz, $Q=1.2$, $+1.0\text{dB}$)**: First Formant ($F_1$) vowel body clarity (अ, आ, इ, उ, ए, ओ).
-  * **Band 3 (1600 Hz, $Q=1.4$, $+2.5\text{dB}$)**: Second Formant ($F_2$) dental and velar consonant articulation.
-  * **Band 4 (2400 Hz, $Q=1.8$, $+4.5\text{dB}$)**: Third Formant ($F_3$) retroflex cavity resonance (ट-वर्ग / ड़, ढ़).
-  * **Band 5 (3200 Hz, $Q=1.5$, $+5.0\text{dB}$)**: Sibilant burst presence and ITU-T G.712 upper rolloff compensation ("ष", "क्ष", "श").
-* **Dynamic Speech-Adaptive Gating**:
-  * Continuously evaluates frame RMS energy. During background noise pauses (RMS $< 80$), equalizer gains are dynamically scaled down to $0\text{ dB}$, preventing amplification of ambient street drone or ceiling fan rumble.
-  * When active speech enters, full equalization gains are applied instantaneously.
-* **Soft-Saturation Peak Limiter**:
-  * When high-gain boosts push peak samples beyond 30,000, a smooth $\tanh$-based compression knee compresses overshoots into the remaining headroom:
-    $$y_{\text{lim}} = 30000.0 + (2767.0) \tanh\left(\frac{|y| - 30000.0}{2767.0}\right)$$
-  * Guarantees strict containment within 16-bit integer boundaries ($[-32768, 32767]$) with zero digital clipping distortion.
-* **Phonetic Spectral Contrast Enhancement**:
-  * Delivers a **$+3.94\text{dB}$ boost** in retroflex $F_3$ spectral contrast over 8kHz narrowband channels, significantly improving speech recognition (STT) accuracy on Indic debt collection and banking dialogues.
-* **Full-Duplex MediaStream Pipeline Integration**:
-  * Integrated directly into `MediaStreamSession.handle_inbound_frame`.
-  * Cleaned audio from the AEC/Noise Suppressor passes through `IndicFormantEqualizer` before DTMF detection and conversational turn evaluation.
-* **FastAPI Telephony Equalizer REST Endpoints**:
-  * `POST /telephony/eq/process`: Ingests base64-encoded PCM frames, applies the Indic Formant EQ profile, and returns enhanced audio with `EQTelemetry` and frequency response metrics.
-  * `POST /telephony/eq/benchmark`: Benchmarks 20ms frame throughput, validating compliance with the $<0.5\text{ms}$ latency budget (0.24ms average, 82.5x real-time headroom).
-  * `GET /health`: Reports `equalizer_status: ready`.
-
-```bash
-# Verify Dynamic Multi-Band Acoustic Equalizer Suite (8/8):
-python3 scripts/test_indic_formant_equalizer.py
-```
-
----
-
-### 3.14 Adaptive Comfort Noise Generator (CNG / ITU-T G.711 App II & RFC 3389 - Pure-Math DSP)
-
-In telephony systems utilizing Discontinuous Transmission (DTX) or Voice Activity Detection (VAD) silence suppression, muting audio packets during speech pauses causes eerie, unnatural "dead-line" silence. Callers often believe the call has dropped or hang up in frustration. Conversely, injecting synthetic white noise or generic uncalibrated hiss sounds jarring and unnatural.
-
-Verbalyze provides an integrated, pure-math **Adaptive Comfort Noise Generator (CNG)** compliant with **ITU-T G.711 Appendix II** and **RFC 3389**, implemented entirely in NumPy with zero external C++ or heavy ML dependencies:
-
-* **Levinson-Durbin Linear Predictive Coding (LPC) Recursion**:
-  * Autocorrelation analysis $R(0 \dots M)$ ($M=4$ order) of background acoustic frames extracts spectral reflection coefficients $k_i \in (-1, 1)$ and predictor coefficients $a_1 \dots a_M$.
-  * Clamping reflection coefficients $k_i \in [-0.995, 0.995]$ mathematically guarantees strict all-pole filter stability.
-  * Continuously updates spectral shape and residual energy using an exponential moving average ($\alpha = 0.08$) exclusively on non-speech frames, adapting seamlessly to changing acoustic environments.
-* **Direct Form II Transposed All-Pole IIR Synthesis Filtering**:
-  * Synthesizes stationary colored noise via all-pole filter $H(z) = 1 / A(z)$ excited by calibrated zero-mean Gaussian pseudo-random noise:
-    $$y[n] = e[n] + s_0[n-1]$$
-    $$s_j[n] = -a_{j+1} y[n] + s_{j+1}[n-1], \quad 0 \le j < M-1$$
-    $$s_{M-1}[n] = -a_M y[n]$$
-  * Preserves delay states continuously across 20ms frame boundaries, achieving **0.00 mathematical deviation** compared to un-chunked continuous filtering and completely eliminating frame-boundary clicks.
-* **Exact Energy Scaling via Reflection Coefficient Gain**:
-  * Compensates for filter resonance gain to guarantee exact output dBov calibration:
-    $$\sigma_e = \sigma_y \sqrt{\prod_{i=1}^M (1 - k_i^2)}$$
-* **RFC 3389 Silence Insertion Descriptor (SID) Frames**:
-  * Encodes and decodes compact 5-byte binary SID frames carrying noise level ($0 \dots 127$ in -dBov) and 8-bit quantized reflection coefficients.
-  * Enables band-efficient silence transmission over low-bandwidth SIP/RTP telephony trunks.
-* **Smooth Raised-Cosine / Linear Cross-Fading**:
-  * 32-sample (4ms) overlap cross-fading smoothly transitions between active speech and comfort noise, eradicating sharp energy cliffs at turn boundaries.
-* **Indian Telecom Acoustic Presets**:
-  * Pre-calibrated ambient profiles: `INDIAN_ROOM_CEILING_FAN` (-50 dBov, low-frequency drone), `URBAN_STREET_TRAFFIC` (-45 dBov, mid-frequency rumble), `CELLULAR_LINE_HISS` (-58 dBov, high-frequency line static), and `CLEAN_OFFICE_QUIET` (-65 dBov).
-* **Full-Duplex MediaStream Pipeline Integration**:
-  * In `MediaStreamSession.handle_inbound_frame`, ambient background noise frames are continuously analyzed to update the active comfort noise model whenever the caller and bot are silent.
-* **FastAPI Telephony CNG REST Endpoints**:
-  * `POST /telephony/cng/generate`: Synthesizes calibrated comfort noise frames for any preset or uploaded background sample, returning base64 PCM audio, telemetry, and RFC 3389 SID hex payloads.
-  * `POST /telephony/cng/benchmark`: Benchmarks 20ms frame synthesis throughput, validating compliance with the $<0.5\text{ms}$ telephony SLA (0.11ms average, >180x real-time headroom).
-  * `GET /health`: Reports `cng_status: ready`.
-
-```bash
-# Verify Adaptive Comfort Noise Generator Suite (8/8):
-python3 scripts/test_comfort_noise_generator.py
-```
-
----
-
-### 3.15 Pure-Math Artificial Bandwidth Expansion (BWE / Narrowband 8kHz to Wideband 16kHz)
-
-Indian cellular and PSTN telephony trunks strictly bandpass speech between 300 Hz and 3,400 Hz at an 8kHz sampling rate (ITU-T G.712). This telephone bandpass cuts off all upper harmonics (3.5 kHz–7.5 kHz), resulting in muffled voice quality where retroflex consonants, sibilants, and fricatives ("स", "श", "ष", "च", "फ") blur together, significantly increasing Word Error Rates (WER) on downstream speech recognition.
-
-Verbalyze provides an integrated, pure-math **Artificial Bandwidth Expander (BWE)** implemented entirely in NumPy with zero external C++ or heavy ML dependencies:
-
-* **Time-Domain 2x Upsampling with Boundary State Continuity**:
-  * Upsamples 8kHz linear PCM frames (160 samples = 20ms) to 16kHz (320 samples = 20ms) with midpoint linear interpolation and frame-boundary state memory.
-  * Preserves baseband telephone audio (300 Hz–3,450 Hz) cleanly via a 2nd-order Direct Form II Transposed Butterworth lowpass filter ($Q=0.7071$).
-* **Vectorized Voicing Classification & Pitch Detection**:
-  * Extracts zero-crossing rate (ZCR), short-time frame energy, and normalized cross-correlation across pitch lags ($57\text{ Hz} \le F_0 \le 400\text{ Hz}$) in sub-millisecond vectorized execution.
-  * Smoothly computes a continuous voicing index $v \in [0.0, 1.0]$ to discriminate voiced vowels and nasals from unvoiced fricatives and sibilants.
-* **Dual-Mechanism High-Band Excitation Synthesis (3.5 kHz–7.5 kHz)**:
-  * **Voiced Harmonic Excitation**: Non-linear full-wave rectification ($|x| - \text{mean}(|x|)$) and spectral fold-back ($x \cdot (-1)^n$) generate rich even and odd harmonics of the speaker's true pitch $F_0$ into the high band without pitch drift.
-  * **Unvoiced Turbulent Noise Excitation**: Envelope-modulated Gaussian pseudo-random noise synthesizes high-frequency turbulent airflow characteristic of natural fricatives and sibilants.
-  * **Voicing Blending**: Fuses harmonic and noise components dynamically according to the voicing index:
-    $$e_{\text{HB}}[n] = v \cdot e_{\text{harm}}[n] + (1 - v) \cdot e_{\text{noise}}[n]$$
-* **4th-Order Direct Form II Transposed High-Bandpass Filter ($H_{\text{HB}}$)**:
-  * Cascades 2nd-order highpass ($3500\text{ Hz}$) and lowpass ($7200\text{ Hz}$) biquads to isolate the extended band without leaking into the telephone ear-band or mirroring past Nyquist.
-  * Preserves filter delay states across 20ms frame boundaries for click-free audio synthesis.
-* **Dynamic Phoneme-Adaptive High-Band Gain**:
-  * Unvoiced sibilants receive an elevated boost ($+3\text{ dB}$ to $+6\text{ dB}$) to restore crisp articulation on Indic phonemes ("स", "श", "ष").
-  * Voiced vowels receive natural glottal roll-off attenuation ($-6\text{ dB/octave}$ to $-12\text{ dB/octave}$) to eliminate metallic or buzzing artifacts.
-  * Silent frames and pauses are completely muted, preventing amplification of line hiss.
-* **Soft-Saturation Peak Limiter**:
-  * Smoothly compresses signal overshoots beyond 30,000 using a $\tanh$ knee, preventing 16-bit integer wrap-around clipping distortion.
-* **Sovereign STT & MediaStream Integration**:
-  * Wirelessly integrated into `SovereignSTTEngine`. Inbound 8kHz telephony audio is automatically expanded to crisp 16kHz wideband speech before feeding local faster-whisper acoustic encoders, significantly improving transcription accuracy on Indian debt collection and banking dialogues.
-* **FastAPI Telephony BWE REST Endpoints**:
-  * `POST /telephony/bwe/process`: Expands uploaded base64 8kHz audio to 16kHz wideband with comprehensive `BWETelemetry`.
-  * `POST /telephony/bwe/benchmark`: Benchmarks 20ms frame throughput, validating compliance with the $<0.5\text{ms}$ latency SLA (0.13ms average, >145x real-time headroom).
-  * `GET /health`: Reports `bwe_status: ready`.
-
-```bash
-# Verify Artificial Bandwidth Expansion Suite (8/8):
-python3 scripts/test_bandwidth_expander.py
-```
-
----
-
-### 3.16 Acoustic Watermarking & Tamper-Evident Integrity Seal (Section 65B Indian Evidence Act & IT Act 2000 Evidence Guard)
-
-In high-stakes Indian banking, debt recovery, and legal telecommunications, audio recordings are frequently disputed in court or consumer forums where debtors claim voice tampering, spliced commitments, or AI voice cloning. Under Section 65B of the Indian Evidence Act, 1872 and the Information Technology Act, 2000, electronic records require cryptographic provenance, continuous chain-of-custody verification, and tamper-evident audit trails to be admitted as legal evidence.
-
-Verbalyze provides a high-performance, pure-math **Acoustic Watermarking & Tamper-Evident Integrity Seal Engine** implemented entirely in NumPy with zero external C++ or heavy ML dependencies:
-
-* **Spread-Transform Dither Modulation (ST-DM) & Pseudorandom DSSS Spreading**:
-  * Employs Spread-Transform Dither Modulation (ST-DM) with a zero-mean, unit-norm pseudorandom chip sequence ($c$) keyed deterministically by a sovereign secret key.
-  * Projects audio blocks of length $L$ ($80$ samples = 10ms at 8kHz, $160$ samples = 10ms at 16kHz) onto the chip sequence:
-    $$p = \sum_{n=0}^{L-1} x[n] \cdot c[n]$$
-  * Quantizes projection coordinates $p$ with calibrated dither modulation ($d_0 = 0, d_1 = \Delta / 2$):
-    $$p_q = \text{round}\left(\frac{p - d}{\Delta}\right) \Delta + d$$
-  * Distributes minimal perturbation ($\Delta p \cdot c$) across all block samples, providing complete rejection of host speech interference and zero bit errors.
-* **32-Bit Cryptographic Watermark Packet**:
-  * **Barker Preamble (8 bits)**: `[1, 1, 1, 0, 0, 1, 0, 1]` provides robust packet frame synchronization and alignment.
-  * **Call SID Hash (8 bits)**: Truncated SHA-256 hash uniquely binding each packet to the authorized Call SID. Impostor or mismatched audio streams are immediately rejected.
-  * **UTC Timestamp (8 bits)**: Rolling Unix timestamp in seconds verifying temporal continuity and time-of-recording provenance.
-  * **Sequence Index (4 bits)**: Modulo-16 packet counter ($0 \dots 15$) validating packet order and flagging excised audio chunks.
-  * **HMAC-SHA256 Signature Tag (4 bits)**: Cryptographic signature keyed by the sovereign enterprise key, preventing forgery or synthetic packet injection.
-  * Spans $2560\text{ samples}$ ($320\text{ms}$ at 8kHz) per packet, repeating continuously throughout the audio stream.
-* **Psychoacoustic Inaudibility & High Headroom ($SWR > 44\text{ dB}$)**:
-  * Maximum sample distortion is strictly contained below $250$ out of $32,767$ ($<0.75\%$ peak amplitude), completely imperceptible to human ears.
-  * Speech energy-adaptive quantization scaling scales down dither depth during low-energy speech pauses (RMS $< 60$), eliminating idle line noise.
-* **ITU-T G.711 A-Law Telecom Companding Resilience**:
-  * Calibrated quantization step ($\Delta = 900.0$) maintains decision margins ($225.0$) well above non-linear 8-bit A-law logarithmic companding step sizes, guaranteeing $100\%$ packet survival through cellular GSM and PSTN carrier switches.
-* **Millisecond-Accurate Tamper Localization**:
-  * Cross-correlates Barker preambles and validates cryptographic packet checksums across sliding windows.
-  * Pinpoints audio splices, deleted words, inserted voice clones, or Call SID mismatches down to the exact millisecond interval (`tampered_segments: [{"start_ms": 640.0, "end_ms": 960.0, "reason": "preamble_sync_lost_or_corrupt"}]`).
-* **Section 65B Electronic Record Audit Certificate (`WatermarkAuditCertificate`)**:
-  * Emits verifiable court-admissible audit certificates containing Certificate ID, Call SID, SHA-256 audio hash, duration, sample rate, valid packet counts, integrity score ($0.0 \dots 1.0$), status (`VERIFIED_AUTHENTIC`, `SUSPECT_TAMPERED`, `UNAUTHENTIC_OR_MISSING`), and a tamper-evident HMAC digital seal.
-* **DualChannelCallRecorder Integration**:
-  * `DualChannelCallRecorder.export_stereo_wav_bytes(watermark_call_sid="...")` automatically embeds Section 65B acoustic watermarks onto dual-channel stereo WAV recordings before export.
-* **FastAPI Telephony Watermark REST Endpoints**:
-  * `POST /telephony/watermark/embed`: Embeds acoustic watermark packets into base64 linear PCM audio streams.
-  * `POST /telephony/watermark/verify`: Audits an audio stream, detects tampering, and issues an official Section 65B certificate.
-  * `POST /telephony/watermark/benchmark`: Benchmarks real-time embedding throughput, confirming $<0.01\text{ms}$ execution per 20ms frame (>2000x real-time headroom).
-  * `GET /health`: Reports `watermark_status: ready`.
-
-```bash
-# Verify Acoustic Watermarking & Tamper-Evident Integrity Seal Suite (8/8):
-python3 scripts/test_acoustic_watermarker.py
-```
-
----
-
-### 3.17 Dynamic Multi-Speaker Gain Normalizer & Automatic Level Control (ITU-T G.169 ALC - Pure-Math DSP)
-
-In real-world Indian telephony corridors (rural handset variations, fluctuating 2G/3G/4G network attenuation, shouted calls in busy bazaars, and whispered responses), callers exhibit radical volume variations from $-38\text{ dBov}$ up to near-clipping $0\text{ dBov}$. Under conventional pipelines, weak speech is dropped by Acoustic VAD or transcribed with high Word Error Rates (WER) by Whisper, while blasted loudspeaker audio clips harshly and corrupts acoustic features.
-
-Verbalyze provides a high-performance, pure-math **Dynamic Multi-Speaker Gain Normalizer & Automatic Level Control (ALC)** engine compliant with the **ITU-T G.169** and **ITU-T P.56** international telecommunication standards, implemented entirely in NumPy with zero external C++ or heavy ML dependencies:
-
-* **Standardized ITU-T P.56 Speech Level Estimation in dBov**:
-  * Evaluates signal level in dBov relative to digital full scale ($0\text{ dBov}$ corresponds to maximum overload sine RMS $23,170.47$):
-    $$L_{\text{dBov}} = 20 \log_{10}\left(\frac{\max(\text{RMS}, 1.0)}{23170.47}\right)$$
-  * Accurately tracks caller speech levels from $-60\text{ dBov}$ (ambient room static) up to $0\text{ dBov}$ (maximum digital headroom).
-* **Dual-Rate Attack & Release Dynamics (Anti-Pumping / Anti-Breathing)**:
-  * **Fast Attack ($\tau_{\text{att}} = 4 - 10\text{ms}$)**: Instantly attenuates sudden loud syllables and shouted bursts within 1–2 frames, catching peaks before they clip.
-  * **Slow Release ($\tau_{\text{rel}} = 350 - 600\text{ms}$)**: Gently ramps upward gain when quiet speech begins, eliminating the jarring volume "pumping" and "breathing" artifacts common in naive compressors.
-  * **Speech Hangover Timer**: Holds active gain states across inter-syllable speech pauses ($160\text{ms} = 8$ frames), preventing gain drops between words in a sentence.
-* **Downward Noise Gate Expansion**:
-  * In non-speech intervals ($L_{\text{dBov}} < -46\text{ dBov}$), gain adaptation freezes upward boost.
-  * Applies mild downward expansion $((L_{\text{dBov}} - L_{\text{gate}}) \cdot 0.45)$, suppressing ceiling fan drone and cellular line static during caller silence.
-* **Sample-by-Sample Linear Gain Ramp (Zero Boundary Clicks)**:
-  * Vectorially interpolates linear gain sample-by-sample across the 20ms frame from $g_{\text{prev}}$ to $g_{\text{curr}}$:
-    $$g[n] = g_{\text{prev}} + \frac{n}{N} (g_{\text{curr}} - g_{\text{prev}})$$
-  * Guarantees exact mathematical continuity across 20ms frame boundaries with **0.00 audio clicks**.
-* **Soft-Saturation Peak Limiter**:
-  * Catches unexpected plosive bursts with a smooth hyperbolic tangent ($\tanh$) knee above 30,000 amplitude:
-    $$y_{\text{lim}} = 30000.0 + (2767.0) \tanh\left(\frac{|y| - 30000.0}{2767.0}\right)$$
-  * Strictly contains output within 16-bit integer boundaries ($[-32768, 32767]$) with zero digital wrap-around clipping.
-* **Indian Telephony Acoustic Presets**:
-  * `RURAL_WHISPER_BOOST`: Target $-18.0\text{ dBov}$, $+16\text{ dB}$ boost for faint rural handsets.
-  * `LOUDSPEAKER_ANTI_CLIP`: Target $-22.0\text{ dBov}$, $-20\text{ dB}$ cut with ultra-fast 4ms attack for shouted or loudspeaker calls.
-  * `STUDIO_NATURAL`: Target $-20.0\text{ dBov}$, $+12\text{ dB}$ boost / $-15\text{ dB}$ cut for transparent conversational leveling.
-  * `BYPASS`: Transparent 0 dB gain passthrough.
-* **Full-Duplex MediaStream Pipeline Integration**:
-  * Integrated directly into `MediaStreamSession.handle_inbound_frame`.
-  * Inbound audio from the AEC and Equalizer is automatically leveled to calibrated listening volume before reaching acoustic DTMF decoders, Turn-Taking VAD, and STT transcription.
-* **FastAPI Telephony ALC REST Endpoints**:
-  * `POST /telephony/alc/process`: Normalizes uploaded base64 PCM frames and returns leveled audio with real-time `ALCTelemetry`.
-  * `POST /telephony/alc/benchmark`: Benchmarks 20ms frame throughput, validating compliance with the $<0.5\text{ms}$ latency SLA (0.011ms average, >1,700x real-time headroom).
-  * `GET /health`: Reports `alc_status: ready`.
-
-```bash
-# Verify Dynamic Multi-Speaker Gain Normalizer & ALC Suite (8/8):
-python3 scripts/test_automatic_level_controller.py
-```
-
----
-
-### 3.18 Real-Time Dual-Channel Active Speaker Diarization & Cross-Talk Energy Estimator (Pure-Math DSP)
-
-In Indian debt recovery, banking dispute resolution, and customer support telephony, callers and agents frequently vocalize concurrently (heated arguments, spoken interruptions, affirmative backchanneling "हाँ हाँ", or loud phone speaker acoustic bleed). Standard single-channel STT models hallucinate or merge overlapping voices into illegible transcripts, losing critical speaker attribution required for compliance audits.
-
-Verbalyze provides a high-performance, pure-math **Dual-Channel Active Speaker Diarization & Cross-Talk Energy Estimator** implemented entirely in NumPy with zero external C++ or heavy ML dependencies:
-
-* **Dual-Channel Normalized Cross-Correlation (NCC) & TDOA Bleed Rejection**:
-  * Evaluates Normalized Cross-Correlation ($\rho$) across a $\pm 20\text{ms}$ time-difference-of-arrival (TDOA) search window:
-    $$\rho = \max_k \frac{\sum_{n=0}^{N-1} x_0[n] x_1[n-k]}{\sqrt{\sum x_0^2 \sum x_1^2 + \epsilon}}$$
-  * Differentiates true simultaneous speech from handset loudspeaker acoustic bleed: if $\rho \ge 0.58$ and the far-end channel is stronger by $\ge 4.0\text{ dB}$, the weaker channel is classified as `CROSS_TALK_BLEED` and attributed to the true speaker, preventing false double-talk triggers.
-* **Instantaneous Relative Energy Ratio & Dominance Metric**:
-  * Computes linear energy dominance $D \in [-1.0, +1.0]$ between Near-End (Caller $E_0$) and Far-End (Agent $E_1$):
-    $$D = \frac{10^{E_0 / 20} - 10^{E_1 / 20}}{10^{E_0 / 20} + 10^{E_1 / 20}}$$
-  * Identifies dominant speaker ownership ($D > +0.25 \implies \text{CALLER}$, $D < -0.25 \implies \text{AGENT}$, $-0.25 \le D \le +0.25 \implies \text{BALANCED}$).
-* **5-State Real-Time Diarization State Machine**:
-  * Emits frame classifications per 20ms: `SILENCE`, `CALLER_ONLY`, `AGENT_ONLY`, `DOUBLE_TALK`, and `CROSS_TALK_BLEED`.
-* **State Hangover & Hysteresis Debouncing**:
-  * Employs configurable multi-frame hangover counters ($60\text{ms} = 3$ frames) across both channels, bridging natural inter-syllable unvoiced stops (e.g. "प", "क", "ट") without premature state drops to `SILENCE`.
-* **Automated Turn Segmentation & Formatted LLM Transcripts**:
-  * Aggregates continuous frame states into semantic `SpeakerTurn` segments with exact millisecond bounds (`start_ms`, `end_ms`), speaker attribution, cross-talk bleed ratios, and confidence scores.
-  * `DualChannelDiarizer.format_diarized_transcript(turns)` formats dialogues into structured transcripts ready for LLM context ingestion:
-    ```
-    [00:00.000 - 00:00.660] [CALLER]: हाँ जी, मैं कल तक ईएमआई पेमेंट कर दूंगा।
-    [00:00.700 - 00:01.300] [AGENT]: बहुत बहुत धन्यवाद शर्मा जी, हमने पेमेंट लिंक भेज दिया है।
-    ```
-* **DualChannelCallRecorder Direct Integration**:
-  * In-memory integration via `diarizer.diarize_call_recorder(recorder)`, enabling automated post-call diarization without exporting intermediate files to disk.
-* **FastAPI Telephony Diarization REST Endpoints**:
-  * `POST /telephony/diarization/process`: Diarizes uploaded dual-channel or interleaved stereo base64 PCM streams.
-  * `POST /telephony/diarization/benchmark`: Benchmarks 20ms frame throughput, validating compliance with the $<0.5\text{ms}$ latency SLA (0.025ms average, >790x real-time headroom).
-  * `GET /health`: Reports `diarization_status: ready`.
-
-```bash
-# Verify Dual-Channel Active Speaker Diarization Suite (8/8):
-python3 scripts/test_active_speaker_diarizer.py
-```
-
----
-
-### 3.19 Real-Time Cellular Line Impairment & Acoustic Quality Classifier (ITU-T P.862 PESQ & POLQA-MOS Non-Intrusive Proxy)
-
-Indian mobile telecommunications networks (crowded cell towers, moving commuter trains, rural 2G/3G/VoLTE cell handovers, and substandard carrier gateways) frequently suffer physical line impairments: RF multipath fading, severe carrier ADC clipping, 50Hz/100Hz Indian electrical mains hum, elevated noise floors, and packet drops. Without automated real-time quality classification, degraded trunks persist, causing caller frustration, failed debt recovery attempts, and customer disconnects.
-
-Verbalyze provides a high-performance, pure-math **Cellular Line Impairment & Acoustic Quality Classifier** implementing single-ended, non-intrusive perceptual speech quality estimation (ITU-T P.862 PESQ and POLQA-MOS proxy) entirely in NumPy with zero external C++ or heavy ML dependencies:
-
-* **Single-Ended Non-Intrusive Perceptual Quality Model (ITU-T P.862 PESQ / POLQA-MOS Proxy)**:
-  * Evaluates physical acoustic defects per 20ms linear PCM frame ($N=160$ at 8kHz, $N=320$ at 16kHz) without requiring pristine reference audio.
-  * Estimates calibrated Mean Opinion Scores ($\text{MOS} \in [1.00, 4.50]$) and maps linearly to ITU-T P.862 PESQ scores ($\text{PESQ} \in [-0.50, 4.50]$):
-    $$\text{PESQ} = -0.5 + 5.0 \cdot \left(\frac{\text{MOS} - 1.0}{3.5}\right)$$
-* **50Hz & 100Hz Indian Electrical Mains Hum Extraction**:
-  * Computes Hann-windowed FFT power across narrow bins centered on 50Hz (40–60Hz) and 100Hz harmonic (90–110Hz).
-  * Evaluates spectral prominence ratio against overall spectral bin power:
-    $$\text{Prominence} = \frac{\bar{P}_{\text{hum}}}{\bar{P}_{\text{spectrum}}}$$
-  * Accurately flags ungrounded electrical pickup and transformer hum ($\ge 2.5\text{x}$ prominence, $>-14\text{ dB}$ ratio) while completely rejecting white noise and wideband line static.
-* **Instantaneous Spectral Noise Floor Tracking (Martin Minimum Statistics Proxy)**:
-  * Computes the 20th percentile spectral bin power $P_{20}$ across the discrete Fourier transform:
-    $$\sigma_{\text{noise}} = \sqrt{\frac{P_{20}}{0.22314 \cdot \frac{3}{8} N}}$$
-  * Tracks background noise variance in real time with zero lookahead latency, enabling accurate SNR estimation during active speech or continuous noisy environments.
-* **Carrier Saturation & Flat-Top Clipping Detection**:
-  * Detects near-full-scale digital excursions ($|x| \ge 31,500$) and flat-topped waveform plateaus ($|x[n] - x[n-1]| \le 2.0$ at $|x| \ge 28,000$).
-  * Quantifies frame clipping ratio to heavily penalize overdriven analog PSTN or carrier gateway saturation.
-* **RF Multipath Fading & Sudden Cliff Dropout Detection**:
-  * Tracks inter-frame speech energy continuity.
-  * Detects abrupt $>16\text{ dB}$ energy drops from active speech to digital silence, identifying cellular RF fading and unannounced carrier packet drops.
-* **Automated Least-Cost Routing (LCR) Trunk Failover Recommendation**:
-  * Evaluates a debounced state machine across rolling frames.
-  * When MOS drops below threshold ($< 2.80$) for $\ge 4$ consecutive frames, the classifier flags `failover_recommended = True` and identifies the `failover_reason` (`CARRIER_CLIPPING`, `MAINS_50HZ_HUM`, `RF_FADING_DROPOUT`, `HIGH_NOISE_FLOOR`, `SEVERELY_DEGRADED`).
-  * Direct integration into `MultiTrunkRouter` and `SIPCircuitBreaker` reroutes outbound dials to secondary carrier trunks (e.g. Airtel to Jio / Tata Tele) before borrowers hang up.
-* **Frame-Level Telemetry & Call Stream Quality Reports**:
-  * Emits real-time `AcousticQualityTelemetry` per 20ms frame.
-  * Generates comprehensive `AcousticQualityReport` aggregating stream statistics: average MOS, minimum MOS, 95th percentile MOS, average PESQ, percentage breakdown by impairment type, and overall `trunk_health_status` (`HEALTHY`, `DEGRADED`, `CRITICAL_FAILOVER`).
-* **Ultra-Low Latency Telephony Throughput**:
-  * Processes 20ms frames in **0.044 ms** (over **450x faster than real time**), leaving massive compute headroom under the $<0.5\text{ms}$ telephony SLA.
-* **FastAPI Quality Classifier REST Endpoints**:
-  * `POST /telephony/quality/analyze`: Ingests base64-encoded PCM audio streams and returns full frame telemetries alongside the aggregated `AcousticQualityReport`.
-  * `POST /telephony/quality/benchmark`: Benchmarks real-time frame classification latency and verifies SLA compliance.
-  * `GET /health`: Reports `quality_classifier_status: ready`.
-
-```bash
-# Verify Cellular Line Impairment & Quality Classifier Suite (8/8):
-python3 scripts/test_line_quality_classifier.py
-```
-
----
-
-### 4. Automated Human-Likeness Quality Gate (80% / MOS 4.0)
-
-Every generated speech utterance is evaluated across 5 acoustic dimensions before being accepted or played over the phone:
-
-1. **Cadence Naturalness (30%)**: Target 80–150 WPM. Penalizes unnatural rushed or sluggish delivery.
-2. **Pauses & Phrasing (25%)**: Evaluates silence ratios (18–38%) and pause variance to ensure natural human breath intervals.
-3. **Prosodic Dynamics (25%)**: Evaluates energy and pitch dynamics, preventing monotone robotic voices.
-4. **Harmonic Smoothness (10%)**: Analyzes frame jitter to eliminate concatenative click artifacts.
-5. **Signal Integrity (10%)**: Enforces headroom and checks against digital clipping (<0.1%).
-
-#### 8kHz G.711 Telecom Line Acoustic Simulation
-To ensure speech survives real Indian telecom carrier lines (GSM, 2G, VoLTE, PSTN), the Quality Gate features a dedicated telephony channel simulator:
-* **8,000 Hz Resampling**: Enforces the telecom standard sample rate.
-* **ITU-T G.712 Bandpass Filtering (300 Hz – 3,400 Hz)**: Simulates the strict telephone ear-band frequency cutoffs.
-* **ITU-T G.711 A-law Companding ($A=87.6$)**: Exact 8-bit logarithmic companding and reconstruction used in Indian telecom switching.
-* **RTP Packet Loss Jitter**: Injects 1.5% simulated cellular packet drops to stress-test conversational resilience.
-
-```bash
-# Verify 8kHz G.711 Telephony Audio & SIP Webhooks
-python3 scripts/test_telephony_audio_gate.py
-```
-
-* **Quality Threshold**: Strict **0.80 (80% / MOS 4.0)** acceptance gate. Sub-threshold audio triggers a dynamic auto-healing loop (pace $\pm 8\%$, pitch $+2\text{Hz}$, and voice switching). Sub-threshold audio that cannot be healed is strictly rejected.
-* **CLI Option**: Adjust the gate threshold with `--min-score` (e.g. `--min-score 0.85`).
-
----
-
-### 5. Interactive Web Application & Space (`verbalyze ui`)
-Launch the full-duplex telephony voicebot, STT benchmark arena, and multi-lingual dataset visualizer:
-
-[![Hugging Face Spaces](https://img.shields.io/badge/Hugging%20Face-verbalyze--demo-yellow)](https://huggingface.co/spaces/ansh-rohilla/verbalyze-demo)
-
-```bash
-# Launch interactive Gradio Web App locally on http://localhost:7860
-python3 -m verbalyze.cli ui
-
-# Or run directly via Python
+# Launch full-duplex telephony voicebot & benchmark UI on http://localhost:7860
 python3 app.py
-
-# Deploy / sync directly to Hugging Face Spaces
-python3 -m verbalyze.cli deploy-space
 ```
 
----
+### Access Datasets on Hugging Face Hub
+Both datasets are publicly indexed in the Hugging Face `datasets` library:
 
-## Live on Hugging Face Hub
-
-Both datasets are publicly indexed and ready to use in the Hugging Face `datasets` library:
-
-| Dataset | Samples | Formats | Link |
-|---|:---:|:---:|:---:|
-| **Verbalyze Dialogues** | **16,370** | ChatML, ShareGPT | [ansh-rohilla/verbalyze-dialogues](https://huggingface.co/datasets/ansh-rohilla/verbalyze-dialogues) |
-| **Verbalyze STT Benchmark** | **172,800** | JSONL, Parquet | [ansh-rohilla/verbalyze-stt-bench](https://huggingface.co/datasets/ansh-rohilla/verbalyze-stt-bench) |
-
-### Quickstart with Python:
 ```python
 from datasets import load_dataset
 
-# 1. Load multi-turn telephony conversations (12 languages)
+# 1. Multi-turn telephony conversations (16,370 dialogues)
 dialogues = load_dataset("ansh-rohilla/verbalyze-dialogues", split="train")
-print(f"Loaded {len(dialogues)} dialogues. Sample turn: {dialogues[0]['messages'][1]}")
 
-# 2. Load STT scenario benchmark dataset (12 languages)
+# 2. STT scenario benchmark dataset (172,800 utterances)
 stt_bench = load_dataset("ansh-rohilla/verbalyze-stt-bench", split="test")
-print(f"Loaded {len(stt_bench)} benchmark utterances. Sample: {stt_bench[0]['transcript']}")
 ```
-
-
