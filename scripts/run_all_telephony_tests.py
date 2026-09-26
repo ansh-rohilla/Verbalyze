@@ -47,6 +47,7 @@ TEST_SUITES = [
     ("Verbalyze Indic SLM Integration & Function Calling", "scripts/test_verbalyze_indic_model.py"),
     ("Voice Biometrics, Anti-Spoofing & Replay Guard", "scripts/test_voice_biometrics_and_anti_spoof.py"),
     ("WhatsApp Settlement & Dispute Resolution Gateway", "scripts/test_whatsapp_settlement_gateway.py"),
+    ("Acoustic End-of-Turn & Voice Boundary Predictor", "scripts/test_voice_boundary_predictor.py"),
 ]
 
 

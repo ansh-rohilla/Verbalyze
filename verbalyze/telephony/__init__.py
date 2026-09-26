@@ -143,6 +143,15 @@ from verbalyze.telephony.line_quality import (
     AcousticQualityTelemetry,
     AcousticQualityReport,
 )
+from verbalyze.telephony.voice_boundary import (
+    VoiceBoundaryPredictor,
+    VoiceBoundaryTelemetry,
+    PitchTrend,
+    TurnBoundaryDecision,
+    ITUTP56SpeechLevelEstimator,
+    PitchDeclinationTracker,
+    EnergyAndFluxTracker,
+)
 
 __all__ = [
     "DispatchResult",
@@ -255,6 +264,13 @@ __all__ = [
     "LineImpairmentType",
     "AcousticQualityTelemetry",
     "AcousticQualityReport",
+    "VoiceBoundaryPredictor",
+    "VoiceBoundaryTelemetry",
+    "PitchTrend",
+    "TurnBoundaryDecision",
+    "ITUTP56SpeechLevelEstimator",
+    "PitchDeclinationTracker",
+    "EnergyAndFluxTracker",
 ]
 
 

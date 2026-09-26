@@ -34,6 +34,7 @@ from verbalyze.telephony import (
     GoertzelDetector,
     IVRStateMachine,
     BiometricVerificationEngine,
+    VoiceBoundaryPredictor,
 )
 
 __all__ = [
@@ -64,4 +65,5 @@ __all__ = [
     "GoertzelDetector",
     "IVRStateMachine",
     "BiometricVerificationEngine",
+    "VoiceBoundaryPredictor",
 ]

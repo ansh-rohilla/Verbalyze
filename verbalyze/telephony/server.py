@@ -151,6 +151,12 @@ from verbalyze.telephony.line_quality import (
     AcousticQualityTelemetry,
     AcousticQualityReport,
 )
+from verbalyze.telephony.voice_boundary import (
+    VoiceBoundaryPredictor,
+    VoiceBoundaryTelemetry,
+    PitchTrend,
+    TurnBoundaryDecision,
+)
 
 # Try importing FastAPI
 try:
@@ -244,6 +250,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "alc_status": "ready",
             "diarization_status": "ready",
             "quality_classifier_status": "ready",
+            "voice_boundary_predictor_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -2777,6 +2784,106 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "max_quality_time_ms": round(max_ms, 4),
             "target_sla_ms": 0.5,
             "meets_quality_sla": avg_ms < 0.5,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    @app.post("/telephony/eot/analyze")
+    async def analyze_eot_voice_boundary(request: Request):
+        """
+        Analyzes linear PCM audio stream using pure-math Voice Boundary Predictor.
+        Computes ITU-T P.56 active speech level, pitch declination (F0), energy decay rate,
+        spectral flux, and adaptive variable silence window (120ms to 750ms).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        audio_b64 = body.get("audio_base64") or body.get("pcm_base64")
+        if not audio_b64:
+            return JSONResponse({"error": "Missing audio_base64 parameter"}, status_code=400)
+
+        sample_rate = int(body.get("sample_rate", 8000))
+        fast_thresh = float(body.get("fast_eot_threshold_ms", 120.0))
+        std_thresh = float(body.get("standard_eot_threshold_ms", 350.0))
+
+        predictor = VoiceBoundaryPredictor(
+            sample_rate=sample_rate,
+            fast_eot_threshold_ms=fast_thresh,
+            standard_eot_threshold_ms=std_thresh,
+        )
+
+        try:
+            raw_pcm = base64.b64decode(audio_b64)
+        except Exception:
+            return JSONResponse({"error": "Invalid base64 audio"}, status_code=400)
+
+        frame_bytes_len = int(sample_rate * 0.02 * 2)  # 20ms of 16-bit PCM
+        telemetries = []
+        eot_detected = False
+        eot_frame_idx = -1
+
+        for i in range(0, len(raw_pcm), frame_bytes_len):
+            chunk = raw_pcm[i : i + frame_bytes_len]
+            if len(chunk) < frame_bytes_len:
+                chunk = chunk + b"\x00" * (frame_bytes_len - len(chunk))
+            t = predictor.process_frame(chunk)
+            telemetries.append(t.to_dict())
+            if t.eot_triggered and not eot_detected:
+                eot_detected = True
+                eot_frame_idx = t.frame_index
+
+        return JSONResponse({
+            "status": "ok",
+            "sample_rate": sample_rate,
+            "total_frames": len(telemetries),
+            "eot_detected": eot_detected,
+            "eot_frame_index": eot_frame_idx,
+            "final_decision": telemetries[-1]["decision"] if telemetries else "IDLE_SILENCE",
+            "telemetry": telemetries,
+        })
+
+    @app.post("/telephony/eot/benchmark")
+    async def benchmark_eot_engine(request: Request):
+        """
+        Benchmarks Pure-Math Acoustic Voice Boundary Predictor execution throughput.
+        Verifies that processing time per 20ms frame is < 0.1ms (ensuring >200x real-time headroom).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        predictor = VoiceBoundaryPredictor(sample_rate=8000)
+
+        # 160-sample (20ms) sinusoidal test frame
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        frame_pcm = (np.sin(2 * np.pi * 180.0 * t) * 12000.0).astype(np.int16).tobytes()
+
+        # Warm-up
+        predictor.process_frame(frame_pcm)
+
+        n_iterations = 100
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            predictor.process_frame(frame_pcm)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_eot_time_ms": round(avg_ms, 4),
+            "p95_eot_time_ms": round(p95_ms, 4),
+            "max_eot_time_ms": round(max_ms, 4),
+            "target_sla_ms": 0.1,
+            "meets_eot_sla": avg_ms < 0.1,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 
