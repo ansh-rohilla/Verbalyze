@@ -16,42 +16,63 @@ Verbalyze is designed as a carrier-grade, full-duplex conversational voice AI su
 
 ```mermaid
 flowchart TD
-    subgraph Telecom["Telecom Carrier & PSTN"]
-        Caller["Indian Phone Line / Mobile Caller"]
-        Carrier["Carrier Trunk (RingTrunk / Twilio / Asterisk)"]
-        Caller <-->|"GSM / PSTN Call"| Carrier
+    subgraph Telecom["1. Telecom Carrier Edge & Supervisors"]
+        Caller["Borrower / Indian Mobile PSTN<br/>(Airtel / Jio / Vi / BSNL)"]
+        Carrier["Carrier Trunks & 22-Circle LCR<br/>(RingTrunk / Asterisk / FreeSWITCH)"]
+        Supervisor["Human Supervisor Console<br/>(WebRTC Audio / SIP Headset)"]
+        Caller <-->|"GSM / VoLTE Audio"| Carrier
     end
 
-    subgraph Gateway["Telephony Gateway & Ingestion"]
-        WS["Bi-Directional WebSocket (/media-stream)<br/>8kHz ITU-T G.711 A-law / Linear PCM"]
-        VAD["20ms Frame VAD &<br/>Sub-50ms Barge-In Cutoff ('clear' event)"]
-        STT["Sovereign STT Engine (faster-whisper)<br/>In-Memory 8kHz PCM | &lt;200ms"]
+    subgraph Gateway["2. Ingestion & Soft-Switch Gateway"]
+        WS["Bi-Directional WebSocket & Signaling<br/>(/media-stream | 8kHz G.711 / Linear PCM)"]
         Carrier <-->|"20ms Audio Frames"| WS
-        WS -->|"Inbound Audio"| VAD
-        VAD -->|"Filtered Speech"| STT
+        Supervisor <-->|"Supervisor Inbound/Outbound"| WS
     end
 
-    subgraph Intelligence["Conversational Intelligence"]
-        SLM["verbalyze-indic (Ollama 3B) / Groq / OpenAI<br/>(Indic Banking & Debt Recovery Personas)"]
-        Streamer["Token-to-Speech Clause Pipeliner<br/>(। , ? ! . Delimiters | &lt;200ms TTFS)"]
+    subgraph DSP["3. Pure-Math Real-Time DSP Engine (Sub-1ms)"]
+        direction TB
+        QC["Line Quality & PESQ Estimator<br/>(50Hz Hum / Clipping / RF Fading)"]
+        Jitter["Adaptive Jitter & PLC<br/>(RFC 3550 / G.711 App I)"]
+        AEC["NLMS Echo Canceller & Noise Gate<br/>(Acoustic Decoupling)"]
+        Diarizer["Dual-Channel Speaker Diarizer<br/>(Near-End vs Far-End Attribution)"]
+        EoT["Acoustic End-of-Turn Predictor<br/>(ITU-T P.56 / NACF Pitch Declination)"]
+        BWE["Bandwidth Expander & Formant EQ<br/>(8kHz to 16kHz Retroflex Boost)"]
+        Mixer["3-Way Conference Audio Mixer<br/>(ITU-T G.115 3x3 Dynamic Gain Router)"]
+
+        WS -->|"Inbound Frames"| QC
+        QC --> Jitter --> AEC --> Diarizer --> EoT
+        Diarizer -->|"Attributed Speech"| BWE
+    end
+
+    subgraph Core["4. Conversational Intelligence & Sovereign SLM"]
+        STT["Sovereign On-Prem STT<br/>(faster-whisper / ctranslate2 &lt;150ms)"]
+        SLM["verbalyze-indic (Fine-Tuned 3B SLM)<br/>(Ollama / Groq | Banking Personas)"]
+        Streamer["Token-to-Speech Clause Pipeliner<br/>(&lt;200ms TTFS | Dynamic Silence Window)"]
+        
+        BWE -->|"Clean 16kHz PCM"| STT
+        EoT -.->|"Fast Boundary Cue"| Streamer
         STT -->|"User Utterance"| SLM
         SLM -->|"Streaming Tokens"| Streamer
     end
 
-    subgraph Actions["Action Dispatch & Audio Synthesis"]
-        Tools["Telephony Tool Executor<br/>(send_payment_link, disconnect)"]
-        SMS["Live SMS & NPCI UPI Intent<br/>(Fast2SMS / Twilio / upi://pay)"]
-        TTS["Neural Audio Engine<br/>(Edge-TTS / Indic Accents)"]
-        Gate["Human-Likeness Quality Gate<br/>(&ge;80% MOS | 8kHz G.712 Bandpass)"]
-        
-        Streamer -->|"Tool Calls"| Tools
-        Tools -->|"Dispatches"| SMS
-        SMS -->|"Instant UPI Link"| Caller
+    subgraph Actions["5. Synthesis, Compliance & Action Dispatch"]
+        TTS["Neural Voice Synthesis<br/>(Indic Dialects & Prosody)"]
+        Gate["Human-Likeness MOS Gate<br/>(&ge;80% MOS | G.712 Bandpass)"]
+        Watermark["Acoustic Watermarker<br/>(DSSS Tamper Seal Sec 65B)"]
+        Tools["Telephony Tool Engine<br/>(UPI Payment / WhatsApp / Transfer)"]
+        SMS["NPCI UPI & Fast2SMS Gateway<br/>(upi://pay Deep Links)"]
 
         Streamer -->|"Speech Clauses"| TTS
-        TTS -->|"Raw Audio"| Gate
-        Gate -->|"20ms G.711 Frames"| WS
+        TTS --> Gate --> Watermark
+        Watermark -->|"Agent Voice"| Mixer
+
+        Streamer -->|"Tool Calls"| Tools
+        Tools -->|"Instant Dispatch"| SMS
+        SMS -->|"SMS / WhatsApp"| Caller
     end
+
+    Mixer -->|"Customer Audio"| WS
+    Mixer <-->|"Silent Monitor / Whisper Coach / Hard Takeover"| WS
 ```
 
 ---
@@ -187,11 +208,14 @@ Verbalyze contains a carrier-grade, pure-math DSP suite implemented entirely in 
 | **Packet Loss Concealment** | ITU-T G.711 App I & RFC 3550 | Pitch-synchronous waveform replication & OLA resynchronization for 2-5% cellular packet loss | < 0.50 ms | 840x | `python3 scripts/test_packet_loss_concealment_and_jitter.py` |
 | **Acoustic Echo Canceller** | NLMS FIR & Geigel DTD | 256-tap adaptive filter + Wiener noise suppression eliminating phantom bot barge-in | < 2.50 ms | 160x | `python3 scripts/test_echo_canceller_and_noise_suppression.py` |
 | **Turn-Taking & Pipelining** | Multi-feature VAD & prosody | Pitch ($F_0$) declination & syntax cue fusion achieving sub-300ms glass-to-glass latency | < 0.50 ms | 600x | `python3 scripts/test_turn_taking_and_latency.py` |
+| **End-of-Turn Predictor** | ITU-T P.56 & Parabolic NACF | Sub-120ms turn-taking via pitch declination & breath inhalation spectral flux detection | < 0.10 ms | 345x | `python3 scripts/test_voice_boundary_predictor.py` |
+| **3-Way Conference Mixer** | ITU-T G.115 3x3 Gain Router | Silent monitor, whisper coach, hard takeover & click-free crossfade (<0.02ms latency) | < 0.10 ms | 984x | `python3 scripts/test_conference_mixer.py` |
 
 ---
 
 ## Part 5: Enterprise Telephony & Regulatory Security
 
+* **3-Way Supervisor Soft-Switch & Live Takeover Matrix**: Live multi-party bridge supporting Silent Monitor, Whisper Coaching, Hard Takeover, and 3-Way Conference with soft-saturation peak limiting and click-free sample crossfading (`scripts/test_conference_mixer.py`).
 * **DPDP Act 2023 & RBI Security Guardrails**: Constant-time HMAC token verification on all SIP/WebSocket webhooks, automatic PII masking (mobile, Aadhaar, PAN, account numbers), and strict in-memory audio processing without disk persistence (`scripts/test_end_to_end_security.py`).
 * **Outbound Campaign Batch Dialer & Dual-Stage AMD**: Concurrent batch dialing with automated TRAI calling window enforcement (09:00-19:00 IST), NCPR/DND filtering, 3-call daily frequency capping, and 800ms Answering Machine Detection (`scripts/test_campaign_dialer_amd.py`).
 * **22-Circle Least-Cost Routing & SIP Circuit Breaker**: Circle-based carrier trunk routing (Airtel, Jio, Tata, Vi) with ITU-T G.107 E-model MOS telemetry and 3-state SIP circuit breakers (`scripts/test_carrier_trunks_circuit_breaker.py`).
