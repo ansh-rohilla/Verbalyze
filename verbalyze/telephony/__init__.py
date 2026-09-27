@@ -152,6 +152,11 @@ from verbalyze.telephony.voice_boundary import (
     PitchDeclinationTracker,
     EnergyAndFluxTracker,
 )
+from verbalyze.telephony.conference_mixer import (
+    ConferenceAudioMixer,
+    ConferenceMode,
+    ChannelMixResult,
+)
 
 __all__ = [
     "DispatchResult",
@@ -271,6 +276,9 @@ __all__ = [
     "ITUTP56SpeechLevelEstimator",
     "PitchDeclinationTracker",
     "EnergyAndFluxTracker",
+    "ConferenceAudioMixer",
+    "ConferenceMode",
+    "ChannelMixResult",
 ]
 
 

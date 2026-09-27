@@ -3,9 +3,9 @@
 scripts/run_all_telephony_tests.py
 
 Master Telephony & DSP Test Suite Runner for Verbalyze.
-Sequentially executes all 27 automated test suites across:
+Sequentially executes all 29 automated test suites across:
 - Core DSP algorithms (PESQ quality, ALC, Diarization, Watermarking, BWE, CNG, PLC, AEC)
-- Telephony protocols (SIP WebSocket, Media Streams, DTMF IVR, Outbound AMD)
+- Telephony protocols (SIP WebSocket, Media Streams, DTMF IVR, Outbound AMD, 3-Way Conference)
 - Safety & Compliance (Regulatory QA, Sentiment Transfer, Biometrics, Tamper Seal)
 - Enterprise Integrations (SMS UPI, WhatsApp Gateway, Multi-trunk Failover)
 """
@@ -48,6 +48,7 @@ TEST_SUITES = [
     ("Voice Biometrics, Anti-Spoofing & Replay Guard", "scripts/test_voice_biometrics_and_anti_spoof.py"),
     ("WhatsApp Settlement & Dispute Resolution Gateway", "scripts/test_whatsapp_settlement_gateway.py"),
     ("Acoustic End-of-Turn & Voice Boundary Predictor", "scripts/test_voice_boundary_predictor.py"),
+    ("3-Way Soft-Switch Conference Mixer & Supervisor Matrix", "scripts/test_conference_mixer.py"),
 ]
 
 

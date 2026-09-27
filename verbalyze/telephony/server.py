@@ -157,6 +157,11 @@ from verbalyze.telephony.voice_boundary import (
     PitchTrend,
     TurnBoundaryDecision,
 )
+from verbalyze.telephony.conference_mixer import (
+    ConferenceAudioMixer,
+    ConferenceMode,
+    ChannelMixResult,
+)
 
 # Try importing FastAPI
 try:
@@ -251,6 +256,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "diarization_status": "ready",
             "quality_classifier_status": "ready",
             "voice_boundary_predictor_status": "ready",
+            "conference_mixer_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -2884,6 +2890,131 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "max_eot_time_ms": round(max_ms, 4),
             "target_sla_ms": 0.1,
             "meets_eot_sla": avg_ms < 0.1,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    @app.post("/telephony/conference/route")
+    async def configure_conference_route(request: Request):
+        """
+        Configures operational routing mode or custom gain matrix for 3-way call bridging.
+        Supported modes: silent_monitor, whisper_coach, hard_takeover, three_way_conference.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        mode_str = str(body.get("mode", "silent_monitor")).upper()
+        mode_map = {
+            "SILENT_MONITOR": ConferenceMode.SILENT_MONITOR,
+            "WHISPER_COACH": ConferenceMode.WHISPER_COACH,
+            "HARD_TAKEOVER": ConferenceMode.HARD_TAKEOVER,
+            "THREE_WAY_CONFERENCE": ConferenceMode.THREE_WAY_CONFERENCE,
+            "CUSTOM_MATRIX": ConferenceMode.CUSTOM_MATRIX,
+        }
+        target_mode = mode_map.get(mode_str, ConferenceMode.SILENT_MONITOR)
+        custom_gains = body.get("custom_gains")
+        if custom_gains and len(custom_gains) == 6:
+            custom_tuple = tuple(float(g) for g in custom_gains)
+        else:
+            custom_tuple = None
+
+        sample_rate = int(body.get("sample_rate", 8000))
+        mixer = ConferenceAudioMixer(sample_rate=sample_rate, initial_mode=target_mode)
+        if custom_tuple is not None and target_mode == ConferenceMode.CUSTOM_MATRIX:
+            mixer.set_mode(target_mode, custom_gains=custom_tuple)
+
+        return JSONResponse({
+            "status": "ok",
+            "mode": target_mode.value,
+            "gains": mixer.get_gains(),
+        })
+
+    @app.post("/telephony/conference/mix")
+    async def mix_conference_frame(request: Request):
+        """
+        Mixes 20ms linear PCM audio buffers for Customer, Agent, and Supervisor channels.
+        Applies ITU-T G.115 routing matrix, smooth crossfade, and soft saturation peak limiting.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        sample_rate = int(body.get("sample_rate", 8000))
+        mode_str = str(body.get("mode", "silent_monitor")).upper()
+        mode_map = {
+            "SILENT_MONITOR": ConferenceMode.SILENT_MONITOR,
+            "WHISPER_COACH": ConferenceMode.WHISPER_COACH,
+            "HARD_TAKEOVER": ConferenceMode.HARD_TAKEOVER,
+            "THREE_WAY_CONFERENCE": ConferenceMode.THREE_WAY_CONFERENCE,
+        }
+        mode = mode_map.get(mode_str, ConferenceMode.SILENT_MONITOR)
+
+        c_b64 = body.get("customer_pcm_base64")
+        a_b64 = body.get("agent_pcm_base64")
+        s_b64 = body.get("supervisor_pcm_base64")
+
+        c_pcm = base64.b64decode(c_b64) if c_b64 else None
+        a_pcm = base64.b64decode(a_b64) if a_b64 else None
+        s_pcm = base64.b64decode(s_b64) if s_b64 else None
+
+        mixer = ConferenceAudioMixer(sample_rate=sample_rate, initial_mode=mode)
+        res = mixer.process_frame(customer_pcm=c_pcm, agent_pcm=a_pcm, supervisor_pcm=s_pcm)
+
+        return JSONResponse({
+            "status": "ok",
+            "customer_out_base64": base64.b64encode(res.customer_out_pcm).decode("ascii"),
+            "agent_out_base64": base64.b64encode(res.agent_out_pcm).decode("ascii"),
+            "supervisor_out_base64": base64.b64encode(res.supervisor_out_pcm).decode("ascii"),
+            "telemetry": res.to_dict(),
+        })
+
+    @app.post("/telephony/conference/benchmark")
+    async def benchmark_conference_mixer(request: Request):
+        """
+        Benchmarks 3-Way Conference Audio Mixer throughput.
+        Verifies that mixing time per 20ms frame is < 0.1ms.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        mixer = ConferenceAudioMixer(sample_rate=8000, initial_mode=ConferenceMode.THREE_WAY_CONFERENCE)
+
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        pcm_c = (np.sin(2 * np.pi * 300.0 * t) * 8000.0).astype(np.int16).tobytes()
+        pcm_a = (np.sin(2 * np.pi * 500.0 * t) * 8000.0).astype(np.int16).tobytes()
+        pcm_s = (np.sin(2 * np.pi * 700.0 * t) * 8000.0).astype(np.int16).tobytes()
+
+        # Warm-up
+        mixer.process_frame(pcm_c, pcm_a, pcm_s)
+
+        n_iterations = 100
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            mixer.process_frame(pcm_c, pcm_a, pcm_s)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_mixer_time_ms": round(avg_ms, 4),
+            "p95_mixer_time_ms": round(p95_ms, 4),
+            "max_mixer_time_ms": round(max_ms, 4),
+            "target_sla_ms": 0.1,
+            "meets_mixer_sla": avg_ms < 0.1,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 

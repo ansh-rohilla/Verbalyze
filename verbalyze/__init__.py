@@ -35,6 +35,8 @@ from verbalyze.telephony import (
     IVRStateMachine,
     BiometricVerificationEngine,
     VoiceBoundaryPredictor,
+    ConferenceAudioMixer,
+    ConferenceMode,
 )
 
 __all__ = [
@@ -66,4 +68,6 @@ __all__ = [
     "IVRStateMachine",
     "BiometricVerificationEngine",
     "VoiceBoundaryPredictor",
+    "ConferenceAudioMixer",
+    "ConferenceMode",
 ]
