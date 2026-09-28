@@ -37,6 +37,10 @@ from verbalyze.telephony import (
     VoiceBoundaryPredictor,
     ConferenceAudioMixer,
     ConferenceMode,
+    SIPSessionOrchestrator,
+    SIPSession,
+    SIPCallState,
+    TransferType,
 )
 
 __all__ = [
@@ -70,4 +74,8 @@ __all__ = [
     "VoiceBoundaryPredictor",
     "ConferenceAudioMixer",
     "ConferenceMode",
+    "SIPSessionOrchestrator",
+    "SIPSession",
+    "SIPCallState",
+    "TransferType",
 ]

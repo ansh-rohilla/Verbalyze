@@ -157,6 +157,17 @@ from verbalyze.telephony.conference_mixer import (
     ConferenceMode,
     ChannelMixResult,
 )
+from verbalyze.telephony.sip_orchestrator import (
+    SIPSessionOrchestrator,
+    SIPSession,
+    SIPMessage,
+    SIPMethod,
+    SIPCallState,
+    CallLegRole,
+    TransferType,
+    SDPDirection,
+    CallLeg,
+)
 
 __all__ = [
     "DispatchResult",
@@ -279,6 +290,15 @@ __all__ = [
     "ConferenceAudioMixer",
     "ConferenceMode",
     "ChannelMixResult",
+    "SIPSessionOrchestrator",
+    "SIPSession",
+    "SIPMessage",
+    "SIPMethod",
+    "SIPCallState",
+    "CallLegRole",
+    "TransferType",
+    "SDPDirection",
+    "CallLeg",
 ]
 
 

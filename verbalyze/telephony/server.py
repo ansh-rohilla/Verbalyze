@@ -162,6 +162,15 @@ from verbalyze.telephony.conference_mixer import (
     ConferenceMode,
     ChannelMixResult,
 )
+from verbalyze.telephony.sip_orchestrator import (
+    SIPSessionOrchestrator,
+    SIPSession,
+    SIPMessage,
+    SIPMethod,
+    SIPCallState,
+    CallLegRole,
+    TransferType,
+)
 
 # Try importing FastAPI
 try:
@@ -230,6 +239,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
     completion_scorer = TurnCompletionConfidenceScorer()
     turn_manager = AdaptiveTurnTakingManager()
     dsp_processor = AcousticEchoAndNoiseProcessor(sample_rate=8000)
+    sip_orchestrator = SIPSessionOrchestrator()
 
     @app.get("/health")
     def health():
@@ -257,6 +267,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "quality_classifier_status": "ready",
             "voice_boundary_predictor_status": "ready",
             "conference_mixer_status": "ready",
+            "sip_orchestrator_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -3016,6 +3027,258 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "target_sla_ms": 0.1,
             "meets_mixer_sla": avg_ms < 0.1,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    # --------------------------------------------------------------------------
+    # SIP Soft-Switch Session Orchestration & Call Forking Endpoints (RFC 3261)
+    # --------------------------------------------------------------------------
+
+    @app.post("/telephony/sip/session/create")
+    async def create_sip_session_endpoint(request: Request):
+        """
+        Instantiates a stateful SIP session, establishes Leg A and Leg B via RFC 3261 handshake.
+        Returns session status and 180 Ringing + 200 OK SIP message wire formats.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        call_id = str(body.get("call_id") or f"call-{uuid.uuid4().hex[:12]}")
+        caller_uri = str(body.get("caller_uri") or "sip:borrower@telecom.in")
+        agent_uri = str(body.get("agent_uri") or "sip:agent@verbalyze.ai")
+        sample_rate = int(body.get("sample_rate", 8000))
+
+        session = sip_orchestrator.create_session(
+            call_id=call_id,
+            caller_uri=caller_uri,
+            agent_uri=agent_uri,
+            sample_rate=sample_rate,
+        )
+
+        invite = SIPMessage(
+            is_response=False,
+            method=SIPMethod.INVITE,
+            uri=agent_uri,
+            headers={
+                "From": f"<{caller_uri}>;tag=tag-caller-01",
+                "To": f"<{agent_uri}>",
+                "Call-ID": call_id,
+                "CSeq": "1 INVITE",
+                "Contact": f"<{caller_uri}>",
+            },
+            body=session._generate_sdp(),
+        )
+        ringing, ok_resp = session.handle_inbound_invite(invite)
+
+        ack = SIPMessage(
+            is_response=False,
+            method=SIPMethod.ACK,
+            uri=agent_uri,
+            headers={"Call-ID": call_id, "CSeq": "1 ACK"},
+        )
+        session.handle_ack(ack)
+
+        return JSONResponse({
+            "status": "ok",
+            "session": session.get_status(),
+            "sip_ringing": ringing.to_sip_string(),
+            "sip_ok": ok_resp.to_sip_string(),
+        })
+
+    @app.post("/telephony/sip/session/re-invite")
+    async def reinvite_sip_session_endpoint(request: Request):
+        """
+        Sends a mid-dialog re-INVITE on Leg A (Borrower) to place on hold or resume,
+        adjusting SDP direction (sendonly / sendrecv) and audio mixer channels.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        call_id = str(body.get("call_id") or "")
+        session = sip_orchestrator.get_session(call_id)
+        if not session:
+            return JSONResponse({"error": "Session not found"}, status_code=404)
+
+        hold = bool(body.get("hold", True))
+        moh = bool(body.get("moh", True))
+        reinvite = session.set_hold(hold=hold, moh_enabled=moh)
+
+        return JSONResponse({
+            "status": "ok",
+            "hold_active": hold,
+            "reinvite_sip": reinvite.to_sip_string(),
+            "session": session.get_status(),
+        })
+
+    @app.post("/telephony/sip/session/fork")
+    async def fork_supervisor_leg_endpoint(request: Request):
+        """
+        Forks and bridges a new call leg (Leg C) to a supervisor console.
+        Synchronizes with the conference audio mixer mode (silent_monitor, whisper_coach, hard_takeover).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        call_id = str(body.get("call_id") or "")
+        session = sip_orchestrator.get_session(call_id)
+        if not session:
+            return JSONResponse({"error": "Session not found"}, status_code=404)
+
+        supervisor_uri = str(body.get("supervisor_uri") or "sip:supervisor@branch.bank.in")
+        mode_str = str(body.get("mode", "silent_monitor")).upper()
+        mode_map = {
+            "SILENT_MONITOR": ConferenceMode.SILENT_MONITOR,
+            "WHISPER_COACH": ConferenceMode.WHISPER_COACH,
+            "HARD_TAKEOVER": ConferenceMode.HARD_TAKEOVER,
+            "THREE_WAY_CONFERENCE": ConferenceMode.THREE_WAY_CONFERENCE,
+        }
+        target_mode = mode_map.get(mode_str, ConferenceMode.SILENT_MONITOR)
+
+        leg_c, invite_msg = session.attach_supervisor(supervisor_uri=supervisor_uri, mode=target_mode)
+
+        return JSONResponse({
+            "status": "ok",
+            "leg_c_id": leg_c.leg_id,
+            "supervisor_uri": supervisor_uri,
+            "mixer_mode": session.mixer.current_mode.value,
+            "invite_sip": invite_msg.to_sip_string(),
+            "session": session.get_status(),
+        })
+
+    @app.post("/telephony/sip/session/detach")
+    async def detach_supervisor_leg_endpoint(request: Request):
+        """
+        Detaches the supervisor call leg (Leg C) with a SIP BYE without interrupting Leg A (Borrower).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        call_id = str(body.get("call_id") or "")
+        session = sip_orchestrator.get_session(call_id)
+        if not session:
+            return JSONResponse({"error": "Session not found"}, status_code=404)
+
+        reason = str(body.get("reason") or "Supervisor detached")
+        bye_msg = session.detach_supervisor(reason=reason)
+
+        return JSONResponse({
+            "status": "ok",
+            "detached": bye_msg is not None,
+            "bye_sip": bye_msg.to_sip_string() if bye_msg else None,
+            "session": session.get_status(),
+        })
+
+    @app.post("/telephony/sip/session/refer")
+    async def refer_sip_transfer_endpoint(request: Request):
+        """
+        Dispatches an RFC 3515 Blind Transfer or RFC 3892 Attended Warm Transfer.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        call_id = str(body.get("call_id") or "")
+        session = sip_orchestrator.get_session(call_id)
+        if not session:
+            return JSONResponse({"error": "Session not found"}, status_code=404)
+
+        transfer_type = str(body.get("transfer_type", "blind")).lower()
+        target_uri = str(body.get("target_uri") or "sip:manager@bank.in")
+
+        if transfer_type == "blind":
+            refer_msg, agent_bye = session.blind_transfer(target_uri)
+            return JSONResponse({
+                "status": "ok",
+                "type": "blind",
+                "refer_sip": refer_msg.to_sip_string(),
+                "agent_bye_sip": agent_bye.to_sip_string(),
+                "session": session.get_status(),
+            })
+        else:
+            action = str(body.get("action", "start")).lower()
+            if action == "complete":
+                refer_msg, agent_bye = session.attended_transfer_complete()
+                return JSONResponse({
+                    "status": "ok",
+                    "type": "attended_completed",
+                    "refer_sip": refer_msg.to_sip_string(),
+                    "agent_bye_sip": agent_bye.to_sip_string(),
+                    "session": session.get_status(),
+                })
+            else:
+                consult_leg, consult_invite = session.attended_transfer_start(target_uri)
+                return JSONResponse({
+                    "status": "ok",
+                    "type": "attended_started",
+                    "consult_leg_id": consult_leg.leg_id,
+                    "consult_invite_sip": consult_invite.to_sip_string(),
+                    "session": session.get_status(),
+                })
+
+    @app.get("/telephony/sip/session/{call_id}")
+    async def get_sip_session_endpoint(call_id: str):
+        """Retrieves full telemetry, call leg states, and mixer gains for a session."""
+        session = sip_orchestrator.get_session(call_id)
+        if not session:
+            return JSONResponse({"error": "Session not found"}, status_code=404)
+        return JSONResponse({
+            "status": "ok",
+            "session": session.get_status(),
+        })
+
+    @app.post("/telephony/sip/session/benchmark")
+    async def benchmark_sip_orchestrator_endpoint(request: Request):
+        """Benchmarks SIP session orchestration & state transition latencies."""
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        n_iterations = 100
+        durations = []
+        for i in range(n_iterations):
+            t0 = time.perf_counter()
+            bench_id = f"bench-sip-{i}-{uuid.uuid4().hex[:6]}"
+            sess = sip_orchestrator.create_session(bench_id, "sip:caller@test.in")
+            inv = SIPMessage(is_response=False, method=SIPMethod.INVITE, uri="sip:agent@verbalyze.ai")
+            sess.handle_inbound_invite(inv)
+            sess.handle_ack(SIPMessage(is_response=False, method=SIPMethod.ACK))
+            sess.attach_supervisor("sip:sup@test.in", ConferenceMode.WHISPER_COACH)
+            sess.set_hold(True)
+            sess.set_hold(False)
+            sess.detach_supervisor()
+            sess.terminate_session()
+            sip_orchestrator.remove_session(bench_id)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "iterations": n_iterations,
+            "avg_orchestration_ms": round(avg_ms, 4),
+            "p95_orchestration_ms": round(p95_ms, 4),
+            "max_orchestration_ms": round(max_ms, 4),
+            "target_sla_ms": 0.5,
+            "meets_sla": avg_ms < 0.5,
         })
 
     return app
