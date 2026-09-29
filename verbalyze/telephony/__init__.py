@@ -168,6 +168,11 @@ from verbalyze.telephony.sip_orchestrator import (
     SDPDirection,
     CallLeg,
 )
+from verbalyze.telephony.voice_masker import (
+    PSOLAVoiceMasker,
+    MaskingMode,
+    MaskerTelemetry,
+)
 
 __all__ = [
     "DispatchResult",
@@ -299,6 +304,9 @@ __all__ = [
     "TransferType",
     "SDPDirection",
     "CallLeg",
+    "PSOLAVoiceMasker",
+    "MaskingMode",
+    "MaskerTelemetry",
 ]
 
 

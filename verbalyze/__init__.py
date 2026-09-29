@@ -41,6 +41,8 @@ from verbalyze.telephony import (
     SIPSession,
     SIPCallState,
     TransferType,
+    PSOLAVoiceMasker,
+    MaskingMode,
 )
 
 __all__ = [
@@ -78,4 +80,6 @@ __all__ = [
     "SIPSession",
     "SIPCallState",
     "TransferType",
+    "PSOLAVoiceMasker",
+    "MaskingMode",
 ]

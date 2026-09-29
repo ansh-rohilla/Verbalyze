@@ -171,6 +171,11 @@ from verbalyze.telephony.sip_orchestrator import (
     CallLegRole,
     TransferType,
 )
+from verbalyze.telephony.voice_masker import (
+    PSOLAVoiceMasker,
+    MaskingMode,
+    MaskerTelemetry,
+)
 
 # Try importing FastAPI
 try:
@@ -268,6 +273,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "voice_boundary_predictor_status": "ready",
             "conference_mixer_status": "ready",
             "sip_orchestrator_status": "ready",
+            "voice_masker_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -3279,6 +3285,111 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "max_orchestration_ms": round(max_ms, 4),
             "target_sla_ms": 0.5,
             "meets_sla": avg_ms < 0.5,
+        })
+
+    # --------------------------------------------------------------------------
+    # Pure-Math TD-PSOLA Voice Masker & Collector Anonymizer Endpoints
+    # --------------------------------------------------------------------------
+
+    @app.post("/telephony/masker/process")
+    async def process_voice_masker_frame(request: Request):
+        """
+        Applies TD-PSOLA pitch scaling and formant envelope preservation to a 20ms PCM audio buffer.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        pcm_b64 = body.get("pcm_base64")
+        if not pcm_b64:
+            return JSONResponse({"error": "Missing pcm_base64 parameter"}, status_code=400)
+
+        try:
+            pcm_bytes = base64.b64decode(pcm_b64)
+        except Exception as e:
+            return JSONResponse({"error": f"Invalid base64 audio: {str(e)}"}, status_code=400)
+
+        mode_str = str(body.get("mode", "deep_authoritative")).upper()
+        mode_map = {
+            "DEEP_AUTHORITATIVE": MaskingMode.DEEP_AUTHORITATIVE,
+            "HIGH_NEUTRAL": MaskingMode.HIGH_NEUTRAL,
+            "FEMININE_SHIFT": MaskingMode.FEMININE_SHIFT,
+            "MASCULINE_SHIFT": MaskingMode.MASCULINE_SHIFT,
+            "RANDOM_SESSION": MaskingMode.RANDOM_SESSION,
+            "CUSTOM": MaskingMode.CUSTOM,
+            "BYPASS": MaskingMode.BYPASS,
+        }
+        target_mode = mode_map.get(mode_str, MaskingMode.DEEP_AUTHORITATIVE)
+        sample_rate = int(body.get("sample_rate", 8000))
+        custom_scale = float(body.get("custom_scale", 1.0))
+        session_id = body.get("session_id")
+
+        masker = PSOLAVoiceMasker(
+            sample_rate=sample_rate,
+            default_mode=target_mode,
+            custom_pitch_scale=custom_scale,
+            session_id=session_id,
+        )
+
+        out_pcm, telem = masker.process_frame(pcm_bytes)
+
+        return JSONResponse({
+            "status": "ok",
+            "masked_pcm_base64": base64.b64encode(out_pcm).decode("ascii"),
+            "telemetry": {
+                "pitch_scale": telem.pitch_scale,
+                "is_voiced": telem.is_voiced,
+                "pitch_hz": telem.pitch_hz,
+                "original_rms_db": telem.original_rms_db,
+                "masked_rms_db": telem.masked_rms_db,
+                "num_pitch_marks": telem.num_pitch_marks,
+                "clipping_prevented": telem.clipping_prevented,
+                "mode": telem.mode.value,
+                "latency_ms": telem.latency_ms,
+            },
+        })
+
+    @app.post("/telephony/masker/benchmark")
+    async def benchmark_voice_masker_endpoint(request: Request):
+        """
+        Throughput benchmark measuring TD-PSOLA frame processing latency over 200 voiced frames.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        masker = PSOLAVoiceMasker(sample_rate=8000, default_mode=MaskingMode.DEEP_AUTHORITATIVE)
+
+        # Generate 20ms voiced sinusoidal speech frame (160 samples, ~150Hz F0)
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        pcm_voiced = (np.sin(2 * np.pi * 150.0 * t) * 12000.0).astype(np.int16).tobytes()
+
+        # Warm-up
+        masker.process_frame(pcm_voiced)
+
+        n_iterations = 200
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            masker.process_frame(pcm_voiced)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_masker_time_ms": round(avg_ms, 4),
+            "p95_masker_time_ms": round(p95_ms, 4),
+            "max_masker_time_ms": round(max_ms, 4),
+            "target_sla_ms": 0.15,
+            "meets_sla": avg_ms < 0.15,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 
     return app
