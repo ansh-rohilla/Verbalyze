@@ -43,6 +43,8 @@ from verbalyze.telephony import (
     TransferType,
     PSOLAVoiceMasker,
     MaskingMode,
+    SubconsciousBackchannelInjector,
+    BackchannelType,
 )
 
 __all__ = [
@@ -82,4 +84,6 @@ __all__ = [
     "TransferType",
     "PSOLAVoiceMasker",
     "MaskingMode",
+    "SubconsciousBackchannelInjector",
+    "BackchannelType",
 ]

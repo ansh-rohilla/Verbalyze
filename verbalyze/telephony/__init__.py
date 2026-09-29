@@ -173,6 +173,12 @@ from verbalyze.telephony.voice_masker import (
     MaskingMode,
     MaskerTelemetry,
 )
+from verbalyze.telephony.backchannel_injector import (
+    SubconsciousBackchannelInjector,
+    BackchannelType,
+    BackchannelState,
+    BackchannelTelemetry,
+)
 
 __all__ = [
     "DispatchResult",
@@ -307,6 +313,10 @@ __all__ = [
     "PSOLAVoiceMasker",
     "MaskingMode",
     "MaskerTelemetry",
+    "SubconsciousBackchannelInjector",
+    "BackchannelType",
+    "BackchannelState",
+    "BackchannelTelemetry",
 ]
 
 

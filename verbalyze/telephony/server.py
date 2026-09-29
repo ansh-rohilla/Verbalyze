@@ -176,6 +176,12 @@ from verbalyze.telephony.voice_masker import (
     MaskingMode,
     MaskerTelemetry,
 )
+from verbalyze.telephony.backchannel_injector import (
+    SubconsciousBackchannelInjector,
+    BackchannelType,
+    BackchannelState,
+    BackchannelTelemetry,
+)
 
 # Try importing FastAPI
 try:
@@ -274,6 +280,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "conference_mixer_status": "ready",
             "sip_orchestrator_status": "ready",
             "voice_masker_status": "ready",
+            "backchannel_injector_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -3389,6 +3396,110 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "max_masker_time_ms": round(max_ms, 4),
             "target_sla_ms": 0.15,
             "meets_sla": avg_ms < 0.15,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    # --------------------------------------------------------------------------
+    # Sub-Conscious Acoustic Backchannel Injector Endpoints
+    # --------------------------------------------------------------------------
+
+    @app.post("/telephony/backchannel/process")
+    async def process_backchannel_frame(request: Request):
+        """
+        Analyzes 20ms caller PCM buffer, checks for intra-turn micro-pause opportunities,
+        and returns downlink affirmation audio.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        try:
+            body = await request.json()
+        except Exception:
+            body = {}
+
+        caller_pcm_b64 = body.get("caller_pcm_base64")
+        pcm_bytes = base64.b64decode(caller_pcm_b64) if caller_pcm_b64 else None
+
+        lang = str(body.get("language", "hi"))
+        sample_rate = int(body.get("sample_rate", 8000))
+
+        injector = SubconsciousBackchannelInjector(sample_rate=sample_rate, language=lang)
+
+        # Pre-seed state if simulated speech burst duration provided
+        burst_ms = float(body.get("simulate_speech_burst_ms", 0.0))
+        if burst_ms > 0:
+            injector.speech_burst_ms = burst_ms
+
+        silence_ms = float(body.get("simulate_silence_gap_ms", 0.0))
+        if silence_ms > 0:
+            injector.silence_gap_ms = silence_ms
+
+        force_type_str = body.get("force_type")
+        if force_type_str:
+            type_map = {
+                "HMM": BackchannelType.HMM,
+                "HAAN_HAAN": BackchannelType.HAAN_HAAN,
+                "JI": BackchannelType.JI,
+                "ACHHA": BackchannelType.ACHHA,
+                "RIGHT": BackchannelType.RIGHT,
+            }
+            if force_type_str.upper() in type_map:
+                injector.trigger_backchannel(type_map[force_type_str.upper()])
+
+        out_pcm, telem = injector.process_frame(pcm_bytes)
+
+        return JSONResponse({
+            "status": "ok",
+            "backchannel_pcm_base64": base64.b64encode(out_pcm).decode("ascii"),
+            "telemetry": {
+                "state": telem.state.value,
+                "caller_speaking": telem.caller_speaking,
+                "caller_energy_db": telem.caller_energy_db,
+                "speech_burst_duration_ms": telem.speech_burst_duration_ms,
+                "silence_gap_duration_ms": telem.silence_gap_duration_ms,
+                "opportunity_detected": telem.opportunity_detected,
+                "backchannel_active": telem.backchannel_active,
+                "injected_audio_rms_db": telem.injected_audio_rms_db,
+                "ducking_applied": telem.ducking_applied,
+                "backchannel_type": telem.backchannel_type.value if telem.backchannel_type else None,
+                "cooldown_remaining_ms": telem.cooldown_remaining_ms,
+                "latency_ms": telem.latency_ms,
+            },
+        })
+
+    @app.post("/telephony/backchannel/benchmark")
+    async def benchmark_backchannel_endpoint(request: Request):
+        """
+        Benchmarks 20ms frame processing latency of the subconscious backchannel injector.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        injector = SubconsciousBackchannelInjector(sample_rate=8000, language="hi")
+        pcm_caller = (np.sin(2 * np.pi * 200.0 * np.linspace(0, 0.02, 160, endpoint=False)) * 8000.0).astype(np.int16).tobytes()
+
+        # Warm-up
+        injector.process_frame(pcm_caller)
+
+        n_iterations = 200
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            injector.process_frame(pcm_caller)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_backchannel_time_ms": round(avg_ms, 4),
+            "p95_backchannel_time_ms": round(p95_ms, 4),
+            "max_backchannel_time_ms": round(max_ms, 4),
+            "target_sla_ms": 0.05,
+            "meets_sla": avg_ms < 0.05,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 
