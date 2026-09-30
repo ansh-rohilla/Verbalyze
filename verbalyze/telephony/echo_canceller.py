@@ -26,6 +26,11 @@ from dataclasses import dataclass, field
 from typing import Dict, Any, Tuple, Optional
 import numpy as np
 
+from verbalyze.telephony.cross_talk_separator import (
+    AcousticCrossTalkSeparator,
+    CrossTalkState,
+)
+
 
 @dataclass
 class DSPTelemetry:
@@ -38,6 +43,9 @@ class DSPTelemetry:
     processing_time_ms: float = 0.0
     mic_rms: float = 0.0
     clean_rms: float = 0.0
+    cross_talk_detected: bool = False
+    cross_talk_suppression_db: float = 0.0
+    clean_barge_in_eligible: bool = True
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -49,6 +57,9 @@ class DSPTelemetry:
             "processing_time_ms": round(self.processing_time_ms, 3),
             "mic_rms": round(self.mic_rms, 2),
             "clean_rms": round(self.clean_rms, 2),
+            "cross_talk_detected": self.cross_talk_detected,
+            "cross_talk_suppression_db": round(self.cross_talk_suppression_db, 2),
+            "clean_barge_in_eligible": self.clean_barge_in_eligible,
         }
 
 
@@ -331,14 +342,17 @@ class AcousticEchoAndNoiseProcessor:
         filter_length: int = 256,
         aec_enabled: bool = True,
         noise_suppression_enabled: bool = True,
+        cross_talk_separation_enabled: bool = False,
     ):
         self.sample_rate = sample_rate
         self.aec_enabled = aec_enabled
         self.noise_suppression_enabled = noise_suppression_enabled
+        self.cross_talk_separation_enabled = cross_talk_separation_enabled
 
         self.aec = NLMSAdaptiveFilter(filter_length=filter_length)
         self.dtd = GeigelDoubleTalkDetector()
         self.noise_suppressor = SpectralNoiseSuppressor(frame_len=160 if sample_rate == 8000 else 320)
+        self.cross_talk_separator = AcousticCrossTalkSeparator(sample_rate=sample_rate)
 
         self.last_telemetry = DSPTelemetry()
         self.is_bot_speaking = False
@@ -367,7 +381,8 @@ class AcousticEchoAndNoiseProcessor:
         2. Evaluates Geigel Double-Talk Detection against far-end reference buffer.
         3. Subtracts acoustic echo via NLMS Adaptive Filter.
         4. Applies Spectral Subtraction for ambient noise reduction.
-        5. Encodes back to 16-bit linear PCM bytes.
+        5. Isolates primary foreground voice and suppresses background cross-talk bleed.
+        6. Encodes back to 16-bit linear PCM bytes.
         Returns (clean_pcm_bytes, telemetry).
         """
         t_start = time.perf_counter()
@@ -402,7 +417,17 @@ class AcousticEchoAndNoiseProcessor:
         else:
             clean_samples = e_echo_cancelled
 
-        # 3. Clip and convert back to 16-bit linear PCM
+        # 3. Ambient Cross-Talk & Acoustic Bleed Separation
+        cross_talk_detected = False
+        cross_talk_suppression_db = 0.0
+        clean_barge_in_eligible = True
+        if self.cross_talk_separation_enabled:
+            clean_samples, ct_telem = self.cross_talk_separator.process_frame_samples(clean_samples)
+            cross_talk_detected = (ct_telem.state == CrossTalkState.CROSS_TALK_BLEED)
+            cross_talk_suppression_db = ct_telem.bleed_suppression_db
+            clean_barge_in_eligible = ct_telem.clean_barge_in_eligible
+
+        # 4. Clip and convert back to 16-bit linear PCM
         clean_int16 = np.clip(clean_samples * 32768.0, -32768, 32767).astype(np.int16)
         clean_pcm_bytes = clean_int16.tobytes()
         clean_rms = float(np.sqrt(np.mean(clean_samples ** 2))) * 32768.0
@@ -418,6 +443,9 @@ class AcousticEchoAndNoiseProcessor:
             processing_time_ms=t_elapsed_ms,
             mic_rms=mic_rms,
             clean_rms=clean_rms,
+            cross_talk_detected=cross_talk_detected,
+            cross_talk_suppression_db=cross_talk_suppression_db,
+            clean_barge_in_eligible=clean_barge_in_eligible,
         )
         self.last_telemetry = telemetry
 
@@ -428,5 +456,6 @@ class AcousticEchoAndNoiseProcessor:
         self.aec.reset()
         self.dtd.reset()
         self.noise_suppressor.reset()
+        self.cross_talk_separator.reset()
         self.last_telemetry = DSPTelemetry()
         self.is_bot_speaking = False

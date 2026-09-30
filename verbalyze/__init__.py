@@ -45,6 +45,8 @@ from verbalyze.telephony import (
     MaskingMode,
     SubconsciousBackchannelInjector,
     BackchannelType,
+    AcousticCrossTalkSeparator,
+    CrossTalkState,
 )
 
 __all__ = [
@@ -86,4 +88,6 @@ __all__ = [
     "MaskingMode",
     "SubconsciousBackchannelInjector",
     "BackchannelType",
+    "AcousticCrossTalkSeparator",
+    "CrossTalkState",
 ]

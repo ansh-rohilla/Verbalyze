@@ -52,6 +52,7 @@ TEST_SUITES = [
     ("Stateful SIP Session Orchestrator & Call Forking Engine", "scripts/test_sip_orchestrator.py"),
     ("Pure-Math PSOLA Voice Masker & Collector Anonymizer", "scripts/test_voice_masker.py"),
     ("Sub-Conscious Acoustic Backchannel Injector", "scripts/test_backchannel_injector.py"),
+    ("Acoustic Bleed & Ambient Cross-Talk Separator", "scripts/test_cross_talk_separator.py"),
 ]
 
 

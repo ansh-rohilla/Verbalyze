@@ -182,6 +182,11 @@ from verbalyze.telephony.backchannel_injector import (
     BackchannelState,
     BackchannelTelemetry,
 )
+from verbalyze.telephony.cross_talk_separator import (
+    AcousticCrossTalkSeparator,
+    CrossTalkState,
+    CrossTalkTelemetry,
+)
 
 # Try importing FastAPI
 try:
@@ -281,6 +286,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "sip_orchestrator_status": "ready",
             "voice_masker_status": "ready",
             "backchannel_injector_status": "ready",
+            "cross_talk_separator_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -3500,6 +3506,71 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "max_backchannel_time_ms": round(max_ms, 4),
             "target_sla_ms": 0.05,
             "meets_sla": avg_ms < 0.05,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    # Cache single separator instance for stateless REST requests
+    rest_cross_talk_separator = AcousticCrossTalkSeparator(sample_rate=8000)
+
+    @app.post("/telephony/cross_talk/process")
+    async def process_cross_talk_endpoint(request: Request):
+        """
+        Isolates primary foreground caller voice and suppresses background human speech bleed.
+        Accepts base64-encoded 16-bit linear PCM audio frame (e.g. 160 samples = 320 bytes).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        payload = await request.json()
+        pcm_b64 = payload.get("pcm_base64")
+        if not pcm_b64:
+            return JSONResponse({"error": "pcm_base64 is required"}, status_code=400)
+
+        pcm_bytes = base64.b64decode(pcm_b64)
+        clean_pcm, telem = rest_cross_talk_separator.process_frame(pcm_bytes)
+
+        return JSONResponse({
+            "status": "ok",
+            "clean_pcm_base64": base64.b64encode(clean_pcm).decode("ascii"),
+            "telemetry": telem.to_dict(),
+        })
+
+    @app.post("/telephony/cross_talk/benchmark")
+    async def benchmark_cross_talk_endpoint(request: Request):
+        """
+        Benchmarks 20ms frame processing latency of the acoustic cross-talk separator.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        sep = AcousticCrossTalkSeparator(sample_rate=8000)
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        pcm_test = (np.sin(2 * np.pi * 180.0 * t) * 12000.0).astype(np.int16).tobytes()
+
+        # Warm-up
+        for _ in range(10):
+            sep.process_frame(pcm_test)
+
+        n_iterations = 200
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            sep.process_frame(pcm_test)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_cross_talk_time_ms": round(avg_ms, 4),
+            "p95_cross_talk_time_ms": round(p95_ms, 4),
+            "max_cross_talk_time_ms": round(max_ms, 4),
+            "target_sla_ms": 0.08,
+            "meets_sla": avg_ms < 0.08,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 

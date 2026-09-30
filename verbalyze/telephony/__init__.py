@@ -179,6 +179,12 @@ from verbalyze.telephony.backchannel_injector import (
     BackchannelState,
     BackchannelTelemetry,
 )
+from verbalyze.telephony.cross_talk_separator import (
+    AcousticCrossTalkSeparator,
+    CrossTalkState,
+    CrossTalkTelemetry,
+    HarmonicCombFilter,
+)
 
 __all__ = [
     "DispatchResult",
@@ -317,6 +323,10 @@ __all__ = [
     "BackchannelType",
     "BackchannelState",
     "BackchannelTelemetry",
+    "AcousticCrossTalkSeparator",
+    "CrossTalkState",
+    "CrossTalkTelemetry",
+    "HarmonicCombFilter",
 ]
 
 
