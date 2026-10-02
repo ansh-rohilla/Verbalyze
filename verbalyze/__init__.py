@@ -47,6 +47,8 @@ from verbalyze.telephony import (
     BackchannelType,
     AcousticCrossTalkSeparator,
     CrossTalkState,
+    DTMFAudioRedactor,
+    RedactionPolicy,
 )
 
 __all__ = [
@@ -90,4 +92,6 @@ __all__ = [
     "BackchannelType",
     "AcousticCrossTalkSeparator",
     "CrossTalkState",
+    "DTMFAudioRedactor",
+    "RedactionPolicy",
 ]

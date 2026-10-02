@@ -185,6 +185,12 @@ from verbalyze.telephony.cross_talk_separator import (
     CrossTalkTelemetry,
     HarmonicCombFilter,
 )
+from verbalyze.telephony.dtmf_silencer import (
+    DTMFAudioRedactor,
+    RedactionPolicy,
+    DTMFRedactionTelemetry,
+    IIRDualNotchFilter,
+)
 
 __all__ = [
     "DispatchResult",
@@ -327,6 +333,10 @@ __all__ = [
     "CrossTalkState",
     "CrossTalkTelemetry",
     "HarmonicCombFilter",
+    "DTMFAudioRedactor",
+    "RedactionPolicy",
+    "DTMFRedactionTelemetry",
+    "IIRDualNotchFilter",
 ]
 
 

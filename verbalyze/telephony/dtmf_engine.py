@@ -484,3 +484,12 @@ class RFC4733EventDecoder:
                 self._last_emitted_event_id = None
 
         return None
+
+
+# Re-export PCI-DSS silencer and audio redactor
+from verbalyze.telephony.dtmf_silencer import (
+    RedactionPolicy,
+    DTMFRedactionTelemetry,
+    IIRDualNotchFilter,
+    DTMFAudioRedactor,
+)

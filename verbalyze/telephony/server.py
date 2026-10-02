@@ -187,6 +187,11 @@ from verbalyze.telephony.cross_talk_separator import (
     CrossTalkState,
     CrossTalkTelemetry,
 )
+from verbalyze.telephony.dtmf_silencer import (
+    DTMFAudioRedactor,
+    RedactionPolicy,
+    DTMFRedactionTelemetry,
+)
 
 # Try importing FastAPI
 try:
@@ -287,6 +292,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "voice_masker_status": "ready",
             "backchannel_injector_status": "ready",
             "cross_talk_separator_status": "ready",
+            "dtmf_silencer_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -3574,7 +3580,83 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 
+    # Cache single redactor instance for stateless REST requests
+    rest_dtmf_redactor = DTMFAudioRedactor(sample_rate=8000)
+
+    @app.post("/telephony/dtmf/redact")
+    async def redact_dtmf_endpoint(request: Request):
+        """
+        Surgically excises or mutes DTMF dual-tones from 16-bit linear PCM audio.
+        Complies with PCI-DSS Requirement 3.2 and RBI audio redaction standards.
+        Accepts base64-encoded PCM audio and optional redaction policy.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        payload = await request.json()
+        pcm_b64 = payload.get("pcm_base64")
+        if not pcm_b64:
+            return JSONResponse({"error": "pcm_base64 is required"}, status_code=400)
+
+        policy_str = payload.get("policy", "ZERO_CROSSING_MUTE")
+        try:
+            policy_enum = RedactionPolicy(policy_str)
+        except (ValueError, KeyError):
+            policy_enum = RedactionPolicy.ZERO_CROSSING_MUTE
+
+        pcm_bytes = base64.b64decode(pcm_b64)
+        clean_pcm, telem, rfc_pkt = rest_dtmf_redactor.process_frame(pcm_bytes, policy=policy_enum)
+
+        return JSONResponse({
+            "status": "ok",
+            "redacted_pcm_base64": base64.b64encode(clean_pcm).decode("ascii"),
+            "telemetry": telem.to_dict(),
+            "rfc4733_packet_base64": base64.b64encode(rfc_pkt).decode("ascii") if rfc_pkt else None,
+            "audit_log": rest_dtmf_redactor.get_audit_log(),
+        })
+
+    @app.post("/telephony/dtmf/redact/benchmark")
+    async def benchmark_dtmf_redact_endpoint(request: Request):
+        """
+        Benchmarks 20ms frame processing latency of the DTMF surgical silencer and redactor.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        redactor = DTMFAudioRedactor(sample_rate=8000)
+        # DTMF digit '9' = 852 Hz row + 1477 Hz col
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        pcm_dtmf = ((np.sin(2 * np.pi * 852.0 * t) + np.sin(2 * np.pi * 1477.0 * t)) * 8000.0).astype(np.int16).tobytes()
+
+        # Warm-up
+        for _ in range(10):
+            redactor.process_frame(pcm_dtmf)
+
+        n_iterations = 200
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            redactor.process_frame(pcm_dtmf)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_dtmf_redact_time_ms": round(avg_ms, 4),
+            "p95_dtmf_redact_time_ms": round(p95_ms, 4),
+            "max_dtmf_redact_time_ms": round(max_ms, 4),
+            "target_sla_ms": 0.08,
+            "meets_sla": avg_ms < 0.08,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
     return app
+
 
 
 if __name__ == "__main__":

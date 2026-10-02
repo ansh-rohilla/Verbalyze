@@ -13,8 +13,9 @@ Regulatory Dual-Channel Audio Call Recorder:
 import io
 import time
 import wave
-from typing import Optional
+from typing import Optional, List, Dict, Any
 import numpy as np
+from verbalyze.telephony.dtmf_silencer import DTMFAudioRedactor, RedactionPolicy
 
 
 class DualChannelCallRecorder:
@@ -22,23 +23,42 @@ class DualChannelCallRecorder:
     In-memory dual-channel telephony call recorder.
     Maintains separate PCM streams for Customer (Left) and VoiceAgent (Right),
     allowing compliance auditors to isolate speaker turns or listen in stereo.
+    Integrates real-time PCI-DSS Level 1 DTMF audio redaction on customer channel.
     """
 
-    def __init__(self, sample_rate: int = 8000):
+    def __init__(
+        self,
+        sample_rate: int = 8000,
+        enable_pci_dss_redaction: bool = True,
+        redaction_policy: Optional[RedactionPolicy] = None,
+    ):
         self.sample_rate = sample_rate
         self.bytes_per_sample = 2  # 16-bit PCM
         self.start_timestamp: float = time.time()
         self._customer_samples: bytearray = bytearray()
         self._agent_samples: bytearray = bytearray()
         self._is_closed: bool = False
+        self.enable_pci_dss_redaction = enable_pci_dss_redaction
+        self.redaction_policy = redaction_policy or RedactionPolicy.ZERO_CROSSING_MUTE
+        self.redactor: Optional[DTMFAudioRedactor] = None
+        if self.enable_pci_dss_redaction:
+            self.redactor = DTMFAudioRedactor(
+                sample_rate=self.sample_rate,
+                default_policy=self.redaction_policy,
+            )
 
     def write_customer_pcm(self, pcm_bytes: bytes, timestamp_ms: Optional[float] = None) -> None:
         """
         Appends raw 16-bit linear PCM audio for Channel 0 (Customer / Borrower).
         Optionally pads with silence to align with timeline if timestamp_ms is given.
+        If PCI-DSS redaction is enabled, DTMF tone intervals are excised or muted before writing.
         """
         if self._is_closed or not pcm_bytes:
             return
+
+        if self.enable_pci_dss_redaction and self.redactor:
+            sanitized_pcm, _, _ = self.redactor.process_stream(pcm_bytes, policy=self.redaction_policy)
+            pcm_bytes = sanitized_pcm
 
         if timestamp_ms is not None and timestamp_ms > 0:
             target_bytes = int((timestamp_ms / 1000.0) * self.sample_rate) * self.bytes_per_sample
@@ -135,7 +155,15 @@ class DualChannelCallRecorder:
         """Marks the recording session as closed."""
         self._is_closed = True
 
+    def get_pci_dss_audit_log(self) -> List[Dict[str, Any]]:
+        """Returns the PCI-DSS redaction audit log from the active redactor."""
+        if self.redactor:
+            return self.redactor.get_audit_log()
+        return []
+
     def clear(self) -> None:
         """Clears memory buffers."""
         self._customer_samples.clear()
         self._agent_samples.clear()
+        if self.redactor:
+            self.redactor.reset()
