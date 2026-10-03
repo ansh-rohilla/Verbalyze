@@ -192,6 +192,12 @@ from verbalyze.telephony.dtmf_silencer import (
     RedactionPolicy,
     DTMFRedactionTelemetry,
 )
+from verbalyze.telephony.voice_stress import (
+    VoiceStressAndSarcasmDetector,
+    StressCategory,
+    ComplianceAction,
+    VoiceStressTelemetry,
+)
 
 # Try importing FastAPI
 try:
@@ -293,6 +299,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "backchannel_injector_status": "ready",
             "cross_talk_separator_status": "ready",
             "dtmf_silencer_status": "ready",
+            "voice_stress_detector_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -3655,7 +3662,85 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 
+    # Cache single detector instance for stateless REST requests
+    rest_stress_detector = VoiceStressAndSarcasmDetector(sample_rate=8000)
+
+    @app.post("/telephony/stress/analyze")
+    async def analyze_stress_endpoint(request: Request):
+        """
+        Analyzes 16-bit linear PCM audio for acoustic distress, coercion, and sarcastic intonation.
+        Evaluates Lippold micro-tremor (8-14 Hz), pitch velocity, and vowel elongation.
+        Accepts base64-encoded PCM audio and optional transcript.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        payload = await request.json()
+        pcm_b64 = payload.get("pcm_base64")
+        if not pcm_b64:
+            return JSONResponse({"error": "pcm_base64 is required"}, status_code=400)
+
+        transcript = payload.get("transcript") or payload.get("text") or ""
+        pcm_bytes = base64.b64decode(pcm_b64)
+
+        frame_telems, aggregate = rest_stress_detector.process_utterance(
+            pcm_bytes, lexical_transcript=transcript
+        )
+
+        return JSONResponse({
+            "status": "ok",
+            "distress_score": aggregate.distress_score,
+            "sarcasm_score": aggregate.sarcasm_score,
+            "stress_category": aggregate.stress_category.value,
+            "recommended_action": aggregate.recommended_action.value,
+            "is_sarcastic_assent": aggregate.is_sarcastic_assent,
+            "coercion_alert": aggregate.coercion_alert,
+            "telemetry": aggregate.to_dict(),
+            "frames_processed": len(frame_telems),
+        })
+
+    @app.post("/telephony/stress/benchmark")
+    async def benchmark_stress_endpoint(request: Request):
+        """
+        Benchmarks 20ms frame processing latency of the voice stress and sarcasm detector.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        detector = VoiceStressAndSarcasmDetector(sample_rate=8000)
+        # Synthetic speech frame at 160 Hz (20ms = 160 samples at 8kHz)
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        pcm_test = (np.sin(2 * np.pi * 160.0 * t) * 10000.0).astype(np.int16).tobytes()
+
+        # Warm-up
+        for _ in range(10):
+            detector.process_frame(pcm_test)
+
+        n_iterations = 200
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            detector.process_frame(pcm_test)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_stress_analysis_time_ms": round(avg_ms, 4),
+            "p95_stress_analysis_time_ms": round(p95_ms, 4),
+            "max_stress_analysis_time_ms": round(max_ms, 4),
+            "target_sla_ms": 0.05,
+            "meets_sla": avg_ms < 0.05,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
     return app
+
 
 
 

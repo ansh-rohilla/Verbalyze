@@ -191,6 +191,12 @@ from verbalyze.telephony.dtmf_silencer import (
     DTMFRedactionTelemetry,
     IIRDualNotchFilter,
 )
+from verbalyze.telephony.voice_stress import (
+    VoiceStressAndSarcasmDetector,
+    StressCategory,
+    ComplianceAction,
+    VoiceStressTelemetry,
+)
 
 __all__ = [
     "DispatchResult",
@@ -337,6 +343,10 @@ __all__ = [
     "RedactionPolicy",
     "DTMFRedactionTelemetry",
     "IIRDualNotchFilter",
+    "VoiceStressAndSarcasmDetector",
+    "StressCategory",
+    "ComplianceAction",
+    "VoiceStressTelemetry",
 ]
 
 

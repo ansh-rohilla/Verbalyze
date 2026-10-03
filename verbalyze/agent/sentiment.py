@@ -15,6 +15,12 @@ from typing import Dict, List, Any, Optional, Tuple
 
 import numpy as np
 
+from verbalyze.telephony.voice_stress import (
+    VoiceStressAndSarcasmDetector,
+    StressCategory,
+    ComplianceAction,
+)
+
 
 class SentimentCategory(str, Enum):
     """Customer emotional agitation level."""
@@ -46,6 +52,10 @@ class SentimentResult:
     detected_cues: List[str] = field(default_factory=list)
     transfer_recommended: bool = False
     deescalation_recommended: bool = False
+    distress_score: float = 0.0
+    sarcasm_score: float = 0.0
+    is_sarcastic: bool = False
+    coercion_detected: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -57,6 +67,10 @@ class SentimentResult:
             "detected_cues": self.detected_cues,
             "transfer_recommended": self.transfer_recommended,
             "deescalation_recommended": self.deescalation_recommended,
+            "distress_score": round(self.distress_score, 3),
+            "sarcasm_score": round(self.sarcasm_score, 3),
+            "is_sarcastic": bool(self.is_sarcastic),
+            "coercion_detected": bool(self.coercion_detected),
         }
 
 
@@ -317,12 +331,14 @@ class LexicalDisputeClassifier:
 class UnifiedSentimentEngine:
     """
     Combined multi-channel sentiment detection engine:
-    Evaluates both acoustic signal dynamics and lexical semantics.
+    Evaluates acoustic signal dynamics, voice stress/sarcasm analysis, and lexical semantics.
     """
 
     def __init__(self, sample_rate: int = 8000):
+        self.sample_rate = sample_rate
         self.acoustic_analyzer = AcousticSentimentAnalyzer(sample_rate=sample_rate)
         self.lexical_classifier = LexicalDisputeClassifier()
+        self.stress_detector = VoiceStressAndSarcasmDetector(sample_rate=sample_rate)
 
     def analyze(
         self,
@@ -343,6 +359,19 @@ class UnifiedSentimentEngine:
         # Lexical scoring
         lexical_score, dispute_type, cues = self.lexical_classifier.classify(transcript)
 
+        # Acoustic stress & sarcasm scoring
+        distress_score = 0.0
+        sarcasm_score = 0.0
+        is_sarcastic = False
+        coercion_detected = False
+
+        if pcm_bytes and len(pcm_bytes) >= 160:
+            _, turn_stress = self.stress_detector.process_utterance(pcm_bytes, lexical_transcript=transcript)
+            distress_score = turn_stress.distress_score
+            sarcasm_score = turn_stress.sarcasm_score
+            is_sarcastic = turn_stress.is_sarcastic_assent or (turn_stress.sarcasm_score >= 0.60)
+            coercion_detected = turn_stress.coercion_alert
+
         # Composite Agitation Index:
         # If PCM bytes are provided, weight 45% acoustic + 55% lexical.
         # If PCM is absent or minimal, weight 15% acoustic + 85% lexical.
@@ -351,9 +380,18 @@ class UnifiedSentimentEngine:
         else:
             composite = (0.15 * acoustic_score) + (0.85 * lexical_score)
 
-        # Critical override: explicit legal threat or harassment complaint immediately elevates score
-        if dispute_type in (DisputeType.LEGAL_THREAT, DisputeType.HARASSMENT_COMPLAINT):
-            composite = max(composite, 0.85)
+        # Sarcasm polarity discrepancy:
+        if is_sarcastic:
+            cues.append("sarcastic_acoustic_prosody")
+            if dispute_type == DisputeType.NONE:
+                dispute_type = DisputeType.PAYMENT_DISPUTE
+            composite = max(composite, 0.55)
+
+        # Critical overrides: legal threat, harassment, or coercion/panic alert
+        if dispute_type in (DisputeType.LEGAL_THREAT, DisputeType.HARASSMENT_COMPLAINT) or coercion_detected or distress_score >= 0.75:
+            if coercion_detected or distress_score >= 0.75:
+                cues.append("coercion_distress_alert")
+            composite = max(composite, 0.88)
 
         composite = float(np.clip(composite, 0.0, 1.0))
 
@@ -373,7 +411,7 @@ class UnifiedSentimentEngine:
                 DisputeType.LEGAL_THREAT,
                 DisputeType.PAYMENT_DISPUTE,
                 DisputeType.HARASSMENT_COMPLAINT,
-            ))
+            )) or is_sarcastic
             deesc_rec = True
         else:
             category = SentimentCategory.CALM
@@ -381,7 +419,7 @@ class UnifiedSentimentEngine:
             deesc_rec = False
 
         # Specific rule: if user explicitly demands a human, always recommend transfer
-        if dispute_type == DisputeType.HUMAN_REQUEST:
+        if dispute_type == DisputeType.HUMAN_REQUEST or coercion_detected:
             transfer_rec = True
 
         return SentimentResult(
@@ -393,4 +431,9 @@ class UnifiedSentimentEngine:
             detected_cues=cues,
             transfer_recommended=transfer_rec,
             deescalation_recommended=deesc_rec,
+            distress_score=distress_score,
+            sarcasm_score=sarcasm_score,
+            is_sarcastic=is_sarcastic,
+            coercion_detected=coercion_detected,
         )
+

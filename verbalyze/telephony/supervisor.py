@@ -52,6 +52,10 @@ class CallSupervisorRecord:
     sentiment_category: str = "CALM"
     agitation_score: float = 0.0
     dispute_type: str = "NONE"
+    distress_score: float = 0.0
+    sarcasm_score: float = 0.0
+    stress_category: str = "CALM"
+    coercion_alert: bool = False
     is_code_switched: bool = False
     detected_language: str = "hi"
     mos_score: float = 4.2
@@ -76,6 +80,10 @@ class CallSupervisorRecord:
             "sentiment_category": self.sentiment_category,
             "agitation_score": round(self.agitation_score, 3),
             "dispute_type": self.dispute_type,
+            "distress_score": round(self.distress_score, 3),
+            "sarcasm_score": round(self.sarcasm_score, 3),
+            "stress_category": self.stress_category,
+            "coercion_alert": self.coercion_alert,
             "is_code_switched": self.is_code_switched,
             "detected_language": self.detected_language,
             "mos_score": round(self.mos_score, 2),
@@ -170,6 +178,15 @@ class SupervisorManager:
             record.sentiment_category = sentiment.get("category", record.sentiment_category)
             record.agitation_score = float(sentiment.get("composite_agitation", record.agitation_score))
             record.dispute_type = sentiment.get("dispute_type", record.dispute_type)
+            record.distress_score = float(sentiment.get("distress_score", record.distress_score))
+            record.sarcasm_score = float(sentiment.get("sarcasm_score", record.sarcasm_score))
+            record.coercion_alert = bool(sentiment.get("coercion_detected", record.coercion_alert))
+            if record.coercion_alert:
+                record.stress_category = "COERCION_PANIC"
+            elif record.distress_score >= 0.75:
+                record.stress_category = "ACUTE_DISTRESS"
+            elif record.sarcasm_score >= 0.60:
+                record.stress_category = "CONTROLLED_SARCASTIC"
 
         # Process Language Identification
         if lid_info:
@@ -187,9 +204,14 @@ class SupervisorManager:
             record.jitter_ms = float(jitter_stats.get("current_jitter_ms", record.jitter_ms))
             record.packet_loss_rate = float(jitter_stats.get("packet_loss_rate", record.packet_loss_rate))
 
-        # Check for High Agitation or High Jitter Alerts
+        # Check for Coercion, Sarcasm, High Agitation or High Jitter Alerts
         alert_type = None
-        if record.agitation_score >= 0.70 or record.sentiment_category in ("AGITATED", "HOSTILE"):
+        if record.coercion_alert or record.distress_score >= 0.75:
+            alert_type = "COERCION_DISTRESS_ALERT"
+            record.status = "SUPERVISOR_TAKEOVER_REQUIRED"
+        elif record.sarcasm_score >= 0.60:
+            alert_type = "SARCASTIC_DISPUTE_ALERT"
+        elif record.agitation_score >= 0.70 or record.sentiment_category in ("AGITATED", "HOSTILE"):
             alert_type = "HIGH_AGITATION_ALERT"
         elif record.packet_loss_rate >= 0.15 or record.jitter_ms >= 120.0:
             alert_type = "NETWORK_DEGRADATION_ALERT"
@@ -203,6 +225,10 @@ class SupervisorManager:
             "agitation_score": record.agitation_score,
             "sentiment_category": record.sentiment_category,
             "dispute_type": record.dispute_type,
+            "distress_score": record.distress_score,
+            "sarcasm_score": record.sarcasm_score,
+            "stress_category": record.stress_category,
+            "coercion_alert": record.coercion_alert,
             "detected_language": record.detected_language,
             "is_code_switched": record.is_code_switched,
             "mos_score": record.mos_score,
@@ -212,6 +238,34 @@ class SupervisorManager:
             "timestamp": time.time(),
         }
         self._broadcast(event_payload)
+
+    def update_voice_stress(
+        self,
+        call_id: str,
+        distress_score: float,
+        sarcasm_score: float,
+        stress_category: str = "CALM",
+        coercion_alert: bool = False,
+    ):
+        """Updates live call record directly with pure-math voice stress telemetry."""
+        record = self.active_calls.get(call_id)
+        if not record:
+            return
+        record.distress_score = round(float(distress_score), 3)
+        record.sarcasm_score = round(float(sarcasm_score), 3)
+        record.stress_category = stress_category
+        record.coercion_alert = bool(coercion_alert)
+        if coercion_alert or distress_score >= 0.75:
+            record.status = "SUPERVISOR_TAKEOVER_REQUIRED"
+            self._broadcast({
+                "event": "coercion_alert",
+                "call_id": call_id,
+                "distress_score": record.distress_score,
+                "stress_category": record.stress_category,
+                "status": record.status,
+                "timestamp": time.time(),
+            })
+
 
     def inject_whisper(
         self,

@@ -49,6 +49,8 @@ from verbalyze.telephony import (
     CrossTalkState,
     DTMFAudioRedactor,
     RedactionPolicy,
+    VoiceStressAndSarcasmDetector,
+    StressCategory,
 )
 
 __all__ = [
@@ -94,4 +96,6 @@ __all__ = [
     "CrossTalkState",
     "DTMFAudioRedactor",
     "RedactionPolicy",
+    "VoiceStressAndSarcasmDetector",
+    "StressCategory",
 ]
