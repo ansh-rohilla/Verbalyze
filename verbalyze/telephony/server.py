@@ -208,6 +208,12 @@ from verbalyze.telephony.sola_tsm import (
     SlipTelemetry,
     FractionalTelemetry,
 )
+from verbalyze.telephony.p563_quality import (
+    ITUTP563SpeechQualityClassifier,
+    P563ImpairmentType,
+    P563Telemetry,
+    P563StreamReport,
+)
 
 # Try importing FastAPI
 try:
@@ -311,6 +317,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "dtmf_silencer_status": "ready",
             "voice_stress_detector_status": "ready",
             "sola_jitter_status": "ready",
+            "p563_mos_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -3862,6 +3869,84 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "avg_sola_time_ms": round(avg_ms, 4),
             "p95_sola_time_ms": round(p95_ms, 4),
             "max_sola_time_ms": round(max_ms, 4),
+            "target_sla_ms": 0.05,
+            "meets_sla": avg_ms < 0.05,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    @app.post("/telephony/quality/p563-analyze")
+    async def analyze_p563_quality_endpoint(request: Request):
+        """
+        Analyzes live customer audio through single-ended ITU-T P.563 speech quality classifier.
+        Computes LPC vocal tract transfer function, spectral tilt, formant consistency,
+        clipping ratio, background noise coloration, and circuit breaker trip status.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        audio_b64 = body.get("audio_base64")
+        if not audio_b64:
+            return JSONResponse({"error": "Missing audio_base64 field"}, status_code=400)
+
+        sample_rate = int(body.get("sample_rate", 8000))
+        circuit_breaker_threshold = float(body.get("circuit_breaker_threshold", 3.20))
+
+        try:
+            pcm_bytes = base64.b64decode(audio_b64)
+        except Exception:
+            return JSONResponse({"error": "Invalid base64 audio payload"}, status_code=400)
+
+        classifier = ITUTP563SpeechQualityClassifier(
+            sample_rate=sample_rate,
+            circuit_breaker_threshold=circuit_breaker_threshold,
+        )
+        telemetries, report = classifier.analyze_stream(pcm_bytes)
+
+        return JSONResponse({
+            "status": "ok",
+            "telemetries": [t.to_dict() for t in telemetries],
+            "stream_report": report.to_dict(),
+        })
+
+    @app.post("/telephony/quality/p563-benchmark")
+    async def benchmark_p563_endpoint(request: Request):
+        """
+        Benchmarks 20ms frame processing latency of the ITU-T P.563 speech quality classifier.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        classifier = ITUTP563SpeechQualityClassifier(sample_rate=8000)
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        pcm_test = (np.sin(2 * np.pi * 220.0 * t) * 8000.0).astype(np.int16).tobytes()
+
+        # Warm-up
+        for _ in range(10):
+            classifier.process_frame(pcm_test)
+
+        n_iterations = 200
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            classifier.process_frame(pcm_test)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_p563_analysis_time_ms": round(avg_ms, 4),
+            "p95_p563_analysis_time_ms": round(p95_ms, 4),
+            "max_p563_analysis_time_ms": round(max_ms, 4),
             "target_sla_ms": 0.05,
             "meets_sla": avg_ms < 0.05,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),

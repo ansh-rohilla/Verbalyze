@@ -54,6 +54,8 @@ from verbalyze.telephony import (
     SOLATimeScaleModifier,
     PacketSlipSynthesizer,
     FractionalSampleInterpolator,
+    ITUTP563SpeechQualityClassifier,
+    P563ImpairmentType,
 )
 
 __all__ = [
@@ -104,4 +106,6 @@ __all__ = [
     "SOLATimeScaleModifier",
     "PacketSlipSynthesizer",
     "FractionalSampleInterpolator",
+    "ITUTP563SpeechQualityClassifier",
+    "P563ImpairmentType",
 ]

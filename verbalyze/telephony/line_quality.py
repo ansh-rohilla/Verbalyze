@@ -437,3 +437,12 @@ class CellularLineQualityClassifier:
         )
 
         return telemetries, report
+
+
+# Re-export ITU-T P.563 Single-Ended Speech Quality Classifier components
+from verbalyze.telephony.p563_quality import (
+    ITUTP563SpeechQualityClassifier,
+    P563ImpairmentType,
+    P563Telemetry,
+    P563StreamReport,
+)

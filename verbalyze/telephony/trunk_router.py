@@ -237,6 +237,28 @@ class CarrierTrunk:
         self.qos.update(rtt_ms, jitter_ms, packet_loss_pct, is_carrier_fault=is_carrier_fault)
         self.circuit_breaker.record_result(sip_code, rtt_ms, jitter_ms, packet_loss_pct)
 
+    def record_acoustic_quality(
+        self,
+        p563_mos: float,
+        failover_threshold: float = 3.20,
+        impairment_reason: str = "Acoustic line degradation",
+    ) -> bool:
+        """
+        Evaluates ITU-T P.563 single-ended MOS on live audio.
+        If MOS drops below failover_threshold (default 3.20),
+        automatically trips the carrier trunk circuit breaker to OPEN.
+        Returns True if breaker was tripped.
+        """
+        if self.qos is not None:
+            self.qos.update_p563_mos(p563_mos)
+        if self.circuit_breaker is not None:
+            return self.circuit_breaker.record_acoustic_mos(
+                p563_mos,
+                threshold=failover_threshold,
+                reason=impairment_reason,
+            )
+        return False
+
     def to_dict(self) -> Dict[str, Any]:
         """Returns comprehensive status dictionary."""
         return {
@@ -295,9 +317,38 @@ class MultiTrunkRouter:
         """Registers a carrier trunk in the routing table."""
         self.trunks[trunk.trunk_id] = trunk
 
+    add_trunk = register_trunk
+
     def get_trunk(self, trunk_id: str) -> Optional[CarrierTrunk]:
         """Retrieves a trunk by ID."""
         return self.trunks.get(trunk_id)
+
+    def evaluate_live_audio_quality(
+        self,
+        trunk_id: str,
+        pcm_bytes: bytes,
+        min_p563_mos: float = 3.20,
+    ) -> Tuple[Any, bool]:
+        """
+        Analyzes live customer audio through ITU-T P.563 single-ended classifier.
+        If estimated MOS drops below min_p563_mos (3.20), automatically trips the
+        trunk circuit breaker to OPEN, ensuring subsequent calls failover to alternate trunks.
+        Returns: (p563_stream_report, tripped_boolean)
+        """
+        from verbalyze.telephony.p563_quality import ITUTP563SpeechQualityClassifier
+        classifier = ITUTP563SpeechQualityClassifier(
+            circuit_breaker_threshold=min_p563_mos
+        )
+        telemetries, report = classifier.analyze_stream(pcm_bytes)
+        trunk = self.get_trunk(trunk_id)
+        tripped = False
+        if trunk is not None:
+            tripped = trunk.record_acoustic_quality(
+                report.average_p563_mos,
+                failover_threshold=min_p563_mos,
+                impairment_reason=f"ITU-T P.563 line degradation: MOS {report.average_p563_mos:.2f} < {min_p563_mos:.2f} ({report.dominant_impairment.value})",
+            )
+        return report, tripped
 
     def resolve_routes(
         self,

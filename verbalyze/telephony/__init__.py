@@ -207,6 +207,12 @@ from verbalyze.telephony.sola_tsm import (
     FractionalSampleInterpolator,
     FractionalTelemetry,
 )
+from verbalyze.telephony.p563_quality import (
+    ITUTP563SpeechQualityClassifier,
+    P563ImpairmentType,
+    P563Telemetry,
+    P563StreamReport,
+)
 
 __all__ = [
     "DispatchResult",
@@ -365,6 +371,10 @@ __all__ = [
     "SlipTelemetry",
     "FractionalSampleInterpolator",
     "FractionalTelemetry",
+    "ITUTP563SpeechQualityClassifier",
+    "P563ImpairmentType",
+    "P563Telemetry",
+    "P563StreamReport",
 ]
 
 

@@ -150,6 +150,7 @@ class TrunkQoS:
     jitter_ms: float = 5.0
     packet_loss_pct: float = 0.0
     mos_score: float = 4.41
+    p563_mos: float = 4.40
     total_calls: int = 0
     successful_calls: int = 0
     carrier_fault_calls: int = 0
@@ -173,12 +174,18 @@ class TrunkQoS:
         self.packet_loss_pct = round((alpha * packet_loss_pct) + ((1.0 - alpha) * self.packet_loss_pct), 2)
         self.mos_score = calculate_itu_g107_mos(self.latency_ms, self.jitter_ms, self.packet_loss_pct)
 
+    def update_p563_mos(self, mos: float):
+        """Updates rolling single-ended ITU-T P.563 MOS score."""
+        alpha = 0.3
+        self.p563_mos = round((alpha * mos) + ((1.0 - alpha) * self.p563_mos), 2)
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "latency_ms": self.latency_ms,
             "jitter_ms": self.jitter_ms,
             "packet_loss_pct": self.packet_loss_pct,
             "mos_score": self.mos_score,
+            "p563_mos": self.p563_mos,
             "total_calls": self.total_calls,
             "successful_calls": self.successful_calls,
             "carrier_fault_calls": self.carrier_fault_calls,
@@ -303,6 +310,23 @@ class SIPCircuitBreaker:
         self._state = CircuitBreakerState.OPEN
         self._state_change_time = time.time()
         self._last_failure_reason = reason
+
+    def record_acoustic_mos(
+        self,
+        mos_score: float,
+        threshold: float = 3.20,
+        reason: Optional[str] = None,
+    ) -> bool:
+        """
+        Evaluates single-ended ITU-T P.563 MOS score.
+        If mos_score < threshold (default 3.20), trips the circuit breaker to OPEN
+        to prevent customer experience degradation. Returns True if tripped.
+        """
+        if mos_score < threshold:
+            trip_reason = reason or f"ITU-T P.563 acoustic MOS {mos_score:.2f} < {threshold:.2f}"
+            self.trip_open(trip_reason)
+            return True
+        return False
 
     def reset(self):
         """Resets the circuit breaker back to the normal CLOSED state."""

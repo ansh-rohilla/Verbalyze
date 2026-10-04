@@ -56,6 +56,7 @@ TEST_SUITES = [
     ("In-Band DTMF Surgical Silencer & PCI-DSS Redactor", "scripts/test_dtmf_silencer_redactor.py"),
     ("Acoustic Sarcasm, Distress & Coercion Detector", "scripts/test_voice_stress_and_sarcasm.py"),
     ("Fractional-Sample Acoustic Jitter Buffer & Packet Slip Synthesizer", "scripts/test_packet_slip_sola_jitter.py"),
+    ("Single-Ended Non-Intrusive Speech Quality & Line Degradation Classifier (ITU-T P.563)", "scripts/test_p563_speech_quality.py"),
 ]
 
 
