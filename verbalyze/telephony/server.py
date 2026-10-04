@@ -198,6 +198,16 @@ from verbalyze.telephony.voice_stress import (
     ComplianceAction,
     VoiceStressTelemetry,
 )
+from verbalyze.telephony.sola_tsm import (
+    SOLATimeScaleModifier,
+    PacketSlipSynthesizer,
+    FractionalSampleInterpolator,
+    SOLAMode,
+    SlipType,
+    TSMTelemetry,
+    SlipTelemetry,
+    FractionalTelemetry,
+)
 
 # Try importing FastAPI
 try:
@@ -300,6 +310,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "cross_talk_separator_status": "ready",
             "dtmf_silencer_status": "ready",
             "voice_stress_detector_status": "ready",
+            "sola_jitter_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -3734,6 +3745,123 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "avg_stress_analysis_time_ms": round(avg_ms, 4),
             "p95_stress_analysis_time_ms": round(p95_ms, 4),
             "max_stress_analysis_time_ms": round(max_ms, 4),
+            "target_sla_ms": 0.05,
+            "meets_sla": avg_ms < 0.05,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    @app.post("/telephony/jitter/sola-modify")
+    async def modify_jitter_sola_endpoint(request: Request):
+        """
+        Executes pure-math SOLA time-scale expansion or compression on linear PCM audio.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        audio_b64 = body.get("audio_base64")
+        if not audio_b64:
+            return JSONResponse({"error": "Missing audio_base64 field"}, status_code=400)
+
+        scale_factor = float(body.get("scale_factor", 1.15))
+        sample_rate = int(body.get("sample_rate", 8000))
+
+        try:
+            pcm_bytes = base64.b64decode(audio_b64)
+        except Exception:
+            return JSONResponse({"error": "Invalid base64 audio payload"}, status_code=400)
+
+        sola = SOLATimeScaleModifier(sample_rate=sample_rate)
+        modified_bytes, telemetry = sola.modify_pcm(pcm_bytes, scale_factor=scale_factor)
+        modified_b64 = base64.b64encode(modified_bytes).decode("ascii")
+
+        return JSONResponse({
+            "status": "ok",
+            "modified_audio_base64": modified_b64,
+            "telemetry": telemetry.to_dict(),
+        })
+
+    @app.post("/telephony/jitter/slip-synthesize")
+    async def synthesize_packet_slip_endpoint(request: Request):
+        """
+        Synthesizes an ITU-T G.1020 packet slip (cycle insertion or deletion) without phase shock.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        audio_b64 = body.get("audio_base64")
+        if not audio_b64:
+            return JSONResponse({"error": "Missing audio_base64 field"}, status_code=400)
+
+        slip_type = str(body.get("slip_type", "insertion")).lower()
+        sample_rate = int(body.get("sample_rate", 8000))
+        period_samples = body.get("period_samples")
+        if period_samples is not None:
+            period_samples = int(period_samples)
+
+        try:
+            pcm_bytes = base64.b64decode(audio_b64)
+        except Exception:
+            return JSONResponse({"error": "Invalid base64 audio payload"}, status_code=400)
+
+        synthesizer = PacketSlipSynthesizer(sample_rate=sample_rate)
+        synthesized_bytes, telemetry = synthesizer.synthesize_slip_pcm(
+            pcm_bytes,
+            slip_type=slip_type,
+            period_samples=period_samples,
+        )
+        synth_b64 = base64.b64encode(synthesized_bytes).decode("ascii")
+
+        return JSONResponse({
+            "status": "ok",
+            "synthesized_audio_base64": synth_b64,
+            "telemetry": telemetry.to_dict(),
+        })
+
+    @app.post("/telephony/jitter/sola-benchmark")
+    async def benchmark_sola_endpoint(request: Request):
+        """
+        Benchmarks 20ms frame processing latency of pure-math SOLA time-scale modifier.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        sola = SOLATimeScaleModifier(sample_rate=8000)
+        # Synthetic speech frame at 200 Hz (20ms = 160 samples at 8kHz)
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        pcm_test = (np.sin(2 * np.pi * 200.0 * t) * 10000.0).astype(np.int16).tobytes()
+
+        # Warm-up
+        for _ in range(10):
+            sola.process_streaming_frame(pcm_test, scale_factor=1.15)
+
+        n_iterations = 200
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            sola.process_streaming_frame(pcm_test, scale_factor=1.15)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_sola_time_ms": round(avg_ms, 4),
+            "p95_sola_time_ms": round(p95_ms, 4),
+            "max_sola_time_ms": round(max_ms, 4),
             "target_sla_ms": 0.05,
             "meets_sla": avg_ms < 0.05,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),

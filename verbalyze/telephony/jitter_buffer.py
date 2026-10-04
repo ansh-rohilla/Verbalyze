@@ -16,6 +16,16 @@ from verbalyze.telephony.packet_loss_concealer import (
     PLCTelemetry,
     G711AppendixIPLC,
 )
+from verbalyze.telephony.sola_tsm import (
+    SOLATimeScaleModifier,
+    PacketSlipSynthesizer,
+    FractionalSampleInterpolator,
+    SOLAMode,
+    SlipType,
+    TSMTelemetry,
+    SlipTelemetry,
+    FractionalTelemetry,
+)
 
 
 @dataclass
@@ -43,8 +53,12 @@ class JitterBufferStats:
     underrun_count: int = 0
     overrun_count: int = 0
     current_target_delay_ms: float = 60.0
+    sola_expansions_count: int = 0
+    sola_compressions_count: int = 0
+    packet_slips_count: int = 0
+    last_scale_factor: float = 1.0
 
-    def to_dict(self) -> Dict[str, float]:
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "current_jitter_ms": round(self.current_jitter_ms, 2),
             "average_jitter_ms": round(self.average_jitter_ms, 2),
@@ -57,6 +71,10 @@ class JitterBufferStats:
             "underrun_count": self.underrun_count,
             "overrun_count": self.overrun_count,
             "current_target_delay_ms": round(self.current_target_delay_ms, 1),
+            "sola_expansions_count": self.sola_expansions_count,
+            "sola_compressions_count": self.sola_compressions_count,
+            "packet_slips_count": self.packet_slips_count,
+            "last_scale_factor": round(self.last_scale_factor, 4),
         }
 
 
@@ -78,6 +96,7 @@ class AdaptiveJitterBuffer:
         max_delay_ms: float = 200.0,
         nominal_delay_ms: float = 60.0,
         adaptation_rate: float = 0.05,
+        enable_sola: bool = False,
     ):
         self.frame_duration_ms = frame_duration_ms
         self.sample_rate = sample_rate
@@ -88,6 +107,7 @@ class AdaptiveJitterBuffer:
         self.max_delay_ms = max_delay_ms
         self.target_delay_ms = nominal_delay_ms
         self.adaptation_rate = adaptation_rate
+        self.enable_sola = enable_sola
 
         # Packet storage: sorted by sequence_number
         self.buffer: List[JitterBufferPacket] = []
@@ -111,6 +131,11 @@ class AdaptiveJitterBuffer:
             sample_rate=sample_rate,
             frame_duration_ms=frame_duration_ms,
         )
+
+        # Pure-Math SOLA TSM, Packet Slip Synthesizer, & Fractional Interpolator
+        self.sola = SOLATimeScaleModifier(sample_rate=sample_rate)
+        self.slip_synthesizer = PacketSlipSynthesizer(sample_rate=sample_rate)
+        self.fractional_interpolator = FractionalSampleInterpolator(sample_rate=sample_rate)
 
         # Telemetry counters
         self.stats = JitterBufferStats(current_target_delay_ms=self.target_delay_ms)
@@ -239,6 +264,10 @@ class AdaptiveJitterBuffer:
         Pulls the next scheduled audio frame for playout.
         Returns: (pcm_data, is_concealed)
         """
+        if self.enable_sola:
+            frame, is_concealed, _ = self.pop_sola(current_time_ms=current_time_ms)
+            return frame, is_concealed
+
         now_ms = current_time_ms if current_time_ms is not None else (time.time() * 1000.0)
 
         if not self.buffer:
@@ -267,6 +296,77 @@ class AdaptiveJitterBuffer:
         self.buffer.pop(0)
         return self.pop(current_time_ms=now_ms)
 
+    def pop_sola(self, current_time_ms: Optional[float] = None) -> Tuple[bytes, bool, Optional[TSMTelemetry]]:
+        """
+        Pulls the next scheduled audio frame using SOLA time-scale adaptation.
+        Dynamically stretches speech (+15%) when buffer occupancy drops below target
+        (preventing starvation and underrun), and compresses speech (-15%) when
+        occupancy exceeds target + 40ms (draining latency back under sub-200ms budget).
+        """
+        now_ms = current_time_ms if current_time_ms is not None else (time.time() * 1000.0)
+
+        if not self.buffer:
+            self.stats.underrun_count += 1
+            concealed = self.synthesize_concealment_frame()
+            return concealed, True, None
+
+        occupancy_ms = len(self.buffer) * self.frame_duration_ms
+
+        next_packet = self.buffer[0]
+        expected_seq = (self.last_played_sequence + 1) if self.last_played_sequence is not None else next_packet.sequence_number
+
+        if next_packet.sequence_number == expected_seq:
+            packet = self.buffer.pop(0)
+            self.last_played_sequence = packet.sequence_number
+            raw_pcm, _ = self.plc.ingest_good_frame(packet.pcm_data)
+            is_concealed = False
+        elif next_packet.sequence_number > expected_seq:
+            if self.last_played_sequence is not None:
+                self.last_played_sequence += 1
+            else:
+                self.last_played_sequence = expected_seq
+            raw_pcm = self.synthesize_concealment_frame()
+            is_concealed = True
+        else:
+            self.buffer.pop(0)
+            return self.pop_sola(current_time_ms=now_ms)
+
+        # Dynamic SOLA scaling factor based on buffer occupancy
+        scale_factor = 1.0
+        if occupancy_ms < (self.target_delay_ms - 20.0) and len(self.buffer) > 0:
+            deficit = max(0.0, (self.target_delay_ms - occupancy_ms))
+            scale_factor = 1.0 + min(0.15, max(0.02, (deficit / 100.0) * 0.15))
+            self.stats.sola_expansions_count += 1
+        elif occupancy_ms > (self.target_delay_ms + 40.0):
+            surplus = max(0.0, (occupancy_ms - self.target_delay_ms))
+            scale_factor = 1.0 - min(0.15, max(0.02, (surplus / 100.0) * 0.15))
+            self.stats.sola_compressions_count += 1
+
+        self.stats.last_scale_factor = scale_factor
+
+        target_samples = self.frame_bytes // self.bytes_per_sample
+        adapted_pcm, telemetry = self.sola.process_streaming_frame(
+            raw_pcm,
+            scale_factor=scale_factor,
+            target_output_samples=target_samples,
+        )
+        self.last_valid_pcm = adapted_pcm
+        return adapted_pcm, is_concealed, telemetry
+
+    def apply_packet_slip(self, slip_type: str = "insertion") -> Tuple[bytes, SlipTelemetry]:
+        """
+        Synthesizes an intentional ITU-T G.1020 packet slip to correct gateway clock phase.
+        """
+        self.stats.packet_slips_count += 1
+        last_pcm = self.last_valid_pcm if self.last_valid_pcm else (b"\x00" * self.frame_bytes)
+        return self.slip_synthesizer.synthesize_slip_pcm(last_pcm, slip_type=slip_type)
+
+    def compensate_clock_drift(self, pcm_bytes: bytes, ppm_drift: float) -> Tuple[bytes, FractionalTelemetry]:
+        """
+        Applies 4-point cubic Hermite fractional-sample interpolation to eliminate ppm clock drift.
+        """
+        return self.fractional_interpolator.interpolate_pcm(pcm_bytes, ratio=1.0 + ppm_drift * 1e-6)
+
     def get_all_available_pcm(self) -> bytes:
         """Flushes all queued audio sequentially into a contiguous PCM byte string."""
         chunks = []
@@ -280,7 +380,8 @@ class AdaptiveJitterBuffer:
         return self.stats
 
     def clear(self):
-        """Resets the jitter buffer queue and PLC state."""
+        """Resets the jitter buffer queue, PLC state, and SOLA residual queue."""
         self.buffer.clear()
         self.last_valid_pcm = None
         self.plc.reset()
+        self.sola.reset()

@@ -197,6 +197,16 @@ from verbalyze.telephony.voice_stress import (
     ComplianceAction,
     VoiceStressTelemetry,
 )
+from verbalyze.telephony.sola_tsm import (
+    SOLATimeScaleModifier,
+    SOLAMode,
+    TSMTelemetry,
+    PacketSlipSynthesizer,
+    SlipType,
+    SlipTelemetry,
+    FractionalSampleInterpolator,
+    FractionalTelemetry,
+)
 
 __all__ = [
     "DispatchResult",
@@ -347,6 +357,14 @@ __all__ = [
     "StressCategory",
     "ComplianceAction",
     "VoiceStressTelemetry",
+    "SOLATimeScaleModifier",
+    "SOLAMode",
+    "TSMTelemetry",
+    "PacketSlipSynthesizer",
+    "SlipType",
+    "SlipTelemetry",
+    "FractionalSampleInterpolator",
+    "FractionalTelemetry",
 ]
 
 

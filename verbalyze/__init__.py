@@ -51,6 +51,9 @@ from verbalyze.telephony import (
     RedactionPolicy,
     VoiceStressAndSarcasmDetector,
     StressCategory,
+    SOLATimeScaleModifier,
+    PacketSlipSynthesizer,
+    FractionalSampleInterpolator,
 )
 
 __all__ = [
@@ -98,4 +101,7 @@ __all__ = [
     "RedactionPolicy",
     "VoiceStressAndSarcasmDetector",
     "StressCategory",
+    "SOLATimeScaleModifier",
+    "PacketSlipSynthesizer",
+    "FractionalSampleInterpolator",
 ]
