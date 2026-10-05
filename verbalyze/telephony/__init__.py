@@ -213,6 +213,13 @@ from verbalyze.telephony.p563_quality import (
     P563Telemetry,
     P563StreamReport,
 )
+from verbalyze.telephony.dereverberator import (
+    AcousticDereverberator,
+    RoomAcousticProfile,
+    DereverbTelemetry,
+    InverseSchroederLattice,
+    T60Estimator,
+)
 
 __all__ = [
     "DispatchResult",
@@ -375,6 +382,11 @@ __all__ = [
     "P563ImpairmentType",
     "P563Telemetry",
     "P563StreamReport",
+    "AcousticDereverberator",
+    "RoomAcousticProfile",
+    "DereverbTelemetry",
+    "InverseSchroederLattice",
+    "T60Estimator",
 ]
 
 

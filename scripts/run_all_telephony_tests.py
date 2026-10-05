@@ -57,6 +57,7 @@ TEST_SUITES = [
     ("Acoustic Sarcasm, Distress & Coercion Detector", "scripts/test_voice_stress_and_sarcasm.py"),
     ("Fractional-Sample Acoustic Jitter Buffer & Packet Slip Synthesizer", "scripts/test_packet_slip_sola_jitter.py"),
     ("Single-Ended Non-Intrusive Speech Quality & Line Degradation Classifier (ITU-T P.563)", "scripts/test_p563_speech_quality.py"),
+    ("Adaptive Acoustic Room Reverberation Dampener & Inverse Schroeder Filter", "scripts/test_acoustic_dereverberator.py"),
 ]
 
 

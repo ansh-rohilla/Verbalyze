@@ -56,6 +56,8 @@ from verbalyze.telephony import (
     FractionalSampleInterpolator,
     ITUTP563SpeechQualityClassifier,
     P563ImpairmentType,
+    AcousticDereverberator,
+    RoomAcousticProfile,
 )
 
 __all__ = [
@@ -108,4 +110,6 @@ __all__ = [
     "FractionalSampleInterpolator",
     "ITUTP563SpeechQualityClassifier",
     "P563ImpairmentType",
+    "AcousticDereverberator",
+    "RoomAcousticProfile",
 ]

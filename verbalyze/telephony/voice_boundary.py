@@ -56,6 +56,13 @@ class TurnBoundaryDecision(str, Enum):
     IDLE_SILENCE = "IDLE_SILENCE"                   # Inactive channel / baseline silence
 
 
+from verbalyze.telephony.dereverberator import (
+    AcousticDereverberator,
+    DereverbTelemetry,
+    RoomAcousticProfile,
+)
+
+
 @dataclass
 class VoiceBoundaryTelemetry:
     """Frame-level acoustic metrics and turn-boundary assessment."""
@@ -76,6 +83,8 @@ class VoiceBoundaryTelemetry:
     decision: TurnBoundaryDecision
     eot_triggered: bool
     latency_ms: float
+    t60_estimate_sec: float = 0.0
+    reverberation_damped: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -96,6 +105,8 @@ class VoiceBoundaryTelemetry:
             "decision": self.decision.value,
             "eot_triggered": self.eot_triggered,
             "latency_ms": round(self.latency_ms, 4),
+            "t60_estimate_sec": round(self.t60_estimate_sec, 3),
+            "reverberation_damped": self.reverberation_damped,
         }
 
 
@@ -400,6 +411,7 @@ class VoiceBoundaryPredictor:
         hesitation_hold_threshold_ms: float = 650.0,
         speech_onset_frames: int = 2,
         hangover_frames: int = 4,
+        dereverberation_enabled: bool = False,
     ):
         self.sample_rate = sample_rate
         self.frame_duration_ms = frame_duration_ms
@@ -412,11 +424,13 @@ class VoiceBoundaryPredictor:
 
         self.speech_onset_frames = speech_onset_frames
         self.hangover_frames = hangover_frames
+        self.dereverberation_enabled = dereverberation_enabled
 
         # Sub-engines
         self.p56_estimator = ITUTP56SpeechLevelEstimator(sample_rate=sample_rate)
         self.pitch_tracker = PitchDeclinationTracker(sample_rate=sample_rate)
         self.energy_flux_tracker = EnergyAndFluxTracker(sample_rate=sample_rate, frame_duration_ms=frame_duration_ms)
+        self.dereverberator = AcousticDereverberator(sample_rate=sample_rate)
 
         # State tracking
         self._frame_count = 0
@@ -449,6 +463,13 @@ class VoiceBoundaryPredictor:
         timestamp_sec = self._frame_count * (self.frame_duration_ms / 1000.0)
 
         samples = self._pcm_to_float(frame_pcm_bytes)
+
+        t60_estimate_sec = 0.0
+        reverberation_damped = False
+        if self.dereverberation_enabled:
+            samples, derev_telem = self.dereverberator.process_frame_samples(samples)
+            t60_estimate_sec = derev_telem.t60_estimate_sec
+            reverberation_damped = derev_telem.tail_hangover_damped
 
         # 1. ITU-T P.56 speech level update
         active_level_db, activity_factor = self.p56_estimator.process_samples(samples)
@@ -571,6 +592,8 @@ class VoiceBoundaryPredictor:
             decision=decision,
             eot_triggered=eot_triggered,
             latency_ms=latency_ms,
+            t60_estimate_sec=t60_estimate_sec,
+            reverberation_damped=reverberation_damped,
         )
 
     def reset(self):
@@ -586,3 +609,4 @@ class VoiceBoundaryPredictor:
         self.p56_estimator.reset()
         self.pitch_tracker.reset()
         self.energy_flux_tracker.reset()
+        self.dereverberator.reset()

@@ -30,6 +30,11 @@ from verbalyze.telephony.cross_talk_separator import (
     AcousticCrossTalkSeparator,
     CrossTalkState,
 )
+from verbalyze.telephony.dereverberator import (
+    AcousticDereverberator,
+    DereverbTelemetry,
+    RoomAcousticProfile,
+)
 
 
 @dataclass
@@ -46,6 +51,9 @@ class DSPTelemetry:
     cross_talk_detected: bool = False
     cross_talk_suppression_db: float = 0.0
     clean_barge_in_eligible: bool = True
+    reverberation_detected: bool = False
+    t60_estimate_sec: float = 0.0
+    late_reverb_suppression_db: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -60,6 +68,9 @@ class DSPTelemetry:
             "cross_talk_detected": self.cross_talk_detected,
             "cross_talk_suppression_db": round(self.cross_talk_suppression_db, 2),
             "clean_barge_in_eligible": self.clean_barge_in_eligible,
+            "reverberation_detected": self.reverberation_detected,
+            "t60_estimate_sec": round(self.t60_estimate_sec, 3),
+            "late_reverb_suppression_db": round(self.late_reverb_suppression_db, 2),
         }
 
 
@@ -343,16 +354,19 @@ class AcousticEchoAndNoiseProcessor:
         aec_enabled: bool = True,
         noise_suppression_enabled: bool = True,
         cross_talk_separation_enabled: bool = False,
+        dereverberation_enabled: bool = False,
     ):
         self.sample_rate = sample_rate
         self.aec_enabled = aec_enabled
         self.noise_suppression_enabled = noise_suppression_enabled
         self.cross_talk_separation_enabled = cross_talk_separation_enabled
+        self.dereverberation_enabled = dereverberation_enabled
 
         self.aec = NLMSAdaptiveFilter(filter_length=filter_length)
         self.dtd = GeigelDoubleTalkDetector()
         self.noise_suppressor = SpectralNoiseSuppressor(frame_len=160 if sample_rate == 8000 else 320)
         self.cross_talk_separator = AcousticCrossTalkSeparator(sample_rate=sample_rate)
+        self.dereverberator = AcousticDereverberator(sample_rate=sample_rate)
 
         self.last_telemetry = DSPTelemetry()
         self.is_bot_speaking = False
@@ -427,7 +441,17 @@ class AcousticEchoAndNoiseProcessor:
             cross_talk_suppression_db = ct_telem.bleed_suppression_db
             clean_barge_in_eligible = ct_telem.clean_barge_in_eligible
 
-        # 4. Clip and convert back to 16-bit linear PCM
+        # 4. Adaptive Acoustic Room Dereverberation
+        reverberation_detected = False
+        t60_estimate_sec = 0.0
+        late_reverb_suppression_db = 0.0
+        if self.dereverberation_enabled:
+            clean_samples, derev_telem = self.dereverberator.process_frame_samples(clean_samples)
+            reverberation_detected = derev_telem.reverberation_detected
+            t60_estimate_sec = derev_telem.t60_estimate_sec
+            late_reverb_suppression_db = derev_telem.late_reverb_suppression_db
+
+        # 5. Clip and convert back to 16-bit linear PCM
         clean_int16 = np.clip(clean_samples * 32768.0, -32768, 32767).astype(np.int16)
         clean_pcm_bytes = clean_int16.tobytes()
         clean_rms = float(np.sqrt(np.mean(clean_samples ** 2))) * 32768.0
@@ -446,6 +470,9 @@ class AcousticEchoAndNoiseProcessor:
             cross_talk_detected=cross_talk_detected,
             cross_talk_suppression_db=cross_talk_suppression_db,
             clean_barge_in_eligible=clean_barge_in_eligible,
+            reverberation_detected=reverberation_detected,
+            t60_estimate_sec=t60_estimate_sec,
+            late_reverb_suppression_db=late_reverb_suppression_db,
         )
         self.last_telemetry = telemetry
 
@@ -457,5 +484,6 @@ class AcousticEchoAndNoiseProcessor:
         self.dtd.reset()
         self.noise_suppressor.reset()
         self.cross_talk_separator.reset()
+        self.dereverberator.reset()
         self.last_telemetry = DSPTelemetry()
         self.is_bot_speaking = False
