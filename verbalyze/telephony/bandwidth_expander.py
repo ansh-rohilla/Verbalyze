@@ -24,6 +24,8 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Any
 import numpy as np
 
+from verbalyze.telephony.tandem_compensator import CellularTandemHarmonizer
+
 
 @dataclass
 class BWETelemetry:
@@ -168,12 +170,15 @@ class BandwidthExpander:
         self,
         preset_name: str = "HD_VOICE_STANDARD",
         frame_duration_ms: float = 20.0,
+        tandem_compensation_enabled: bool = False,
     ):
         self.frame_duration_ms = frame_duration_ms
         self.input_sample_rate = 8000
         self.output_sample_rate = 16000
         self.input_frame_samples = int(self.input_sample_rate * (frame_duration_ms / 1000.0))   # 160
         self.output_frame_samples = int(self.output_sample_rate * (frame_duration_ms / 1000.0)) # 320
+        self.tandem_compensation_enabled = tandem_compensation_enabled
+        self.tandem_compensator = CellularTandemHarmonizer(sample_rate=self.input_sample_rate)
 
         # Boundary state for 2x linear interpolation
         self.last_nb_sample: float = 0.0
@@ -211,6 +216,7 @@ class BandwidthExpander:
         self.hb_highpass.reset()
         self.hb_lowpass.reset()
         self.smoothed_high_band_gain = 0.0
+        self.tandem_compensator.reset()
 
     def _estimate_pitch_and_voicing(self, samples_8k: np.ndarray) -> Tuple[bool, float, float, float]:
         """
@@ -269,6 +275,10 @@ class BandwidthExpander:
             padded = np.zeros(self.input_frame_samples, dtype=np.float32)
             padded[:len(samples_8k)] = samples_8k
             samples_8k = padded
+
+        # Apply tandem compensation prior to upsampling if enabled
+        if self.tandem_compensation_enabled:
+            samples_8k, _ = self.tandem_compensator.process_frame_samples(samples_8k)
 
         base_rms = float(np.sqrt(np.mean(samples_8k ** 2)))
 

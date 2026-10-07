@@ -58,6 +58,8 @@ from verbalyze.telephony import (
     P563ImpairmentType,
     AcousticDereverberator,
     RoomAcousticProfile,
+    CellularTandemHarmonizer,
+    TandemProfile,
 )
 
 __all__ = [
@@ -112,4 +114,6 @@ __all__ = [
     "P563ImpairmentType",
     "AcousticDereverberator",
     "RoomAcousticProfile",
+    "CellularTandemHarmonizer",
+    "TandemProfile",
 ]

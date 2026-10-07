@@ -35,6 +35,11 @@ from verbalyze.telephony.dereverberator import (
     DereverbTelemetry,
     RoomAcousticProfile,
 )
+from verbalyze.telephony.tandem_compensator import (
+    CellularTandemHarmonizer,
+    TandemProfile,
+    TandemCompensatorTelemetry,
+)
 
 
 @dataclass
@@ -54,6 +59,10 @@ class DSPTelemetry:
     reverberation_detected: bool = False
     t60_estimate_sec: float = 0.0
     late_reverb_suppression_db: float = 0.0
+    tandem_compensation_applied: bool = False
+    tandem_profile: str = "CLEAN_SINGLE_CODEC"
+    spectral_gap_depth_db: float = 0.0
+    phase_warble_index: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -71,6 +80,10 @@ class DSPTelemetry:
             "reverberation_detected": self.reverberation_detected,
             "t60_estimate_sec": round(self.t60_estimate_sec, 3),
             "late_reverb_suppression_db": round(self.late_reverb_suppression_db, 2),
+            "tandem_compensation_applied": self.tandem_compensation_applied,
+            "tandem_profile": self.tandem_profile,
+            "spectral_gap_depth_db": round(self.spectral_gap_depth_db, 2),
+            "phase_warble_index": round(self.phase_warble_index, 4),
         }
 
 
@@ -355,18 +368,21 @@ class AcousticEchoAndNoiseProcessor:
         noise_suppression_enabled: bool = True,
         cross_talk_separation_enabled: bool = False,
         dereverberation_enabled: bool = False,
+        tandem_compensation_enabled: bool = False,
     ):
         self.sample_rate = sample_rate
         self.aec_enabled = aec_enabled
         self.noise_suppression_enabled = noise_suppression_enabled
         self.cross_talk_separation_enabled = cross_talk_separation_enabled
         self.dereverberation_enabled = dereverberation_enabled
+        self.tandem_compensation_enabled = tandem_compensation_enabled
 
         self.aec = NLMSAdaptiveFilter(filter_length=filter_length)
         self.dtd = GeigelDoubleTalkDetector()
         self.noise_suppressor = SpectralNoiseSuppressor(frame_len=160 if sample_rate == 8000 else 320)
         self.cross_talk_separator = AcousticCrossTalkSeparator(sample_rate=sample_rate)
         self.dereverberator = AcousticDereverberator(sample_rate=sample_rate)
+        self.tandem_compensator = CellularTandemHarmonizer(sample_rate=sample_rate)
 
         self.last_telemetry = DSPTelemetry()
         self.is_bot_speaking = False
@@ -451,7 +467,19 @@ class AcousticEchoAndNoiseProcessor:
             t60_estimate_sec = derev_telem.t60_estimate_sec
             late_reverb_suppression_db = derev_telem.late_reverb_suppression_db
 
-        # 5. Clip and convert back to 16-bit linear PCM
+        # 5. Cellular Codec Tandem Warble & Spectral Gap Compensation
+        tandem_compensation_applied = False
+        tandem_profile_str = "CLEAN_SINGLE_CODEC"
+        spectral_gap_depth_db = 0.0
+        phase_warble_index = 0.0
+        if self.tandem_compensation_enabled:
+            clean_samples, tandem_telem = self.tandem_compensator.process_frame_samples(clean_samples)
+            tandem_compensation_applied = tandem_telem.compensation_applied
+            tandem_profile_str = tandem_telem.tandem_profile.value
+            spectral_gap_depth_db = tandem_telem.spectral_gap_depth_db
+            phase_warble_index = tandem_telem.phase_warble_index
+
+        # 6. Clip and convert back to 16-bit linear PCM
         clean_int16 = np.clip(clean_samples * 32768.0, -32768, 32767).astype(np.int16)
         clean_pcm_bytes = clean_int16.tobytes()
         clean_rms = float(np.sqrt(np.mean(clean_samples ** 2))) * 32768.0
@@ -473,6 +501,10 @@ class AcousticEchoAndNoiseProcessor:
             reverberation_detected=reverberation_detected,
             t60_estimate_sec=t60_estimate_sec,
             late_reverb_suppression_db=late_reverb_suppression_db,
+            tandem_compensation_applied=tandem_compensation_applied,
+            tandem_profile=tandem_profile_str,
+            spectral_gap_depth_db=spectral_gap_depth_db,
+            phase_warble_index=phase_warble_index,
         )
         self.last_telemetry = telemetry
 
@@ -485,5 +517,6 @@ class AcousticEchoAndNoiseProcessor:
         self.noise_suppressor.reset()
         self.cross_talk_separator.reset()
         self.dereverberator.reset()
+        self.tandem_compensator.reset()
         self.last_telemetry = DSPTelemetry()
         self.is_bot_speaking = False

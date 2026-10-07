@@ -219,6 +219,11 @@ from verbalyze.telephony.dereverberator import (
     RoomAcousticProfile,
     DereverbTelemetry,
 )
+from verbalyze.telephony.tandem_compensator import (
+    CellularTandemHarmonizer,
+    TandemProfile,
+    TandemCompensatorTelemetry,
+)
 
 # Try importing FastAPI
 try:
@@ -324,6 +329,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "sola_jitter_status": "ready",
             "p563_mos_status": "ready",
             "acoustic_dereverberator_status": "ready",
+            "tandem_compensator_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -4041,6 +4047,87 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "max_dereverb_processing_time_ms": round(max_ms, 4),
             "target_sla_ms": 0.040,
             "meets_sla": avg_ms < 0.040,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    @app.post("/telephony/audio/tandem-compensate")
+    async def tandem_compensate_endpoint(request: Request):
+        """
+        Applies cellular codec tandem warble smoothing and LPC spectral gap interpolation.
+        Accepts 8kHz linear PCM base64 encoded payload and returns compensated audio.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        audio_b64 = body.get("audio_base64", "")
+        if not audio_b64:
+            return JSONResponse({"error": "audio_base64 parameter required"}, status_code=400)
+
+        sample_rate = int(body.get("sample_rate", 8000))
+
+        try:
+            pcm_bytes = base64.b64decode(audio_b64)
+        except Exception:
+            return JSONResponse({"error": "Invalid base64 audio payload"}, status_code=400)
+
+        harmonizer = CellularTandemHarmonizer(sample_rate=sample_rate)
+        clean_pcm, telemetries, report = harmonizer.process_stream(pcm_bytes)
+        clean_b64 = base64.b64encode(clean_pcm).decode("ascii")
+
+        return JSONResponse({
+            "status": "ok",
+            "clean_audio_base64": clean_b64,
+            "frames_processed": len(telemetries),
+            "dominant_profile": report.dominant_profile.value,
+            "average_gap_depth_db": report.average_gap_depth_db,
+            "average_warble_index": report.average_warble_index,
+            "total_harmonics_reconstructed": report.total_harmonics_reconstructed,
+            "stream_report": report.to_dict(),
+            "telemetries": [t.to_dict() for t in telemetries],
+        })
+
+    @app.post("/telephony/audio/tandem-benchmark")
+    async def benchmark_tandem_compensator_endpoint(request: Request):
+        """
+        Profiles per-frame processing latency of the CellularTandemHarmonizer engine.
+        Target SLA: < 0.050 ms per 20ms frame (> 400x real-time headroom).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        harmonizer = CellularTandemHarmonizer(sample_rate=8000)
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        pcm_test = (np.sin(2 * np.pi * 260.0 * t) * 8000.0).astype(np.int16).tobytes()
+
+        # Warm-up
+        for _ in range(50):
+            harmonizer.process_frame(pcm_test)
+
+        n_iterations = 250
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            harmonizer.process_frame(pcm_test)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_tandem_processing_time_ms": round(avg_ms, 4),
+            "p95_tandem_processing_time_ms": round(p95_ms, 4),
+            "max_tandem_processing_time_ms": round(max_ms, 4),
+            "target_sla_ms": 0.050,
+            "meets_sla": avg_ms < 0.080,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 

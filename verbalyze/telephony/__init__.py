@@ -220,6 +220,13 @@ from verbalyze.telephony.dereverberator import (
     InverseSchroederLattice,
     T60Estimator,
 )
+from verbalyze.telephony.tandem_compensator import (
+    CellularTandemHarmonizer,
+    TandemProfile,
+    TandemCompensatorTelemetry,
+    TandemCompensationReport,
+    LPCVocalTractEstimator,
+)
 
 __all__ = [
     "DispatchResult",
@@ -387,6 +394,11 @@ __all__ = [
     "DereverbTelemetry",
     "InverseSchroederLattice",
     "T60Estimator",
+    "CellularTandemHarmonizer",
+    "TandemProfile",
+    "TandemCompensatorTelemetry",
+    "TandemCompensationReport",
+    "LPCVocalTractEstimator",
 ]
 
 
