@@ -8,18 +8,13 @@ Dual-Channel Sentiment & Dispute Detection Engine:
 """
 
 import re
-import math
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Any, Optional, Tuple
 
 import numpy as np
 
-from verbalyze.telephony.voice_stress import (
-    VoiceStressAndSarcasmDetector,
-    StressCategory,
-    ComplianceAction,
-)
+from verbalyze.telephony.voice_stress import VoiceStressAndSarcasmDetector
 
 
 class SentimentCategory(str, Enum):

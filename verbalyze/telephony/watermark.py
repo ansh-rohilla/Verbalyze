@@ -18,13 +18,11 @@ official Section 65B WatermarkAuditCertificate.
 Zero-emoji compliant. DPDP Act 2023 & RBI data sovereignty compliant.
 """
 
-import io
 import time
-import math
 import uuid
 import hmac
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Any
 import numpy as np
 

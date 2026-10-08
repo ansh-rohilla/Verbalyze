@@ -10,8 +10,7 @@ Zero-emoji compliant.
 
 import hmac
 import hashlib
-import time
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any
 
 
 def verify_razorpay_signature(raw_payload: bytes, signature: str, secret: str) -> bool:

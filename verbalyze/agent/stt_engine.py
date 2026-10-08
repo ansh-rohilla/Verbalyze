@@ -19,7 +19,6 @@ import audioop
 import numpy as np
 from typing import Optional, Tuple, Dict, Any
 
-from verbalyze.security import PIIRedactor
 from verbalyze.telephony.bandwidth_expander import BandwidthExpander
 
 # Global model cache to prevent re-loading weights between turns

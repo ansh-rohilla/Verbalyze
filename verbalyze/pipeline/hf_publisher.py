@@ -7,9 +7,8 @@ Publishes Verbalyze datasets to the Hugging Face Hub:
 """
 
 import os
-import sys
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 
 try:
     from huggingface_hub import HfApi, get_token

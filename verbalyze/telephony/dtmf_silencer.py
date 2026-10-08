@@ -24,9 +24,9 @@ In-Band DTMF Surgical Silencer & PCI-DSS Audio Redactor (RFC 2833 / RFC 4733):
 import time
 import math
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Any, Tuple, Optional, List, Union
+from typing import Dict, Any, Tuple, Optional, List
 import numpy as np
 
 # Standard ITU-T Q.23 / Q.24 DTMF Frequencies

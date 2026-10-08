@@ -6,7 +6,6 @@ Supports Microsoft Edge-TTS neural voices across Indian languages with fallback 
 """
 
 import os
-import sys
 import shutil
 import asyncio
 import tempfile

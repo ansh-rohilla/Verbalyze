@@ -12,7 +12,7 @@ import json
 import re
 import urllib.request
 import urllib.parse
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional
 
 
 def clean_indian_phone(phone_str: str) -> str:

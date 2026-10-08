@@ -17,7 +17,7 @@ import uuid
 import time
 import asyncio
 from datetime import datetime, timezone
-from typing import List, Dict, Any, Optional, Tuple, Union
+from typing import List, Dict, Any, Optional, Tuple
 
 from verbalyze.campaign.models import (
     Lead,
@@ -29,7 +29,7 @@ from verbalyze.campaign.models import (
     CallDetailRecord,
     CampaignSummary,
 )
-from verbalyze.campaign.trai_compliance import TRAIComplianceEngine, get_current_ist_time
+from verbalyze.campaign.trai_compliance import TRAIComplianceEngine
 from verbalyze.campaign.amd import AMDClassifier
 from verbalyze.security import (
     PIIRedactor,

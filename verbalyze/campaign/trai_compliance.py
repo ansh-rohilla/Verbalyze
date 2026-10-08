@@ -9,7 +9,7 @@ Telecom Regulatory Authority of India (TRAI) & RBI Compliance Engine:
 
 from datetime import datetime, timezone, timedelta, time as dtime
 from typing import Set, Optional, Tuple
-from verbalyze.campaign.models import Lead, LeadStatus
+from verbalyze.campaign.models import Lead
 
 # Indian Standard Time (IST) is UTC+05:30
 IST_TIMEZONE = timezone(timedelta(hours=5, minutes=30))

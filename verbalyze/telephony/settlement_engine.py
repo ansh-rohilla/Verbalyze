@@ -11,7 +11,6 @@ Zero-emoji compliant.
 
 import hmac
 import hashlib
-import io
 import time
 import uuid
 from enum import Enum

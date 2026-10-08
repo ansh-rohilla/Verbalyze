@@ -10,14 +10,13 @@ Full-Duplex Conversational Telephony Voice Agent:
 
 import os
 import re
-import sys
 import json
 import time
 import asyncio
 from typing import Dict, List, Any, Optional, Tuple, AsyncGenerator
 from verbalyze.agent.tools import TELEPHONY_TOOLS_SCHEMA, execute_telephony_tool
 from verbalyze.agent.audio_engine import AudioEngine
-from verbalyze.security import detect_prompt_injection, PIIRedactor
+from verbalyze.security import detect_prompt_injection
 from verbalyze.agent.sentiment import (
     UnifiedSentimentEngine,
     SentimentResult,
@@ -27,7 +26,6 @@ from verbalyze.agent.sentiment import (
 from verbalyze.agent.lid_engine import (
     LanguageIdentificationGate,
     LanguageIDResult,
-    ScriptType,
 )
 from verbalyze.telephony.voice_biometrics import (
     BiometricVerificationEngine,

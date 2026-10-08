@@ -14,8 +14,6 @@ import time
 import wave
 import tempfile
 import select
-import threading
-from pathlib import Path
 from typing import Optional, Tuple
 
 import numpy as np

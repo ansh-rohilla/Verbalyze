@@ -13,10 +13,9 @@ Dynamic SIP Circuit Breaker & Real-Time QoS Telemetry Engine:
 """
 
 import time
-import math
 from enum import Enum
-from dataclasses import dataclass, field
-from typing import Dict, Any, Optional, List, Deque
+from dataclasses import dataclass
+from typing import Dict, Any, Optional, Deque
 from collections import deque
 
 

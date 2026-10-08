@@ -21,7 +21,6 @@ Zero-emoji compliant.
 
 import math
 import struct
-import time
 from typing import Dict, Any, Optional, List, Tuple, Union
 
 

@@ -7,7 +7,6 @@ Telephony tools executable by the Voice Agent during telephone calls:
 - schedule_callback: logs a promise-to-pay date or customer callback
 """
 
-import json
 from typing import Dict, Any, Tuple, Optional
 from verbalyze.telephony.sms_dispatch import dispatch_payment_sms
 from verbalyze.security import (

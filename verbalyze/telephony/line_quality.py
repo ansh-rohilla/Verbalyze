@@ -7,7 +7,6 @@ Sovereignty: Section 65B Indian Evidence Act / ITU-T P.862 & P.563 Telephony Sta
 Constraint: STRICT ZERO EMOJIS.
 """
 
-import math
 import time
 from dataclasses import dataclass
 from enum import Enum

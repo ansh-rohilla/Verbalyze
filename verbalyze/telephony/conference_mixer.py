@@ -31,7 +31,7 @@ import time
 import math
 from enum import Enum
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple
 import numpy as np
 
 

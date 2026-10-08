@@ -11,7 +11,7 @@ Zero-emoji compliant.
 import asyncio
 import json
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Any
 
 from verbalyze.security import PIIRedactor

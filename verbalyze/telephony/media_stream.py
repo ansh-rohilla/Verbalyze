@@ -12,12 +12,10 @@ Bi-Directional WebSocket Media Stream Processor for Live Telephony Trunks:
 import asyncio
 import audioop
 import base64
-import io
 import json
 import os
 import time
-import wave
-from typing import Dict, Any, Optional, List, Callable
+from typing import Dict, Any, Optional, List
 
 from verbalyze.agent.voice_bot import VoiceAgent
 from verbalyze.agent.stt_engine import SovereignSTTEngine
@@ -25,35 +23,20 @@ from verbalyze.security import PIIRedactor
 from verbalyze.telephony.jitter_buffer import AdaptiveJitterBuffer
 from verbalyze.telephony.supervisor import SupervisorManager
 from verbalyze.telephony.dtmf_engine import DTMFPad, RFC4733EventDecoder
-from verbalyze.telephony.ivr_tree import IVRStateMachine, IVRTransitionResult
+from verbalyze.telephony.ivr_tree import IVRStateMachine
 from verbalyze.telephony.turn_taking import (
     AdaptiveTurnTakingManager,
     TurnTakingState,
     DialogueContext,
-    AdaptivePausePolicy,
-    TurnCompletionConfidenceScorer,
     GlassToGlassLatencyProfiler,
 )
-from verbalyze.telephony.echo_canceller import (
-    AcousticEchoAndNoiseProcessor,
-    DSPTelemetry,
-)
-from verbalyze.telephony.equalizer import (
-    IndicFormantEqualizer,
-    EQTelemetry,
-)
-from verbalyze.telephony.comfort_noise import (
-    ComfortNoiseGenerator,
-    CNGTelemetry,
-)
-from verbalyze.telephony.bandwidth_expander import (
-    BandwidthExpander,
-    BWETelemetry,
-)
+from verbalyze.telephony.echo_canceller import AcousticEchoAndNoiseProcessor
+from verbalyze.telephony.equalizer import IndicFormantEqualizer
+from verbalyze.telephony.comfort_noise import ComfortNoiseGenerator
+from verbalyze.telephony.bandwidth_expander import BandwidthExpander
 from verbalyze.telephony.level_controller import (
     AutomaticLevelController,
     ALCPreset,
-    ALCTelemetry,
 )
 
 try:

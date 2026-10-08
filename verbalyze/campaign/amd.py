@@ -10,7 +10,7 @@ Answering Machine Detection (AMD) Engine:
 import re
 import time
 import math
-from typing import Optional, Tuple, List, Dict, Any
+from typing import Optional, Tuple, List
 from verbalyze.campaign.models import AMDDecision, AMDResult
 
 

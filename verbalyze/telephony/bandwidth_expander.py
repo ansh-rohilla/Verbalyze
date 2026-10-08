@@ -21,7 +21,7 @@ Features:
 import time
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Tuple, Any
 import numpy as np
 
 from verbalyze.telephony.tandem_compensator import CellularTandemHarmonizer

@@ -22,7 +22,7 @@ Real-Time Acoustic Echo Cancellation (AEC) & Spectral Noise Suppression Engine:
 
 import time
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, Any, Tuple, Optional
 import numpy as np
 
@@ -30,16 +30,8 @@ from verbalyze.telephony.cross_talk_separator import (
     AcousticCrossTalkSeparator,
     CrossTalkState,
 )
-from verbalyze.telephony.dereverberator import (
-    AcousticDereverberator,
-    DereverbTelemetry,
-    RoomAcousticProfile,
-)
-from verbalyze.telephony.tandem_compensator import (
-    CellularTandemHarmonizer,
-    TandemProfile,
-    TandemCompensatorTelemetry,
-)
+from verbalyze.telephony.dereverberator import AcousticDereverberator
+from verbalyze.telephony.tandem_compensator import CellularTandemHarmonizer
 
 
 @dataclass

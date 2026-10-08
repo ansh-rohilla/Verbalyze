@@ -15,12 +15,11 @@ Regulatory Call Recording & Post-Call AI Quality Assurance (QA) Engine:
 - Zero-emoji compliant.
 """
 
-import re
 import time
 import hashlib
 from datetime import datetime, timezone
-from dataclasses import dataclass, field, asdict
-from typing import Dict, List, Optional, Any, Tuple
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Any
 from enum import Enum
 
 from fpdf import FPDF

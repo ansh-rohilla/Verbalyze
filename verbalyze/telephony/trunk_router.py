@@ -19,11 +19,10 @@ import inspect
 import asyncio
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional, List, Tuple, Callable, Awaitable, Union
+from typing import Dict, Any, Optional, List, Tuple, Callable
 
 from verbalyze.telephony.circuit_breaker import (
     SIPCircuitBreaker,
-    SIPCircuitBreakerConfig,
     TrunkQoS,
     CircuitBreakerState,
     TrunkHealth,

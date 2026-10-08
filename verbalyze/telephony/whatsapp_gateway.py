@@ -10,14 +10,11 @@ Zero-emoji compliant.
 """
 
 import os
-import re
-import json
 import time
 import uuid
-import urllib.parse
 import hmac
 import hashlib
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 
 from verbalyze.security import PIIRedactor

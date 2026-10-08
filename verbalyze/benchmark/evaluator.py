@@ -6,13 +6,11 @@ Evaluates model predictions across 11 Indic speech scenarios and produces
 scenario-level scorecards and Markdown leaderboards.
 """
 
-import os
 import csv
-import json
 import random
 from pathlib import Path
 from typing import Dict, List, Optional, Any
-from verbalyze.benchmark.metrics import evaluate_batch, compute_wer, compute_cer
+from verbalyze.benchmark.metrics import evaluate_batch
 
 
 class BaseASRClient:
