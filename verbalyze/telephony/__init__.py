@@ -227,6 +227,13 @@ from verbalyze.telephony.tandem_compensator import (
     TandemCompensationReport,
     LPCVocalTractEstimator,
 )
+from verbalyze.telephony.ringback_discriminator import (
+    EarlyMediaDiscriminator,
+    EarlyMediaState,
+    RingbackCadenceType,
+    EarlyMediaTelemetry,
+    EarlyMediaReport,
+)
 
 __all__ = [
     "DispatchResult",
@@ -399,6 +406,11 @@ __all__ = [
     "TandemCompensatorTelemetry",
     "TandemCompensationReport",
     "LPCVocalTractEstimator",
+    "EarlyMediaDiscriminator",
+    "EarlyMediaState",
+    "RingbackCadenceType",
+    "EarlyMediaTelemetry",
+    "EarlyMediaReport",
 ]
 
 

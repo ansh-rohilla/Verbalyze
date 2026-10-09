@@ -224,6 +224,13 @@ from verbalyze.telephony.tandem_compensator import (
     TandemProfile,
     TandemCompensatorTelemetry,
 )
+from verbalyze.telephony.ringback_discriminator import (
+    EarlyMediaDiscriminator,
+    EarlyMediaState,
+    RingbackCadenceType,
+    EarlyMediaTelemetry,
+    EarlyMediaReport,
+)
 
 # Try importing FastAPI
 try:
@@ -330,6 +337,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "p563_mos_status": "ready",
             "acoustic_dereverberator_status": "ready",
             "tandem_compensator_status": "ready",
+            "early_media_discriminator_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -4128,6 +4136,91 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "max_tandem_processing_time_ms": round(max_ms, 4),
             "target_sla_ms": 0.050,
             "meets_sla": avg_ms < 0.120,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    # --------------------------------------------------------------------------
+    # Indian Early Media & In-Band Ringback Tone Discriminator Endpoints
+    # --------------------------------------------------------------------------
+    @app.post("/telephony/early-media/discriminate")
+    async def discriminate_early_media_endpoint(request: Request):
+        """
+        Analyzes early media audio stream to discriminate ITU-T Q.35 Indian ringback tone,
+        caller tunes (CRBT), carrier operator network announcements, and human answer onset.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        audio_b64 = body.get("audio_base64")
+        if not audio_b64:
+            return JSONResponse({"error": "Missing audio_base64 field"}, status_code=400)
+
+        sample_rate = int(body.get("sample_rate", 8000))
+        try:
+            pcm_bytes = base64.b64decode(audio_b64)
+        except Exception:
+            return JSONResponse({"error": "Invalid base64 audio payload"}, status_code=400)
+
+        discriminator = EarlyMediaDiscriminator(sample_rate=sample_rate)
+        telemetries, report = discriminator.process_stream(pcm_bytes)
+
+        return JSONResponse({
+            "status": "ok",
+            "frames_processed": len(telemetries),
+            "dominant_state": report.dominant_state.value,
+            "ringback_detected": report.ringback_detected,
+            "caller_tune_detected": report.caller_tune_detected,
+            "operator_announcement_detected": report.operator_announcement_detected,
+            "human_answered": report.human_answered,
+            "answer_onset_timestamp_ms": report.answer_onset_timestamp_ms,
+            "time_to_answer_ms": report.time_to_answer_ms,
+            "cadence_pattern": report.cadence_pattern.value,
+            "stream_report": report.to_dict(),
+            "telemetries": [t.to_dict() for t in telemetries],
+        })
+
+    @app.post("/telephony/early-media/benchmark")
+    async def benchmark_early_media_endpoint(request: Request):
+        """
+        Profiles per-frame processing latency of the EarlyMediaDiscriminator engine.
+        Target SLA: < 0.050 ms per 20ms frame (> 400x real-time headroom).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        discriminator = EarlyMediaDiscriminator(sample_rate=8000)
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        pcm_test = ((0.5 * np.sin(2 * np.pi * 400.0 * t) + 0.5 * np.sin(2 * np.pi * 425.0 * t)) * 16000.0).astype(np.int16).tobytes()
+
+        # Warm-up
+        for _ in range(50):
+            discriminator.process_frame(pcm_test)
+
+        n_iterations = 250
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            discriminator.process_frame(pcm_test)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_early_media_processing_time_ms": round(avg_ms, 4),
+            "p95_early_media_processing_time_ms": round(p95_ms, 4),
+            "max_early_media_processing_time_ms": round(max_ms, 4),
+            "target_sla_ms": 0.050,
+            "meets_sla": avg_ms < 0.050,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 

@@ -38,6 +38,10 @@ from verbalyze.telephony.level_controller import (
     AutomaticLevelController,
     ALCPreset,
 )
+from verbalyze.telephony.ringback_discriminator import (
+    EarlyMediaDiscriminator,
+    EarlyMediaState,
+)
 
 try:
     import pydub
@@ -162,6 +166,9 @@ class MediaStreamSession:
             sample_rate=8000,
             preset=ALCPreset.STUDIO_NATURAL,
         )
+
+        # Indian Telephony Early Media & In-Band Ringback Tone Discriminator
+        self.early_media_discriminator = EarlyMediaDiscriminator(sample_rate=8000)
 
         # Inbound VAD state
         self.inbound_pcm_buffer: List[bytes] = []

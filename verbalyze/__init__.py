@@ -60,6 +60,9 @@ from verbalyze.telephony import (
     RoomAcousticProfile,
     CellularTandemHarmonizer,
     TandemProfile,
+    EarlyMediaDiscriminator,
+    EarlyMediaState,
+    RingbackCadenceType,
 )
 
 __all__ = [
@@ -116,4 +119,7 @@ __all__ = [
     "RoomAcousticProfile",
     "CellularTandemHarmonizer",
     "TandemProfile",
+    "EarlyMediaDiscriminator",
+    "EarlyMediaState",
+    "RingbackCadenceType",
 ]

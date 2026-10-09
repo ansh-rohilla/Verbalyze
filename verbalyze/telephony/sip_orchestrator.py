@@ -39,6 +39,11 @@ from dataclasses import dataclass, field
 from typing import Dict, Any, List, Optional, Tuple
 
 from verbalyze.telephony.conference_mixer import ConferenceAudioMixer, ConferenceMode
+from verbalyze.telephony.ringback_discriminator import (
+    EarlyMediaDiscriminator,
+    EarlyMediaState,
+    EarlyMediaTelemetry,
+)
 
 
 class SIPMethod(str, Enum):
@@ -272,6 +277,24 @@ class SIPSession:
         self.transfer_target_uri: Optional[str] = None
         self.transfer_in_progress: bool = False
         self.transfer_status: Optional[str] = None
+
+        # Early media and ringback discriminator
+        self.early_media_discriminator = EarlyMediaDiscriminator(sample_rate=sample_rate)
+
+    def process_early_media_frame(self, pcm_data: bytes) -> EarlyMediaTelemetry:
+        """
+        Processes in-band early media audio frame to detect ringback, caller tune, or human answer.
+        Automatically transitions call legs from RINGING to CONNECTED upon human answer.
+        """
+        telem = self.early_media_discriminator.process_frame(pcm_data)
+        if telem.human_answered and (self.leg_a.state in [SIPCallState.RINGING, SIPCallState.TRYING]):
+            self.leg_a.state = SIPCallState.CONNECTED
+            self.leg_b.state = SIPCallState.CONNECTED
+            if self.leg_a.connected_at is None:
+                self.leg_a.connected_at = time.time()
+            if self.leg_b.connected_at is None:
+                self.leg_b.connected_at = time.time()
+        return telem
 
     def _generate_sdp(self, direction: SDPDirection = SDPDirection.SENDRECV) -> str:
         """Constructs an RFC 4566 compliant SDP payload for G.711 A-law / Linear PCM."""
