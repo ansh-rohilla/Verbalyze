@@ -44,6 +44,12 @@ from verbalyze.telephony.ringback_discriminator import (
     EarlyMediaState,
     EarlyMediaTelemetry,
 )
+from verbalyze.telephony.disconnect_gate import (
+    InBandDisconnectGate,
+    DisconnectPattern,
+    DisconnectState,
+    DisconnectTelemetry,
+)
 
 
 class SIPMethod(str, Enum):
@@ -281,6 +287,9 @@ class SIPSession:
         # Early media and ringback discriminator
         self.early_media_discriminator = EarlyMediaDiscriminator(sample_rate=sample_rate)
 
+        # In-band disconnect and busy-cadence call termination gate
+        self.disconnect_gate = InBandDisconnectGate(sample_rate=sample_rate)
+
     def process_early_media_frame(self, pcm_data: bytes) -> EarlyMediaTelemetry:
         """
         Processes in-band early media audio frame to detect ringback, caller tune, or human answer.
@@ -294,6 +303,25 @@ class SIPSession:
                 self.leg_a.connected_at = time.time()
             if self.leg_b.connected_at is None:
                 self.leg_b.connected_at = time.time()
+        return telem
+
+    def process_disconnect_frame(self, pcm_data: bytes) -> DisconnectTelemetry:
+        """
+        Analyzes an in-band audio frame during an active call for disconnect / busy / howler tones.
+        Automatically transitions call legs to TERMINATED when in-band disconnect is confirmed.
+        """
+        telem = self.disconnect_gate.process_frame(pcm_data)
+        if telem.disconnect_triggered:
+            now = time.time()
+            if self.leg_a.state in [SIPCallState.CONNECTED, SIPCallState.RINGING]:
+                self.leg_a.state = SIPCallState.TERMINATED
+                self.leg_a.terminated_at = now
+            if self.leg_b.state in [SIPCallState.CONNECTED, SIPCallState.RINGING]:
+                self.leg_b.state = SIPCallState.TERMINATED
+                self.leg_b.terminated_at = now
+            if self.leg_c and self.leg_c.state == SIPCallState.CONNECTED:
+                self.leg_c.state = SIPCallState.TERMINATED
+                self.leg_c.terminated_at = now
         return telem
 
     def _generate_sdp(self, direction: SDPDirection = SDPDirection.SENDRECV) -> str:

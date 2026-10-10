@@ -231,6 +231,13 @@ from verbalyze.telephony.ringback_discriminator import (
     EarlyMediaTelemetry,
     EarlyMediaReport,
 )
+from verbalyze.telephony.disconnect_gate import (
+    InBandDisconnectGate,
+    DisconnectPattern,
+    DisconnectState,
+    DisconnectTelemetry,
+    DisconnectReport,
+)
 
 # Try importing FastAPI
 try:
@@ -338,6 +345,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "acoustic_dereverberator_status": "ready",
             "tandem_compensator_status": "ready",
             "early_media_discriminator_status": "ready",
+            "disconnect_gate_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -4221,6 +4229,84 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "max_early_media_processing_time_ms": round(max_ms, 4),
             "target_sla_ms": 0.050,
             "meets_sla": avg_ms < 0.050,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    @app.post("/telephony/disconnect/analyze")
+    async def analyze_disconnect_endpoint(request: Request):
+        """
+        Analyzes a base64-encoded linear PCM audio stream for in-band telecom disconnect tones,
+        busy cadences (375ms / 750ms), network congestion (200ms), and off-hook howler tones.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        audio_b64 = body.get("audio_base64")
+        if not audio_b64:
+            return JSONResponse({"error": "Missing audio_base64 field"}, status_code=400)
+
+        sample_rate = int(body.get("sample_rate", 8000))
+        try:
+            pcm_bytes = base64.b64decode(audio_b64)
+        except Exception:
+            return JSONResponse({"error": "Invalid base64 audio payload"}, status_code=400)
+
+        gate = InBandDisconnectGate(sample_rate=sample_rate)
+        telemetries, report = gate.process_stream(pcm_bytes)
+
+        return JSONResponse({
+            "status": "ok",
+            "frames_processed": len(telemetries),
+            "disconnect_triggered": report.disconnect_triggered,
+            "detected_pattern": report.detected_pattern.value,
+            "disconnect_timestamp_ms": report.disconnect_timestamp_ms,
+            "hangup_latency_ms": report.hangup_latency_ms,
+            "stream_report": report.to_dict(),
+            "telemetries": [t.to_dict() for t in telemetries],
+        })
+
+    @app.post("/telephony/disconnect/benchmark")
+    async def benchmark_disconnect_endpoint(request: Request):
+        """
+        Profiles per-frame processing latency of the InBandDisconnectGate engine.
+        Target SLA: < 0.030 ms per 20ms frame (> 650x real-time headroom).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        gate = InBandDisconnectGate(sample_rate=8000)
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        pcm_test = (np.sin(2 * np.pi * 400.0 * t) * 16000.0).astype(np.int16).tobytes()
+
+        # Warm-up
+        for _ in range(50):
+            gate.process_frame(pcm_test)
+
+        n_iterations = 250
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            gate.process_frame(pcm_test)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_disconnect_processing_time_ms": round(avg_ms, 4),
+            "p95_disconnect_processing_time_ms": round(p95_ms, 4),
+            "max_disconnect_processing_time_ms": round(max_ms, 4),
+            "target_sla_ms": 0.030,
+            "meets_sla": avg_ms < 0.030,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
         })
 

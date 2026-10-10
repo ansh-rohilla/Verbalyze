@@ -63,6 +63,9 @@ from verbalyze.telephony import (
     EarlyMediaDiscriminator,
     EarlyMediaState,
     RingbackCadenceType,
+    InBandDisconnectGate,
+    DisconnectPattern,
+    DisconnectState,
 )
 
 __all__ = [
@@ -122,4 +125,7 @@ __all__ = [
     "EarlyMediaDiscriminator",
     "EarlyMediaState",
     "RingbackCadenceType",
+    "InBandDisconnectGate",
+    "DisconnectPattern",
+    "DisconnectState",
 ]

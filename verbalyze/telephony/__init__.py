@@ -234,6 +234,13 @@ from verbalyze.telephony.ringback_discriminator import (
     EarlyMediaTelemetry,
     EarlyMediaReport,
 )
+from verbalyze.telephony.disconnect_gate import (
+    InBandDisconnectGate,
+    DisconnectPattern,
+    DisconnectState,
+    DisconnectTelemetry,
+    DisconnectReport,
+)
 
 __all__ = [
     "DispatchResult",
@@ -411,6 +418,11 @@ __all__ = [
     "RingbackCadenceType",
     "EarlyMediaTelemetry",
     "EarlyMediaReport",
+    "InBandDisconnectGate",
+    "DisconnectPattern",
+    "DisconnectState",
+    "DisconnectTelemetry",
+    "DisconnectReport",
 ]
 
 

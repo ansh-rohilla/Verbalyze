@@ -3,8 +3,8 @@
 scripts/run_all_telephony_tests.py
 
 Master Telephony & DSP Test Suite Runner for Verbalyze.
-Sequentially executes all 40 automated test suites across:
-- Core DSP algorithms (PESQ quality, ALC, Diarization, Watermarking, BWE, CNG, PLC, AEC, PSOLA Masker, Backchannel, Cross-Talk, DTMF Silencer, Voice Stress & Sarcasm, SOLA Jitter, P.563 Speech Quality, Adaptive Dereverberator, Codec Tandem Warble Compensator, Early Media & Ringback Discriminator)
+Sequentially executes all 41 automated test suites across:
+- Core DSP algorithms (PESQ quality, ALC, Diarization, Watermarking, BWE, CNG, PLC, AEC, PSOLA Masker, Backchannel, Cross-Talk, DTMF Silencer, Voice Stress & Sarcasm, SOLA Jitter, P.563 Speech Quality, Adaptive Dereverberator, Codec Tandem Warble Compensator, Early Media & Ringback Discriminator, In-Band Disconnect & Busy-Cadence Gate)
 - Telephony protocols (SIP WebSocket, Media Streams, DTMF IVR, Outbound AMD, 3-Way Conference, SIP Orchestrator)
 - Safety & Compliance (Regulatory QA, Sentiment Transfer, Biometrics, Tamper Seal, PCI-DSS Redaction, RBI Coercion Guard)
 - Enterprise Integrations (SMS UPI, WhatsApp Gateway, Multi-trunk Failover)
@@ -60,6 +60,7 @@ TEST_SUITES = [
     ("Adaptive Acoustic Room Reverberation Dampener & Inverse Schroeder Filter", "scripts/test_acoustic_dereverberator.py"),
     ("Cellular Codec Tandem Warble & Spectral Gap Compensator", "scripts/test_tandem_compensator.py"),
     ("Indian Early Media & In-Band Ringback Tone Discriminator (ITU-T Q.35)", "scripts/test_ringback_discriminator.py"),
+    ("In-Band Disconnect & Busy-Cadence Call Termination Gate (ITU-T E.180)", "scripts/test_in_band_disconnect_gate.py"),
 ]
 
 
