@@ -299,14 +299,27 @@ class DTMFPad:
         frame_duration_ms: float = 20.0,
         min_tone_duration_ms: float = 40.0,
         min_silence_duration_ms: float = 40.0,
+        enable_talk_off_gate: bool = False,
     ):
         self.sample_rate = sample_rate
         self.frame_size = int((frame_duration_ms / 1000.0) * sample_rate)
         self.frame_bytes = self.frame_size * 2
         self.detector = GoertzelDetector(sample_rate=sample_rate, frame_size=self.frame_size)
+        self.enable_talk_off_gate = enable_talk_off_gate
 
         self.min_tone_frames = max(1, int(min_tone_duration_ms / frame_duration_ms))
         self.min_silence_frames = max(1, int(min_silence_duration_ms / frame_duration_ms))
+
+        # Optional ITU-T Q.24 Talk-Off Immunity Gate
+        self.talk_off_gate = None
+        if enable_talk_off_gate:
+            from verbalyze.telephony.talk_off_gate import DTMFTalkOffImmunityGate
+            self.talk_off_gate = DTMFTalkOffImmunityGate(
+                sample_rate=sample_rate,
+                frame_size_ms=frame_duration_ms,
+                min_tone_duration_ms=min_tone_duration_ms,
+                min_silence_duration_ms=min_silence_duration_ms,
+            )
 
         # Debounce state
         self._consecutive_tone_digit: Optional[str] = None
@@ -322,6 +335,8 @@ class DTMFPad:
         self._consecutive_silence_count = 0
         self._last_registered_digit = None
         self._audio_buffer.clear()
+        if self.talk_off_gate is not None:
+            self.talk_off_gate.reset()
 
     def process_pcm_chunk(self, chunk: bytes) -> List[str]:
         """
@@ -330,6 +345,16 @@ class DTMFPad:
         """
         registered_digits: List[str] = []
         self._audio_buffer.extend(chunk)
+
+        if self.enable_talk_off_gate and self.talk_off_gate is not None:
+            while len(self._audio_buffer) >= self.frame_bytes:
+                frame = bytes(self._audio_buffer[: self.frame_bytes])
+                del self._audio_buffer[: self.frame_bytes]
+                prev_len = len(self.talk_off_gate.registered_digits)
+                self.talk_off_gate.process_frame(frame)
+                if len(self.talk_off_gate.registered_digits) > prev_len:
+                    registered_digits.extend(self.talk_off_gate.registered_digits[prev_len:])
+            return registered_digits
 
         while len(self._audio_buffer) >= self.frame_bytes:
             frame = bytes(self._audio_buffer[: self.frame_bytes])

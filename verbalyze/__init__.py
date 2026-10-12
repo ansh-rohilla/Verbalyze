@@ -66,6 +66,9 @@ from verbalyze.telephony import (
     InBandDisconnectGate,
     DisconnectPattern,
     DisconnectState,
+    DTMFTalkOffImmunityGate,
+    TalkOffState,
+    TalkOffRejectionReason,
 )
 
 __all__ = [
@@ -128,4 +131,7 @@ __all__ = [
     "InBandDisconnectGate",
     "DisconnectPattern",
     "DisconnectState",
+    "DTMFTalkOffImmunityGate",
+    "TalkOffState",
+    "TalkOffRejectionReason",
 ]

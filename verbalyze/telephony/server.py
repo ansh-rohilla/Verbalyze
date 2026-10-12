@@ -238,6 +238,13 @@ from verbalyze.telephony.disconnect_gate import (
     DisconnectTelemetry,
     DisconnectReport,
 )
+from verbalyze.telephony.talk_off_gate import (
+    DTMFTalkOffImmunityGate,
+    TalkOffState,
+    TalkOffRejectionReason,
+    TalkOffTelemetry,
+    TalkOffReport,
+)
 
 # Try importing FastAPI
 try:
@@ -346,6 +353,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "tandem_compensator_status": "ready",
             "early_media_discriminator_status": "ready",
             "disconnect_gate_status": "ready",
+            "talk_off_gate_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -4305,6 +4313,87 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "avg_disconnect_processing_time_ms": round(avg_ms, 4),
             "p95_disconnect_processing_time_ms": round(p95_ms, 4),
             "max_disconnect_processing_time_ms": round(max_ms, 4),
+            "target_sla_ms": 0.030,
+            "meets_sla": avg_ms < 0.030,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    @app.post("/telephony/dtmf/talk-off/analyze")
+    async def analyze_talk_off_endpoint(request: Request):
+        """
+        Analyzes a base64-encoded linear PCM audio stream using the ITU-T Q.24 Talk-Off Immunity Gate.
+        Evaluates 2nd/3rd harmonics, speech guard band energy, twist, and returns detected digits.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        audio_b64 = body.get("audio_base64")
+        if not audio_b64:
+            return JSONResponse({"error": "Missing audio_base64 field"}, status_code=400)
+
+        sample_rate = int(body.get("sample_rate", 8000))
+        try:
+            pcm_bytes = base64.b64decode(audio_b64)
+        except Exception:
+            return JSONResponse({"error": "Invalid base64 audio payload"}, status_code=400)
+
+        gate = DTMFTalkOffImmunityGate(sample_rate=sample_rate)
+        telemetries, report = gate.process_stream(pcm_bytes)
+
+        return JSONResponse({
+            "status": "ok",
+            "frames_processed": len(telemetries),
+            "detected_digits": report.detected_digits,
+            "talk_off_rejected_count": report.talk_off_rejected_count,
+            "genuine_tone_frame_count": report.genuine_tone_frame_count,
+            "speech_frame_count": report.speech_frame_count,
+            "false_trigger_rate": report.false_trigger_rate,
+            "average_guard_ratio": report.average_guard_ratio,
+            "stream_report": report.to_dict(),
+            "telemetries": [t.to_dict() for t in telemetries],
+        })
+
+    @app.post("/telephony/dtmf/talk-off/benchmark")
+    async def benchmark_talk_off_endpoint(request: Request):
+        """
+        Profiles per-frame processing latency of the DTMFTalkOffImmunityGate engine.
+        Target SLA: < 0.030 ms per 20ms frame (> 650x real-time headroom).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        gate = DTMFTalkOffImmunityGate(sample_rate=8000)
+        # DTMF digit '5' = 770 Hz row + 1336 Hz col
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        pcm_test = ((0.5 * np.sin(2 * np.pi * 770.0 * t) + 0.5 * np.sin(2 * np.pi * 1336.0 * t)) * 16000.0).astype(np.int16).tobytes()
+
+        # Warm-up
+        for _ in range(50):
+            gate.process_frame(pcm_test)
+
+        n_iterations = 250
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            gate.process_frame(pcm_test)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_talk_off_processing_time_ms": round(avg_ms, 4),
+            "p95_talk_off_processing_time_ms": round(p95_ms, 4),
+            "max_talk_off_processing_time_ms": round(max_ms, 4),
             "target_sla_ms": 0.030,
             "meets_sla": avg_ms < 0.030,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),

@@ -241,6 +241,13 @@ from verbalyze.telephony.disconnect_gate import (
     DisconnectTelemetry,
     DisconnectReport,
 )
+from verbalyze.telephony.talk_off_gate import (
+    DTMFTalkOffImmunityGate,
+    TalkOffState,
+    TalkOffRejectionReason,
+    TalkOffTelemetry,
+    TalkOffReport,
+)
 
 __all__ = [
     "DispatchResult",
@@ -423,6 +430,11 @@ __all__ = [
     "DisconnectState",
     "DisconnectTelemetry",
     "DisconnectReport",
+    "DTMFTalkOffImmunityGate",
+    "TalkOffState",
+    "TalkOffRejectionReason",
+    "TalkOffTelemetry",
+    "TalkOffReport",
 ]
 
 
