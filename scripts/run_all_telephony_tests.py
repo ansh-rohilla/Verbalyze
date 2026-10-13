@@ -3,8 +3,8 @@
 scripts/run_all_telephony_tests.py
 
 Master Telephony & DSP Test Suite Runner for Verbalyze.
-Sequentially executes all 42 automated test suites across:
-- Core DSP algorithms (PESQ quality, ALC, Diarization, Watermarking, BWE, CNG, PLC, AEC, PSOLA Masker, Backchannel, Cross-Talk, DTMF Silencer, Voice Stress & Sarcasm, SOLA Jitter, P.563 Speech Quality, Adaptive Dereverberator, Codec Tandem Warble Compensator, Early Media & Ringback Discriminator, In-Band Disconnect & Busy-Cadence Gate, DTMF Talk-Off Immunity Gate)
+Sequentially executes all 43 automated test suites across:
+- Core DSP algorithms (PESQ quality, ALC, Diarization, Watermarking, BWE, CNG, PLC, AEC, PSOLA Masker, Backchannel, Cross-Talk, DTMF Silencer, Voice Stress & Sarcasm, SOLA Jitter, P.563 Speech Quality, Adaptive Dereverberator, Codec Tandem Warble Compensator, Early Media & Ringback Discriminator, In-Band Disconnect & Busy-Cadence Gate, DTMF Talk-Off Immunity Gate, Cellular Microphone Acoustic De-Clipper)
 - Telephony protocols (SIP WebSocket, Media Streams, DTMF IVR, Outbound AMD, 3-Way Conference, SIP Orchestrator)
 - Safety & Compliance (Regulatory QA, Sentiment Transfer, Biometrics, Tamper Seal, PCI-DSS Redaction, RBI Coercion Guard)
 - Enterprise Integrations (SMS UPI, WhatsApp Gateway, Multi-trunk Failover)
@@ -62,6 +62,7 @@ TEST_SUITES = [
     ("Indian Early Media & In-Band Ringback Tone Discriminator (ITU-T Q.35)", "scripts/test_ringback_discriminator.py"),
     ("In-Band Disconnect & Busy-Cadence Call Termination Gate (ITU-T E.180)", "scripts/test_in_band_disconnect_gate.py"),
     ("ITU-T Q.24 In-Band DTMF Talk-Off Immunity Gate", "scripts/test_dtmf_talk_off_gate.py"),
+    ("Cellular Microphone Non-Linear Acoustic De-Clipper", "scripts/test_acoustic_declipper.py"),
 ]
 
 

@@ -69,6 +69,10 @@ from verbalyze.telephony import (
     DTMFTalkOffImmunityGate,
     TalkOffState,
     TalkOffRejectionReason,
+    AcousticDeclipper,
+    DeclipperProfile,
+    DeclipTelemetry,
+    DeclipReport,
 )
 
 __all__ = [
@@ -134,4 +138,8 @@ __all__ = [
     "DTMFTalkOffImmunityGate",
     "TalkOffState",
     "TalkOffRejectionReason",
+    "AcousticDeclipper",
+    "DeclipperProfile",
+    "DeclipTelemetry",
+    "DeclipReport",
 ]

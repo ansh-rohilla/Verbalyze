@@ -248,6 +248,12 @@ from verbalyze.telephony.talk_off_gate import (
     TalkOffTelemetry,
     TalkOffReport,
 )
+from verbalyze.telephony.declipper import (
+    AcousticDeclipper,
+    DeclipperProfile,
+    DeclipTelemetry,
+    DeclipReport,
+)
 
 __all__ = [
     "DispatchResult",
@@ -435,6 +441,10 @@ __all__ = [
     "TalkOffRejectionReason",
     "TalkOffTelemetry",
     "TalkOffReport",
+    "AcousticDeclipper",
+    "DeclipperProfile",
+    "DeclipTelemetry",
+    "DeclipReport",
 ]
 
 

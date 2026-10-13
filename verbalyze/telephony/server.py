@@ -245,6 +245,12 @@ from verbalyze.telephony.talk_off_gate import (
     TalkOffTelemetry,
     TalkOffReport,
 )
+from verbalyze.telephony.declipper import (
+    AcousticDeclipper,
+    DeclipperProfile,
+    DeclipTelemetry,
+    DeclipReport,
+)
 
 # Try importing FastAPI
 try:
@@ -354,6 +360,7 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "early_media_discriminator_status": "ready",
             "disconnect_gate_status": "ready",
             "talk_off_gate_status": "ready",
+            "declipper_status": "ready",
             "auth_enabled": bool(expected_token),
             "engine": "Verbalyze Telephony v0.2.0"
         }
@@ -4394,6 +4401,89 @@ def create_app(auth_token: Optional[str] = None) -> Any:
             "avg_talk_off_processing_time_ms": round(avg_ms, 4),
             "p95_talk_off_processing_time_ms": round(p95_ms, 4),
             "max_talk_off_processing_time_ms": round(max_ms, 4),
+            "target_sla_ms": 0.030,
+            "meets_sla": avg_ms < 0.030,
+            "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
+        })
+
+    @app.post("/telephony/audio/declip")
+    async def declip_audio_endpoint(request: Request):
+        """
+        Analyzes and de-clips linear PCM audio, reconstructing saturated wave crests
+        using constrained cubic Hermite splines and auto-headroom expansion.
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+
+        audio_b64 = body.get("audio_base64")
+        if not audio_b64:
+            return JSONResponse({"error": "Missing audio_base64 field"}, status_code=400)
+
+        sample_rate = int(body.get("sample_rate", 8000))
+        try:
+            pcm_bytes = base64.b64decode(audio_b64)
+        except Exception:
+            return JSONResponse({"error": "Invalid base64 audio payload"}, status_code=400)
+
+        declipper = AcousticDeclipper(sample_rate=sample_rate)
+        restored_pcm, telemetries, report = declipper.process_stream(pcm_bytes)
+
+        return JSONResponse({
+            "status": "ok",
+            "frames_processed": len(telemetries),
+            "restored_audio_base64": base64.b64encode(restored_pcm).decode("ascii"),
+            "dominant_profile": report.dominant_profile.value,
+            "total_clipped_samples": report.total_clipped_samples,
+            "total_reconstructed_crests": report.total_reconstructed_crests,
+            "average_clipping_percentage": report.average_clipping_percentage,
+            "average_thd_reduction_db": report.average_thd_reduction_db,
+            "average_crest_factor_gain_db": report.average_crest_factor_gain_db,
+            "stream_report": report.to_dict(),
+            "telemetries": [t.to_dict() for t in telemetries],
+        })
+
+    @app.post("/telephony/audio/declip/benchmark")
+    async def benchmark_declipper_endpoint(request: Request):
+        """
+        Profiles per-frame processing latency of the AcousticDeclipper engine.
+        Target SLA: < 0.030 ms per 20ms frame (> 650x real-time headroom).
+        """
+        if not _verify_request(request):
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+        declipper = AcousticDeclipper(sample_rate=8000)
+        # ITU-T P.50 standard speech frame with clipped vocal crests (125 Hz fundamental)
+        t = np.linspace(0, 0.02, 160, endpoint=False)
+        sig = 38000.0 * np.sin(2 * np.pi * 125.0 * t)
+        pcm_test = np.clip(sig, -32768, 32767).astype(np.int16).tobytes()
+
+        # Warm-up
+        for _ in range(50):
+            declipper.process_frame(pcm_test)
+
+        n_iterations = 250
+        durations = []
+        for _ in range(n_iterations):
+            t0 = time.perf_counter()
+            declipper.process_frame(pcm_test)
+            durations.append((time.perf_counter() - t0) * 1000.0)
+
+        avg_ms = float(np.mean(durations))
+        p95_ms = float(np.percentile(durations, 95))
+        max_ms = float(np.max(durations))
+
+        return JSONResponse({
+            "status": "ok",
+            "frame_duration_ms": 20.0,
+            "iterations": n_iterations,
+            "avg_declip_processing_time_ms": round(avg_ms, 4),
+            "p95_declip_processing_time_ms": round(p95_ms, 4),
+            "max_declip_processing_time_ms": round(max_ms, 4),
             "target_sla_ms": 0.030,
             "meets_sla": avg_ms < 0.030,
             "real_time_headroom_factor": round(20.0 / max(avg_ms, 1e-4), 1),
